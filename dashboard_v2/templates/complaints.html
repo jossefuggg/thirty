@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+  .pg-wrap { display: flex; flex-direction: column; height: calc(100vh - var(--topbar-h) - var(--s3) * 2 - 60px); min-height: 520px; }
+  .pg-wrap .card { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+  .scroll { overflow: auto; flex: 1; min-height: 0; }
+  .fl { font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 4px 0 8px; }
+  .fl:first-child { margin-left: 0; }
+  .tgl { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; color: var(--text-2); cursor: pointer; white-space: nowrap; }
+  .tgl input { appearance: none; width: 34px; height: 20px; border-radius: 10px; background: var(--border-2); position: relative; cursor: pointer; transition: background var(--t-fast); margin: 0; }
+  .tgl input::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform var(--t-fast); box-shadow: 0 1px 2px rgba(15,23,42,.3); }
+  .tgl input:checked { background: var(--accent); } .tgl input:checked::after { transform: translateX(14px); }
+  .pager { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+  .pager .btn { margin-left: 0; } .pager span.grow { flex: 1; }
+  .s-hist { background: #fff; color: #6D28D9; box-shadow: inset 0 0 0 1.5px #C4B5FD; }
+  td .sub { display: block; font-size: 12px; color: var(--muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  td.mode { text-transform: capitalize; } .tbl td.mono, .tbl td.num { white-space: nowrap; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="pg-wrap"><section class="card">
+  <div class="toolbar" id="chips"></div>
+  <div class="toolbar">
+    <label class="tsearch">{{ icon('search') }}<input id="q" type="search" placeholder="Search ID, device, failure mode, owner" style="width:320px"></label>
+    <select class="input" id="fam" style="height:32px;width:auto;font-size:13px"><option value="">All device families</option></select>
+    <span class="grow"></span>
+    <label class="tgl"><input type="checkbox" id="hist">Include FDA history</label>
+  </div>
+  <div class="scroll"><table class="tbl">
+    <thead><tr>{% for k, l in [('id','ID'),('received','Received'),('family','Device family'),('decision','Decision'),('category','Category'),('priority','Priority'),('mode','Failure mode'),('due','Due'),('status','Status'),('owner','Owner'),('source','Source')] %}<th data-sort="{{ k }}">{{ l }}</th>{% endfor %}</tr></thead>
+    <tbody id="rows"></tbody></table></div>
+  <div class="pager"><span id="count"></span><span class="grow"></span><button class="btn btn-ghost btn-sm" id="prev">Previous</button><span id="pg"></span><button class="btn btn-ghost btn-sm" id="next">Next</button></div>
+</section></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var st = { q: "", decision: "", status_kind: "", priority: "", family: "", sort: "time", dir: "desc", page: 1, history: "" }, last = "";
+  var SK = { pend: "Pending review", appr: "Approved", info: "Info requested", log: "Logged", hist: "FDA history" };
+  function chips(f) {
+    function grp(lbl, key, names) { var o = f[key] || {}; return '<span class="fl">' + lbl + "</span>" + Object.keys(o).map(function (k) {
+      return '<button class="fpill' + (st[key] === k ? " on" : "") + '" data-k="' + key + '" data-v="' + esc(k) + '">' + esc((names && names[k]) || V.label(k)) + " <em>" + o[k].toLocaleString("en-US") + "</em></button>"; }).join(""); }
+    $("chips").innerHTML = grp("Decision", "decision") + grp("Status", "status_kind", SK) + grp("Priority", "priority");
+    var fam = $("fam"), cur = st.family; fam.innerHTML = '<option value="">All device families</option>' + Object.keys(f.family || {}).map(function (k) { return '<option' + (k === cur ? " selected" : "") + ">" + esc(k) + "</option>"; }).join("");
+  }
+  function load() {
+    var qs = Object.keys(st).filter(function (k) { return st[k]; }).map(function (k) { return k + "=" + encodeURIComponent(st[k]); }).join("&");
+    fetch("/api/complaints/list?" + qs, { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+      var sig = JSON.stringify(j); if (sig === last) return; last = sig;
+      chips(j.facets);
+      $("hist").disabled = !j.has_history;
+      $("rows").innerHTML = j.rows.length ? j.rows.map(function (r) {
+        var due = r.due ? (r.days_left !== null ? V.dueChip({ due_date: r.due, open: true }) : '<span class="muted num">' + esc(r.due) + "</span>") : '<span class="muted">—</span>';
+        return '<tr class="' + (r.live ? "click" : "") + '"' + (r.live ? ' data-href="/complaint/' + encodeURIComponent(r.id) + '"' : "") + '><td class="mono">#' + esc(r.id) + '</td><td class="num muted">' + esc(r.received) + "</td>" +
+          "<td><b>" + esc(r.family) + "</b>" + (r.live && r.device !== r.family ? '<span class="sub">' + esc(r.device) + "</span>" : "") + "</td>" +
+          "<td>" + (r.decision ? '<span class="pill d-' + esc(r.decision) + '">' + esc(V.label(r.decision)) + "</span>" : '<span class="muted">—</span>') + "</td>" +
+          "<td>" + esc(V.label(r.category === "NONE" ? "" : r.category) || "—") + "</td>" +
+          "<td>" + (r.priority ? '<span class="pill p-' + esc(r.priority) + '">' + esc(r.priority) + "</span>" : '<span class="muted">—</span>') + "</td>" +
+          '<td class="mode">' + esc(r.mode.replace("/", " / ")) + "</td><td>" + due + "</td>" +
+          '<td><span class="pill s-' + r.status_kind + '">' + SK[r.status_kind] + "</span></td><td>" + (esc(r.owner) || '<span class="muted">Unassigned</span>') + "</td><td>" + V.srcChip(r.source) + "</td></tr>";
+      }).join("") : '<tr><td colspan="11" class="muted" style="padding:20px">No complaints match these filters.</td></tr>';
+      $("count").textContent = j.total.toLocaleString("en-US") + " complaint" + (j.total === 1 ? "" : "s"); $("pg").textContent = "Page " + j.page + " of " + j.pages.toLocaleString("en-US");
+      $("prev").disabled = j.page <= 1; $("next").disabled = j.page >= j.pages;
+      document.querySelectorAll("th[data-sort]").forEach(function (th) { th.className = th.dataset.sort === st.sort ? st.dir : ""; });
+    });
+  }
+  $("chips").addEventListener("click", function (e) { var b = e.target.closest("[data-k]"); if (!b) return; st[b.dataset.k] = st[b.dataset.k] === b.dataset.v ? "" : b.dataset.v; st.page = 1; load(); });
+  document.querySelector("thead").addEventListener("click", function (e) { var th = e.target.closest("[data-sort]"); if (!th) return;
+    if (st.sort === th.dataset.sort) st.dir = st.dir === "asc" ? "desc" : "asc"; else { st.sort = th.dataset.sort; st.dir = "asc"; } load(); });
+  $("rows").addEventListener("click", function (e) { var tr = e.target.closest("tr[data-href]"); if (tr) location.href = tr.dataset.href; });
+  var t; $("q").oninput = function () { clearTimeout(t); var v = this.value; t = setTimeout(function () { st.q = v; st.page = 1; load(); }, 150); };
+  $("fam").onchange = function () { st.family = this.value; st.page = 1; load(); };
+  $("hist").onchange = function () { st.history = this.checked ? "1" : ""; st.page = 1; load(); };
+  $("prev").onclick = function () { st.page--; load(); }; $("next").onclick = function () { st.page++; load(); };
+  load(); setInterval(load, 4000);
+})();
+</script>
+{% endblock %}

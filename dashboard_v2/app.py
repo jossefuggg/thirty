@@ -335,7 +335,8 @@ def source_of(cid):
 
 
 SOURCES = {"rest": ("REST API", "zap"), "csv": ("File upload", "upload"), "email": ("Email", "mail"),
-           "replay": ("MAUDE replay", "play"), "test": ("API test", "zap")}
+           "replay": ("Replay", "play"), "test": ("API test", "zap"), "api": ("API", "zap"),
+           "history": ("FDA history", "file")}
 
 
 def _yyyymmdd(v):
@@ -557,11 +558,105 @@ def home():
     return render_template("home.html", page="home", title="Command Center")
 
 
-PLACEHOLDERS = {"complaints": "Complaints", "clock": "Compliance Clock", "audit": "Audit Log"}
+def owner_of(r):
+    m = re.match(r"(?:APPROVED|INFO REQUESTED) by (.+)", r.get("status") or "")
+    return m.group(1) if m else ""
 
-@app.route("/<any(complaints, clock, audit):name>")
-def placeholder(name):
-    return render_template("placeholder.html", page=name, title=PLACEHOLDERS[name])
+
+def list_row(r):
+    d = days_left(r)
+    rec = r.get("received") or ""
+    return {"id": r["id"], "received": f"{rec[:4]}-{rec[4:6]}-{rec[6:8]}" if re.fullmatch(r"\d{8}", rec) else rec,
+            "family": live_family(r), "device": r.get("device") or "", "decision": r.get("decision") or "", "category": r.get("category") or "",
+            "priority": r.get("priority") or "", "mode": live_mode(r), "due": r.get("due_date") or "", "days_left": d if is_open(r) else None,
+            "status": r.get("status") or "", "status_kind": "log" if r.get("status") == "LOGGED" else status_kind(r.get("status")),
+            "owner": owner_of(r), "source": source_of(r["id"]), "live": True, "time": r.get("time") or ""}
+
+
+@app.route("/complaints")
+def complaints_page():
+    return render_template("complaints.html", page="complaints", title="Complaints")
+
+
+@app.route("/api/complaints/list")
+def api_complaints_list():
+    a = request.args
+    rows = [list_row(r) for r in all_rows()]
+    if a.get("history") == "1":
+        live_ids = {r["id"] for r in rows}
+        rows += [{"id": i, "received": d.isoformat(), "family": f, "device": f, "decision": "", "category": (e or "").upper(), "priority": "",
+                  "mode": m, "due": "", "days_left": None, "status": "FDA history", "status_kind": "hist", "owner": "", "source": "history",
+                  "live": False, "time": d.isoformat()} for d, f, m, e, i in history_rows() if i not in live_ids]
+    facets = {"decision": defaultdict(int), "status_kind": defaultdict(int), "priority": defaultdict(int), "family": defaultdict(int)}
+    for r in rows:
+        for k in facets:
+            if r[k]: facets[k][r[k]] += 1
+    q = (a.get("q") or "").strip().lower()
+    for k in ("decision", "status_kind", "priority", "family"):
+        if a.get(k):
+            rows = [r for r in rows if r[k] == a[k]]
+    if q:
+        rows = [r for r in rows if q in " ".join((r["id"], r["device"], r["family"], r["mode"], r["category"], r["owner"], r["status"])).lower()]
+    key = a.get("sort") or "time"
+    PR = {"URGENT": 0, "HIGH": 1, "NORMAL": 2, "": 3}
+    keyf = (lambda r: PR.get(r["priority"], 3)) if key == "priority" else (lambda r: (r["due"] or "9999")) if key == "due" else (lambda r: str(r.get(key) or ""))
+    rows.sort(key=keyf, reverse=(a.get("dir") or "desc") == "desc")
+    per, page = 50, max(1, int(a.get("page") or 1))
+    total = len(rows)
+    return jsonify(rows=rows[(page - 1) * per: page * per], total=total, page=page, pages=max(1, -(-total // per)),
+                   facets={k: dict(sorted(v.items(), key=lambda kv: -kv[1])[:12]) for k, v in facets.items()}, has_history=bool(history_rows()))
+
+
+@app.route("/clock")
+def clock_page():
+    return render_template("clock.html", page="clock", title="Compliance Clock")
+
+
+def audit_events():
+    """Event log derived from decisions.csv (what Vigil did), the PDFs on disk and actions.csv (what reviewers did)."""
+    ev = []
+    for r in all_rows():
+        t, cid = r.get("time") or "", r["id"]
+        dec = (r.get("decision") or "").replace("_", " ")
+        ev.append({"t": t, "actor": "Vigil AI", "action": "Classified", "id": cid, "decision": r.get("decision") or "",
+                   "detail": f"{dec} · {r.get('category')} · {r.get('confidence')}% · {r.get('reason') or ''}"})
+        ev.append({"t": t, "actor": "Vigil AI", "action": "Alert sent", "id": cid, "decision": "",
+                   "detail": f"Telegram alert · {r.get('priority')} priority" + (" · queued in outbox" if alert_state(cid) != "sent" else "")})
+        pdf = os.path.join(REPORTS, f"MDR_{cid}.pdf")
+        if os.path.exists(pdf):
+            ev.append({"t": dt.datetime.fromtimestamp(os.path.getmtime(pdf)).isoformat(timespec="seconds"), "actor": "Vigil AI",
+                       "action": "PDF drafted", "id": cid, "decision": "", "detail": f"Form 3500A draft MDR_{cid}.pdf · due {r.get('due_date') or 'n/a'}"})
+        if owner_of(r) and not last_action(cid, t):  # decided in Telegram: no console timestamp
+            ev.append({"t": t, "actor": owner_of(r), "action": "Approved" if status_kind(r.get("status")) == "appr" else "Info requested",
+                       "id": cid, "decision": "", "detail": "Recorded via Telegram (time of decision not captured)"})
+    if os.path.exists(ACTIONS):
+        with open(ACTIONS, newline="", encoding="utf-8") as f:
+            for a in csv.DictReader(f):
+                ev.append({"t": a["time"], "actor": a["by"], "action": {"approve": "Approved", "info": "Info requested", "undo": "Undo"}.get(a["kind"], a["kind"]),
+                           "id": a["id"], "decision": "", "detail": {"approve": "Draft Form 3500A approved for submission", "info": "More information requested from the reporter",
+                                                                    "undo": "Decision reverted to pending review"}.get(a["kind"], "")})
+    ev.sort(key=lambda e: e["t"], reverse=True)
+    return ev
+
+
+@app.route("/audit")
+def audit_page():
+    return render_template("audit.html", page="audit", title="Audit Log")
+
+
+@app.route("/api/audit")
+def api_audit():
+    return jsonify(events=audit_events()[:2000])
+
+
+@app.route("/audit.csv")
+def audit_csv():
+    out = io.StringIO()
+    w = csv.writer(out); w.writerow(["time", "actor", "action", "complaint", "detail"])
+    for e in audit_events():
+        w.writerow([e["t"], e["actor"], e["action"], e["id"], e["detail"]])
+    return app.response_class(out.getvalue(), mimetype="text/csv",
+                              headers={"Content-Disposition": f"attachment; filename=vigil_audit_{dt.date.today():%Y%m%d}.csv"})
 
 
 def status_kind(s):

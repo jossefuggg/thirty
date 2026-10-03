@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block actions %}<a class="btn btn-ghost" href="/audit.csv">{{ icon('download') }}Export CSV</a>{% endblock %}
+{% block head %}
+<style>
+  .pg-wrap { display: flex; flex-direction: column; height: calc(100vh - var(--topbar-h) - var(--s3) * 2 - 60px); min-height: 520px; gap: 16px; }
+  .pg-wrap .card { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+  .scroll { overflow: auto; flex: 1; min-height: 0; }
+  .note { display: flex; gap: 10px; align-items: center; padding: 12px 16px; border-radius: var(--r-btn); background: var(--accent-50); color: var(--accent-600); font-weight: 650; font-size: 14px; border: 1px solid var(--accent-100); }
+  .note .i { width: 18px; height: 18px; }
+  .actor { display: inline-flex; align-items: center; gap: 8px; font-weight: 650; white-space: nowrap; }
+  .actor i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; color: #fff; background: #475569; }
+  .actor.ai i { background: var(--accent); } .actor.ai .i { width: 14px; height: 14px; }
+  .act { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--hover); color: var(--text-2); white-space: nowrap; }
+  .act.Approved { background: #DCFCE7; color: #166534; } .act.Info { background: #FEF3C7; color: #92400E; } .act.Undo { background: #E2E8F0; color: #334155; }
+  td.det { max-width: 720px; } td.det div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; color: var(--text-2); }
+  tr.open td.det div { white-space: normal; }
+  .lock { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); } .lock .i { width: 14px; height: 14px; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="pg-wrap">
+  <div class="note">{{ icon('shield') }}Every decision, including Not reportable, is recorded with its reason.</div>
+  <section class="card">
+    <div class="toolbar"><span id="chips" style="display:flex;gap:6px;flex-wrap:wrap"></span><span class="grow"></span>
+      <span class="lock">{{ icon('shield') }}Append-only · <span id="count"></span></span>
+      <label class="tsearch">{{ icon('search') }}<input id="q" type="search" placeholder="Search actor, complaint, detail"></label></div>
+    <div class="scroll"><table class="tbl"><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Complaint</th><th>Detail</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var ev = [], f = "", sig = "";
+  function draw() {
+    var counts = {}; ev.forEach(function (e) { counts[e.action] = (counts[e.action] || 0) + 1; });
+    var nr = ev.filter(function (e) { return e.decision === "NOT_REPORTABLE"; }).length;
+    $("chips").innerHTML = [["", "All", ev.length]].concat(["Classified", "Alert sent", "PDF drafted", "Approved", "Info requested", "Undo"].map(function (a) { return [a, a, counts[a] || 0]; })).concat([["NR", "Not reportable", nr]])
+      .map(function (c) { return '<button class="fpill' + (f === c[0] ? " on" : "") + '" data-f="' + c[0] + '">' + c[1] + " <em>" + c[2] + "</em></button>"; }).join("");
+    var q = $("q").value.trim().toLowerCase();
+    var rows = ev.filter(function (e) { return (!f || (f === "NR" ? e.decision === "NOT_REPORTABLE" : e.action === f)) && (!q || (e.actor + " " + e.id + " " + e.detail + " " + e.action).toLowerCase().indexOf(q) >= 0); });
+    $("count").textContent = rows.length.toLocaleString("en-US") + " events";
+    $("rows").innerHTML = rows.length ? rows.slice(0, 500).map(function (e) {
+      var ai = e.actor === "Vigil AI", ini = e.actor.replace(/^(dr|mr|ms)\.?\s+/i, "").split(/\s+/).map(function (w) { return w[0]; }).join("").slice(0, 2).toUpperCase();
+      var d = new Date(e.t);
+      return '<tr><td class="num muted" style="white-space:nowrap">' + (isNaN(d) ? esc(e.t) : d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })) + "</td>" +
+        '<td><span class="actor' + (ai ? " ai" : "") + '"><i>' + (ai ? ICONS.cpu : esc(ini)) + "</i>" + esc(e.actor) + "</span></td>" +
+        '<td><span class="act ' + esc(e.action.split(" ")[0]) + '">' + esc(e.action) + "</span></td>" +
+        '<td><a class="lnk mono" href="/complaint/' + encodeURIComponent(e.id) + '" data-open="' + esc(e.id) + '">#' + esc(e.id) + "</a></td>" +
+        '<td class="det"><div title="Click to expand">' + (e.decision ? '<span class="pill d-' + esc(e.decision) + '" style="margin-right:8px">' + esc(V.label(e.decision)) + "</span>" : "") + esc(e.detail.replace(/^[A-Z_ ]+ · /, e.decision ? "" : "$&")) + "</div></td></tr>";
+    }).join("") : '<tr><td colspan="5" class="muted" style="padding:20px">' + (ev.length ? "No events match these filters." : "No events recorded yet. Events appear as soon as Vigil processes a complaint.") + "</td></tr>";
+  }
+  function load() { fetch("/api/audit", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { var s = JSON.stringify(j); if (s === sig) return; sig = s; ev = j.events; draw(); }); }
+  $("chips").addEventListener("click", function (e) { var b = e.target.closest("[data-f]"); if (b) { f = b.dataset.f; draw(); } });
+  $("rows").addEventListener("click", function (e) { var d = e.target.closest("td.det"); if (d) d.parentNode.classList.toggle("open"); });
+  $("q").oninput = draw; document.addEventListener("vigil:changed", load); load(); setInterval(load, 4000);
+})();
+</script>
+{% endblock %}
