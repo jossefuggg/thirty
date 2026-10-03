@@ -26,7 +26,7 @@ VENV_BIN = os.path.expanduser(os.environ.get("VIGIL_VENV_BIN", "~/hackathon/venv
 LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "http://localhost:8000/v1")
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
           "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text",
-          "product_code", "memory", "failure_mode"]  # same order as vigil.FIELDS; older files stop earlier
+          "product_code", "memory", "failure_mode", "source"]  # same order as vigil.FIELDS; older files stop earlier
 
 VERSION = "1.0.0"
 WORKSPACE = {"org": "Acme Medical", "unit": "Quality", "env": "ON-PREM · GB10 · PRODUCTION"}

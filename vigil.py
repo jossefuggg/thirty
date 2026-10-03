@@ -568,7 +568,7 @@ def make_mdr(c, row):
 # ---------------------------------------------------------------- log
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
           "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text",
-          "product_code", "memory", "failure_mode"]
+          "product_code", "memory", "failure_mode", "source"]
 
 # replay (append) and sync (read-modify-write) run as separate processes: every access to decisions.csv
 # holds an exclusive flock on decisions.csv.lock. Re-entrant within a process, so write_log() can run
@@ -822,13 +822,13 @@ def process(c, demo_today=None):
                duplicate_of=dup or "", product_code=c.get("product_code") or "", memory=memory_line,
                failure_mode=failure_mode(c.get("product_problems"), f"{c['text']} {c.get('manufacturer_narrative') or ''}"),
                status="PENDING_REVIEW" if res.get("decision") != "NOT_REPORTABLE" else "LOGGED",
-               text=c["text"][:500])
+               text=c["text"][:500], source=c.get("source") or "replay")
     log(row)
     row["awareness"] = base.isoformat()  # not logged; used for 3500A G4
     icon = {"URGENT": "🔴", "HIGH": "🟠", "NORMAL": "🟢"}.get(level, "⚪")
     reportable = row["decision"] in ("REPORTABLE", "NEEDS_INFO")
     lines = [f"{icon} {level} · {row['decision']} ({row['category']}) · {row['confidence']}%",
-             f"#{c['id']} · {c['device']}",
+             f"#{c['id']} · {c['device']}" + (f" · via {row['source']}" if row["source"] != "replay" else ""),
              f"Why: {short_words(row['reason'], 20)}"]
     if due and row["decision"] != "NOT_REPORTABLE":
         d = dt.date.fromisoformat(due)

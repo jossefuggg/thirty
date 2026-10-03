@@ -17,3 +17,5 @@ reports/
 .decisions.*.tmp
 history.csv
 .push_pending
+settings.json
+intake/
