@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Vigil Console{% endblock %}</title>
+<style>
+  :root {
+    --navy: #0B2545; --navy-2: #1B3A63; --navy-3: #8DA2BF; --ink: #16202E; --muted: #5E6B7D; --faint: #94A0B1;
+    --line: #E4E9F0; --bg: #F4F6F9; --card: #FFFFFF; --soft: #F8FAFC;
+    --teal: #13A89E; --teal-soft: #E3F5F3; --teal-ink: #0B7A72;
+    --red: #C62828; --red-soft: #FDECEC; --orange: #DB7400; --orange-soft: #FFF3E0; --green: #2E7D32; --green-soft: #E8F4E9;
+    --shadow: 0 1px 2px rgba(11,37,69,.05), 0 6px 20px rgba(11,37,69,.06);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "DejaVu Sans", sans-serif;
+    -webkit-font-smoothing: antialiased; }
+  a { color: var(--navy-2); text-decoration: none; } a:hover { text-decoration: underline; }
+  .wrap { max-width: 1840px; margin: 0 auto; padding: 0 40px; }
+
+  /* header */
+  header.top { background: var(--navy); color: #fff; }
+  .bar { display: flex; align-items: center; gap: 28px; height: 72px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .mark { width: 38px; height: 38px; border-radius: 10px; background: var(--teal); display: grid; place-items: center; }
+  .mark svg { width: 22px; height: 22px; }
+  .brand b { font-size: 22px; letter-spacing: .3px; }
+  .brand span { color: var(--navy-3); font-size: 16px; padding-left: 14px; border-left: 1px solid rgba(255,255,255,.18); }
+  nav.tabs { display: flex; gap: 6px; margin-left: auto; height: 100%; }
+  nav.tabs a { color: var(--navy-3); padding: 0 18px; font-weight: 600; font-size: 15px; display: flex; align-items: center;
+    border-bottom: 3px solid transparent; border-top: 3px solid transparent; }
+  nav.tabs a:hover { color: #fff; text-decoration: none; }
+  nav.tabs a.on { color: #fff; border-bottom-color: var(--teal); }
+
+  /* health strip */
+  .health { background: #fff; border-bottom: 1px solid var(--line); }
+  .health .wrap { display: flex; align-items: center; gap: 30px; height: 46px; font-size: 14px; color: var(--muted); }
+  .hi { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
+  .hi b { color: var(--ink); font-weight: 600; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex: none; }
+  .dot.ok { background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+  .dot.bad { background: var(--red); box-shadow: 0 0 0 3px var(--red-soft); }
+  .dot.run { background: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); animation: pulse 1.4s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .cloud { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 5px 14px; border-radius: 999px;
+    background: var(--teal-soft); color: var(--teal-ink); font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+  .cloud svg { width: 15px; height: 15px; }
+
+  main { padding: 30px 0 48px; }
+  h1 { font-size: 30px; line-height: 1.2; margin: 0; color: var(--navy); font-weight: 750; letter-spacing: -.3px; }
+  h2 { font-size: 13px; margin: 0; color: var(--muted); text-transform: uppercase; letter-spacing: .09em; font-weight: 700; }
+  .lede { color: var(--muted); margin: 6px 0 26px; font-size: 16px; }
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px 26px; }
+  .card-h { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .muted { color: var(--muted); } .small { font-size: 13.5px; } .mono { font-family: ui-monospace, "SF Mono", "DejaVu Sans Mono", Menlo, monospace; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .pill { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+  .d-REPORTABLE { background: var(--red-soft); color: var(--red); }
+  .d-NEEDS_INFO { background: var(--orange-soft); color: var(--orange); }
+  .d-NOT_REPORTABLE { background: var(--green-soft); color: var(--green); }
+  .p-URGENT { background: var(--red); color: #fff; } .p-HIGH { background: var(--orange); color: #fff; } .p-NORMAL { background: var(--green-soft); color: var(--green); }
+  .s-appr { background: var(--teal-soft); color: var(--teal-ink); } .s-info { background: #EEF2F8; color: var(--navy-2); } .s-pend { background: var(--soft); color: var(--muted); border: 1px solid var(--line); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 10px; padding: 12px 22px;
+    font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; transition: filter .15s, background .15s; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-teal { background: var(--teal); color: #fff; } .btn-teal:hover:not(:disabled) { filter: brightness(.93); }
+  .btn-navy { background: var(--navy); color: #fff; } .btn-navy:hover:not(:disabled) { background: var(--navy-2); }
+  .btn-line { background: #fff; color: var(--navy); box-shadow: inset 0 0 0 1.5px var(--line); } .btn-line:hover:not(:disabled) { background: var(--soft); }
+  .btn-red { background: #fff; color: var(--red); box-shadow: inset 0 0 0 1.5px #F2C4C4; } .btn-red:hover:not(:disabled) { background: var(--red-soft); }
+  input[type=text] { width: 100%; font: inherit; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink); background: #fff; }
+  input[type=text]:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 4px var(--teal-soft); }
+  label { display: block; font-weight: 700; font-size: 12.5px; color: var(--muted); margin: 0 0 8px; text-transform: uppercase; letter-spacing: .07em; }
+  .empty { color: var(--faint); text-align: center; padding: 48px 0; font-size: 15px; }
+  footer { color: var(--faint); font-size: 13px; padding: 0 0 28px; }
+  @media (max-width: 1280px) { .wrap { padding: 0 24px; } .brand span { display: none; } }
+</style>
+{% block head %}{% endblock %}
+</head>
+<body>
+<header class="top">
+  <div class="wrap bar">
+    <div class="brand">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12L17 12h4"/></svg></div>
+      <b>Vigil</b><span>Medical Device Complaint Intelligence</span>
+    </div>
+    <nav class="tabs">
+      <a href="/" class="{{ 'on' if page == 'home' }}">Command center</a>
+      <a href="/demo" class="{{ 'on' if page == 'demo' }}">Demo controls</a>
+    </nav>
+  </div>
+</header>
+<div class="health">
+  <div class="wrap">
+    <div class="hi"><i class="dot" id="h-model"></i>Local model <b id="h-model-l">{{ health.model.label }}</b></div>
+    <div class="hi"><i class="dot" id="h-tg"></i>Telegram <b id="h-tg-l">{{ health.telegram.label }}</b></div>
+    <div class="hi"><i class="dot" id="h-sync"></i>Sandbox sync <b id="h-sync-l">{{ health.sync.label }}</b></div>
+    <div class="hi" id="h-demo" style="display:none"><i class="dot run"></i><b id="h-demo-l"></b></div>
+    <div class="cloud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>0 bytes sent to cloud AI · Dell Pro Max GB10</div>
+  </div>
+</div>
+<main><div class="wrap">{% block body %}{% endblock %}</div></main>
+<footer><div class="wrap">Vigil Console · decision support for 21 CFR 803 Medical Device Reporting · every draft requires qualified human review before submission</div></footer>
+<script>
+  window.$ = function (id) { return document.getElementById(id); };
+  window.esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  (function () {
+    function set(key, h) { if (!h) return; $(key).className = "dot " + (h.ok ? "ok" : "bad"); $(key + "-l").textContent = h.label; }
+    function poll() {
+      fetch("/api/health", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (h) {
+        set("h-model", h.model); set("h-tg", h.telegram); set("h-sync", h.sync);
+        var d = h.demo, show = d && d.running;
+        $("h-demo").style.display = show ? "" : "none";
+        if (show) $("h-demo-l").textContent = d.kind === "reset" ? "Reset running" : "Demo replay running";
+      }).catch(function () { $("h-model-l").textContent = "console offline"; });
+    }
+    poll(); setInterval(poll, 5000);
+  })();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
