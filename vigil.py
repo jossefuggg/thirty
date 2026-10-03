@@ -233,7 +233,10 @@ A complaint is REPORTABLE if the information reasonably suggests the device:
 - may have caused or contributed to a DEATH, or
 - may have caused or contributed to a SERIOUS INJURY (life-threatening, permanent impairment, or needing medical/surgical intervention to prevent permanent damage), or
 - MALFUNCTIONED and the malfunction would be likely to cause death or serious injury if it recurred.
-Deadlines: 30 calendar days from awareness; 5 work days if remedial action is needed to prevent substantial harm to the public.
+Deadlines (Vigil computes them from your answer): 30 calendar days from awareness by default; 5 work days only
+when remedial action is needed to prevent an unreasonable risk of substantial harm to the public.
+Set "remedial_action_needed" to true ONLY if the complaint shows such a risk that needs action now (e.g. a defect
+likely to recur in other units and seriously harm patients); otherwise false.
 When unsure, lean toward REPORTABLE or NEEDS_INFO and say what is missing. Never discard a complaint.
 Each "missing_info" item must be 2-4 words (e.g. "patient age", "lot number", "autopsy findings").
 The examples only show the length: list the gaps that are actually missing from THIS complaint, and do not
@@ -248,7 +251,7 @@ Use history only to judge patterns and priority; base the decision on this compl
 
 Answer ONLY with JSON:
 {{"decision": "REPORTABLE|NOT_REPORTABLE|NEEDS_INFO", "category": "DEATH|SERIOUS_INJURY|MALFUNCTION|NONE",
- "reason": "one sentence citing the rule", "deadline_days": 30 or 5 or null, "missing_info": [], "confidence": 0-100}}"""
+ "reason": "one sentence citing the rule", "remedial_action_needed": true or false, "missing_info": [], "confidence": 0-100}}"""
 
 
 def model_name():
@@ -259,9 +262,9 @@ def model_name():
     return LLM_MODEL
 
 
-def llm(prompt, max_tokens=600):
+def llm(prompt, max_tokens=600, temperature=0.1):
     r = requests.post(f"{LLM_BASE}/chat/completions", timeout=180, json={
-        "model": model_name(), "temperature": 0.1, "max_tokens": max_tokens,
+        "model": model_name(), "temperature": temperature, "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": prompt}],
         "chat_template_kwargs": {"enable_thinking": False},
     })
@@ -271,13 +274,28 @@ def llm(prompt, max_tokens=600):
 
 
 def classify(c, memory=""):
-    raw = llm(CLASSIFY.format(memory=memory or "No prior complaints on this device in the last 90 days.", **c), 400)
+    raw = llm(CLASSIFY.format(memory=memory or "No prior complaints on this device family.", **c), 400,
+              temperature=0)  # same complaint -> same decision and deadline on every run
     m = re.search(r"\{.*\}", raw, re.S)
     try:
         return json.loads(m.group(0))
     except Exception:
         return {"decision": "NEEDS_INFO", "category": "NONE", "reason": "model output unreadable - human review",
                 "deadline_days": 30, "missing_info": [], "confidence": 0}
+
+# 5-day trigger words: fire, smoke, explosion, electrical shock to a patient (21 CFR 803.53 remedial-action cases).
+_FIVE_DAY = re.compile(r"\b(?:fire|flames?|caught fire|smok(?:e|ed|ing)|explo(?:de|ded|des|ding|sion|sions)|"
+                       r"electric(?:al)? shock\w*|electrocut\w*|shocked)\b", re.I)
+
+
+def deadline_days(c, res):
+    """Deterministic deadline: None if NOT_REPORTABLE; 5 (work days) only for fire / smoke / explosion / electrical
+    shock in the complaint, or when the model says remedial action is needed; otherwise 30 (calendar days)."""
+    if res.get("decision") == "NOT_REPORTABLE":
+        return None
+    text = f"{c.get('text') or ''} {c.get('manufacturer_narrative') or ''}"
+    remedial = str(res.get("remedial_action_needed")).strip().lower() == "true"
+    return 5 if _FIVE_DAY.search(text) or remedial else 30
 
 # ---------------------------------------------------------------- Telegram
 # Telegram is the only network dependency. It must never crash the pipeline:
@@ -794,8 +812,7 @@ def process(c, demo_today=None):
     miss = missing_fields(c)
     memory, memory_line = device_memory(c)
     res = classify(c, memory)  # EVERY complaint gets an AI check
-    days = res.get("deadline_days") or (30 if res.get("decision") != "NOT_REPORTABLE" else None)
-    if days: days = 5 if str(days).strip() == "5" else 30  # 21 CFR 803: 5 only for urgent remedial action, else 30
+    days = deadline_days(c, res)
     base = demo_today or dt.date.today()
     due = add_deadline(base, days).isoformat() if days else ""
     row = dict(time=dt.datetime.now().isoformat(timespec="seconds"), id=c["id"], received=c["received"],
