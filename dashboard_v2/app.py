@@ -326,10 +326,50 @@ def _update_item(iid, **kw):
         _write_intake(items)
 
 
+_intake_mod = {"m": None, "tried": False}
+
+def intake_mod():
+    """intake.py (REST webhook /api/v1/complaints, CSV, IMAP) - used as-is, never edited."""
+    if not _intake_mod["tried"]:
+        _intake_mod["tried"] = True
+        try:
+            sys.path.insert(0, VIGIL_DIR)
+            import intake as m
+            _intake_mod["m"] = m
+        except Exception as e:
+            print("intake.py not available:", type(e).__name__, e, flush=True)
+    return _intake_mod["m"]
+
+
+def v1_items():
+    """Items received through intake.py (its index.csv + raw complaint JSON), in the inbox item shape."""
+    m = intake_mod()
+    if not m:
+        return []
+    out = []
+    try:
+        for r in m._index_rows():
+            c = {}
+            try:
+                with open(os.path.join(m.RAW, f"{r['vigil_id']}.complaint.json"), encoding="utf-8") as f:
+                    c = json.load(f)
+            except (OSError, ValueError):
+                pass
+            out.append({"iid": r["vigil_id"], "source": r.get("source") or "api", "reporter": c.get("reporter", ""), "received": r.get("time", ""),
+                        "status": {"done": "processed", "failed": "error"}.get(r.get("status"), r.get("status") or "queued"),
+                        "cid": r["vigil_id"], "device": c.get("device", ""), "excerpt": (c.get("text") or "")[:200], "error": r.get("error", "")})
+    except Exception as e:
+        print("intake index unreadable:", e, flush=True)
+    return out
+
+
 def source_of(cid):
     """Where a complaint came from: the intake item that produced it, else the MAUDE demo replay."""
     for it in reversed(intake_items()):
         if it.get("cid") == cid and it.get("status") in ("processed", "processing", "queued"):
+            return it["source"]
+    for it in v1_items():
+        if it["cid"] == cid:
             return it["source"]
     return "replay"
 
@@ -1291,7 +1331,9 @@ SAMPLE_COMPLAINT = {"text": "Customer reports the DreamStation Auto CPAP stopped
 
 def api_key_ok():
     key = request.headers.get("X-API-Key") or (request.headers.get("Authorization") or "").removeprefix("Bearer ").strip()
-    return bool(key) and secrets.compare_digest(key, load_settings()["api_key"])
+    m = intake_mod()
+    keys = [load_settings()["api_key"]] + ([m.settings()["api_key"]] if m else [])  # console key or intake.py key
+    return bool(key) and any(secrets.compare_digest(key, k) for k in keys)
 
 
 @app.post("/api/complaints")
@@ -1330,7 +1372,7 @@ def api_upload():
 
 @app.route("/api/intake")
 def api_intake():
-    items = intake_items()
+    items = sorted(list(intake_items()) + v1_items(), key=lambda it: it.get("received") or "")
     return jsonify(items=[{k: v for k, v in it.items() if k != "complaint"} for it in reversed(items[-500:])],
                    counts={s: sum(it["status"] == s for it in items) for s in ("queued", "processing", "processed", "duplicate", "error")},
                    working=_worker["current"])
@@ -1436,5 +1478,10 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, _shutdown)
     threading.Thread(target=health_loop, daemon=True).start()
     start_intake_worker(recover=True)  # resume anything left queued or interrupted
+    if intake_mod():
+        try:
+            intake_mod().init_app(app)  # mounts POST /api/v1/complaints (+ /csv, status) and intake.py's worker
+        except Exception as e:
+            print("intake.py endpoints not mounted:", type(e).__name__, e, flush=True)
     print(f"Vigil Console v2 on http://localhost:5001  (data: {VIGIL_DIR})", flush=True)
     app.run(host="127.0.0.1", port=int(os.environ.get("VIGIL_CONSOLE_PORT", 5001)), debug=False, threaded=True)
