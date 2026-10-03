@@ -5,7 +5,9 @@
   .ig { display: grid; gap: 14px; }
   .sec-h { font-size: var(--fs-11); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 6px 0 -4px; }
   .top { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: start; }
-  .stack { display: grid; gap: 14px; }
+  .stack { display: grid; gap: 24px; min-width: 0; }
+  .top > *, .ic-b > *, .kv > *, .curl-wrap { min-width: 0; }
+  .top { gap: 24px !important; } .ig { gap: 24px !important; }
   .ic-h { display: flex; align-items: center; gap: 10px; padding: 12px var(--s3); border-bottom: 1px solid var(--border); }
   .ic-h .lg { width: 28px; height: 28px; border-radius: 4px; display: grid; place-items: center; background: var(--sidebar); color: #fff; font-size: 11px; font-weight: 800; flex: none; }
   .ic-h .lg .i { width: 15px; height: 15px; }
@@ -17,7 +19,7 @@
   .copyrow { display: flex; gap: 6px; min-width: 0; }
   .copyrow code, .copyrow input { flex: 1; min-width: 0; height: 28px; display: flex; align-items: center; padding: 0 8px; border: 1px solid var(--border-2); border-radius: var(--r-btn); background: var(--zebra);
     font: 12px var(--mono); color: var(--text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; outline: none; }
-  pre.curl { margin: 0; padding: 10px 12px; background: #0B1F3A; color: #D5DEEA; border-radius: var(--r-btn); font: 12px/1.55 var(--mono); overflow-x: auto; white-space: pre; position: relative; }
+  pre.curl { margin: 0; padding: 10px 12px; background: #0B1F3A; color: #D5DEEA; border-radius: var(--r-btn); font: 12px/1.55 var(--mono); overflow-x: auto; white-space: pre-wrap; word-break: break-word; position: relative; padding-right: 84px; }
   pre.curl .k { color: #5EEAD4; } pre.curl .s { color: #FDE68A; }
   .curl-wrap { position: relative; } .curl-wrap .btn { position: absolute; top: 6px; right: 6px; }
   .stats { display: flex; gap: 20px; font-size: var(--fs-12); color: var(--muted); } .stats b { color: var(--text); font-size: var(--fs-14); font-weight: 600; font-variant-numeric: tabular-nums; display: block; }
