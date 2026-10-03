@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Overview · Vigil Console{% endblock %}
+{% block body %}
+<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+  <h2>Overview</h2>
+  <span class="small muted" style="margin-left:auto">Live · refreshes every 5 s · last update <b id="stamp">{{ now }}</b></span>
+</div>
+<p class="sub">Complaint intake, MDR reportability decisions and FDA filing deadlines.</p>
+
+<div id="live">{% include "_overview_live.html" %}</div>
+
+{% if chart %}
+<div class="card" style="margin-top:22px">
+  <h3>Philips Respironics CPAP: complaint signal</h3>
+  <img src="{{ url_for('chart') }}" alt="Philips CPAP complaint chart" style="width:100%;height:auto;display:block">
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  setInterval(function () {
+    fetch("{{ url_for('overview') }}?partial=1", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw r; return r.text(); })
+      .then(function (html) {
+        document.getElementById("live").innerHTML = html;
+        document.getElementById("stamp").textContent = new Date().toLocaleString("en-GB",
+          { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      })
+      .catch(function () { document.getElementById("stamp").textContent = "connection lost, retrying"; });
+  }, 5000);
+</script>
+{% endblock %}

@@ -10,3 +10,8 @@ __pycache__/
 .DS_Store
 ._*
 outbox.txt
+# runtime data - never commit
+decisions.csv
+reports/
+*.lock
+.decisions.*.tmp

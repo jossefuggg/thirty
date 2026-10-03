@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}New complaint · Vigil Console{% endblock %}
+{% block body %}
+<h2>New complaint</h2>
+<p class="sub">Paste a complaint. The local model classifies it, drafts the MDR if needed, and it appears on the overview.</p>
+{% if error %}<div class="flash err">{{ error }}</div>{% endif %}
+{% if submitted %}<div class="flash">Complaint #{{ submitted }} submitted. Processing on the local model, see status below.</div>{% endif %}
+
+<div class="grid" style="grid-template-columns: 3fr 2fr; align-items:start">
+  <form class="card" method="post" action="{{ url_for('new') }}">
+    <label for="device">Device</label>
+    <input type="text" id="device" name="device" value="{{ device or '' }}" placeholder="e.g. DreamStation Auto CPAP" style="margin-bottom:16px">
+    <label for="text">Complaint text</label>
+    <textarea id="text" name="text" rows="12" placeholder="Paste the complaint as received…" required>{{ text or '' }}</textarea>
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+      <button class="btn btn-primary" type="submit">Classify complaint</button>
+      <span class="small muted">Takes ~30–60 s: classification, MDR draft and Form 3500A PDF.</span>
+    </div>
+  </form>
+
+  <div class="card">
+    <h3>Processing queue</h3>
+    <div id="jobs">
+      {% if jobs %}{% for j in jobs %}<div>#{{ j.id }} {{ j.status }}</div>{% endfor %}{% else %}<p class="muted" style="margin:0">Nothing submitted this session.</p>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  var LABEL = { queued: "Queued", running: "Classifying…", done: "Done", error: "Failed" };
+  var COLOR = { queued: "var(--muted)", running: "var(--orange)", done: "var(--accent)", error: "var(--red)" };
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function render(jobs) {
+    var el = document.getElementById("jobs");
+    if (!jobs.length) { el.innerHTML = '<p class="muted" style="margin:0">Nothing submitted this session.</p>'; return; }
+    el.innerHTML = '<table>' + jobs.map(function (j) {
+      var id = j.status === "done" ? '<a href="/complaint/' + encodeURIComponent(j.id) + '">#' + esc(j.id) + '</a>' : '#' + esc(j.id);
+      var extra = j.status === "done" ? ' <span class="pill d-' + esc(j.decision) + '">' + esc(j.decision) + '</span>'
+                : j.status === "error" ? '<div class="small" style="color:var(--red)">' + esc(j.error) + '</div>' : "";
+      return '<tr><td class="mono">' + id + '<div class="small muted" style="font-family:inherit">' + esc(j.device || "no device") +
+             '</div></td><td style="color:' + COLOR[j.status] + ';font-weight:700;white-space:nowrap">' + LABEL[j.status] + extra + '</td></tr>';
+    }).join("") + '</table>';
+  }
+  function poll() { fetch("{{ url_for('api_jobs') }}", { cache: "no-store" }).then(function (r) { return r.json(); }).then(render).catch(function () {}); }
+  poll(); setInterval(poll, 2000);
+</script>
+{% endblock %}

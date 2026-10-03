@@ -1,0 +1,41 @@
+<div class="grid kpis">
+  <div class="kpi"><div class="v">{{ kpi.processed }}</div><div class="l">Complaints processed</div></div>
+  <div class="kpi bad"><div class="v">{{ kpi.reportable }}</div><div class="l">Reportable</div></div>
+  <div class="kpi warn"><div class="v">{{ kpi.needs_info }}</div><div class="l">Needs info</div></div>
+  <div class="kpi warn"><div class="v {{ 'nz' if kpi.due7 }}">{{ kpi.due7 }}</div><div class="l">Due in 7 days</div></div>
+  <div class="kpi bad"><div class="v {{ 'nz' if kpi.overdue }}">{{ kpi.overdue }}</div><div class="l">Overdue</div></div>
+  <div class="kpi ok"><div class="v">{{ kpi.approved }}</div><div class="l">Approved</div></div>
+</div>
+
+<div class="card">
+  <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+    <h3>MDR deadlines, soonest first</h3>
+    <div class="legend" style="margin-left:auto">
+      <span style="--c:var(--red)">Overdue or ≤ 7 days</span>
+      <span style="--c:var(--orange)">8–14 days</span>
+      <span style="--c:var(--green)">&gt; 14 days</span>
+      <span style="--c:var(--accent)">Approved</span>
+    </div>
+  </div>
+  {% if deadlines %}
+  <table>
+    <thead><tr><th>Due</th><th>Time left</th><th>Complaint</th><th>Device</th><th>Priority</th><th>Decision</th><th>Status</th><th>PDF</th></tr></thead>
+    <tbody>
+    {% for r in deadlines %}
+      <tr class="click u-{{ r.urgency }} {{ 'done' if r.approved }}" data-href="{{ url_for('complaint', cid=r.id) }}">
+        <td class="num">{{ r.due_date }}</td>
+        <td><span class="dl"><i></i>{% if r.days_left < 0 %}{{ -r.days_left }} d overdue{% elif r.days_left == 0 %}due today{% else %}{{ r.days_left }} days{% endif %}</span></td>
+        <td class="mono"><a href="{{ url_for('complaint', cid=r.id) }}">#{{ r.id }}</a></td>
+        <td>{{ r.device }}</td>
+        <td><span class="pill p-{{ r.priority }}">{{ r.priority }}</span></td>
+        <td><span class="pill d-{{ r.decision }}">{{ r.decision }}</span>{% if r.category and r.category != 'NONE' %} <span class="small muted">{{ r.category }}</span>{% endif %}</td>
+        <td class="st {{ 'appr' if r.approved }}">{{ r.status }}</td>
+        <td>{% if r.pdf %}<a href="{{ url_for('pdf', cid=r.id) }}" target="_blank">Form 3500A</a>{% else %}<span class="muted">n/a</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No open deadlines yet. Start a replay or submit a complaint.</p>
+  {% endif %}
+</div>

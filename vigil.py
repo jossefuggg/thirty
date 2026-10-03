@@ -489,9 +489,14 @@ def log(row):
         push_log()
 
 def read_log():
+    """One row per complaint id: a re-processed complaint (e.g. replayed twice without reset) replaces its
+    earlier row, so /due, /status, the console and sync never double-count."""
     with log_lock():
         if not os.path.exists(LOG): return []
-        return list(csv.DictReader(open(LOG)))
+        latest = {}
+        for r in csv.DictReader(open(LOG)):
+            latest[r["id"]] = r  # keeps first-seen order, latest content
+        return list(latest.values())
 
 def write_log(rows):
     with log_lock():
@@ -534,7 +539,9 @@ def pull_approvals():
     approvals, requests_ = _pull("approvals.csv"), _pull("info_requests.csv")
     if not (approvals or requests_):
         return []
-    with log_lock():  # read-modify-write: replay must not append in between
+    # Read-modify-write under the lock (replay must not append in between). Statuses are updated in place on
+    # the existing row; write_log() rewrites the de-duplicated rows, so sync never adds a row.
+    with log_lock():
         rows, new = read_log(), []
         for a in approvals:
             for x in rows:
