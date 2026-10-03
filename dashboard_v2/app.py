@@ -268,20 +268,64 @@ def health_loop():
         time.sleep(10)
 
 # ---------------------------------------------------------------- pages / API
-STEP_ICONS = {
-    "done": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
-    "info": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg>',
-    "todo": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="3"/></svg>'}
+def _svg(body, fill="none"):
+    return (f'<svg class="i" viewBox="0 0 24 24" fill="{fill}" stroke="currentColor" stroke-width="1.75" '
+            f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{body}</svg>')
+
+# Simple line icons (inline SVG, no icon font / CDN). Shared by Jinja (icon()) and JS (window.ICONS).
+ICONS = {k: _svg(v) for k, v in {
+    "grid": '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    "inbox": '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+    "clock": '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    "trend": '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+    "file": '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+    "play": '<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/>',
+    "search": '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+    "brain": '<path d="M9.5 4A2.5 2.5 0 0 0 7 6.5v.2A3 3 0 0 0 4.5 10a3 3 0 0 0 .7 1.9A3 3 0 0 0 6 17a2.5 2.5 0 0 0 3.5 2.3A2.5 2.5 0 0 0 12 18V6.5A2.5 2.5 0 0 0 9.5 4z"/><path d="M14.5 4A2.5 2.5 0 0 1 17 6.5v.2a3 3 0 0 1 2.5 3.3 3 3 0 0 1-.7 1.9A3 3 0 0 1 18 17a2.5 2.5 0 0 1-3.5 2.3A2.5 2.5 0 0 1 12 18"/>',
+    "check": '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    "help": '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"/>',
+    "alert": '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+    "cpu": '<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>',
+    "send": '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>',
+    "sync": '<path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/>',
+    "shield": '<path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+    "x": '<path d="M6 6l12 12M18 6L6 18"/>',
+    "external": '<path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
+    "download": '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+    "arrow-left": '<path d="M19 12H5M11 18l-6-6 6-6"/>',
+    "chevron": '<path d="M9 6l6 6-6 6"/>',
+    "scale": '<path d="M12 3v18M5 21h14M6 7h12M6 7l-3 7a3 3 0 0 0 6 0zM18 7l-3 7a3 3 0 0 0 6 0z"/>',
+    "user": '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    "activity": '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+    "list": '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    "zap": '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+    "stop": '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+    "reset": '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+}.items()}
+STEP_ICONS = {"done": ICONS["check"], "info": ICONS["help"], "todo": _svg('<circle cx="12" cy="12" r="3"/>')}
+
+NAV = [("home", "/", "Command Center", "grid"), ("complaints", "/complaints", "Complaints", "inbox"),
+       ("clock", "/clock", "Compliance Clock", "clock"), ("trends", "/trends", "Trends", "trend"),
+       ("audit", "/audit", "Audit Log", "file"), ("demo", "/demo", "Demo Control", "play")]
 
 
 @app.context_processor
 def _globals():
-    return {"health": HEALTH, "ICON": STEP_ICONS}
+    from markupsafe import Markup
+    return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV,
+            "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 
 @app.route("/")
 def home():
-    return render_template("home.html", page="home")
+    return render_template("home.html", page="home", title="Command Center")
+
+
+PLACEHOLDERS = {"complaints": "Complaints", "clock": "Compliance Clock", "trends": "Trends", "audit": "Audit Log"}
+
+@app.route("/<any(complaints, clock, trends, audit):name>")
+def placeholder(name):
+    return render_template("placeholder.html", page=name, title=PLACEHOLDERS[name])
 
 
 def status_kind(s):
@@ -306,27 +350,170 @@ def memory_text(r):
     return re.sub(r"^\s*(?:🧠\s*)?(?:memory\s*:\s*)?", "", r.get("memory") or "", flags=re.I).strip()
 
 
+PRIORITY_RANK = {"URGENT": 0, "HIGH": 1, "NORMAL": 2}
+MAKER_WORDS = {"PHILIPS", "RESPIRONICS", "PHILIPS-RESPIRONICS"}
+# Device problems for pattern alerts (vigil.PROBLEM_WORDS minus patient outcomes/symptoms), grouped to one label.
+ISSUES = {"foam": "foam", "particle": "particles", "black dust": "particles", "debris": "particles", "shock": "shock",
+          "shutdown": "shutdown", "shut off": "shutdown", "shuts down": "shutdown", "shut down": "shutdown",
+          "stopped working": "shutdown", "melt": "fire / smoke", "fire": "fire / smoke",
+          "smoke": "fire / smoke", "burn": "fire / smoke", "overheat": "overheating", "alarm": "alarm",
+          "pressure": "pressure", "water": "water / leak", "leak": "water / leak", "noise": "noise"}
+
+
+def device_family(device):
+    """'PHILIPS DREAMSTATION CPAP' and 'DREAMSTATION AUTO CPAP' -> 'DREAMSTATION' (maker words skipped)."""
+    words = [w for w in re.split(r"[\s,/]+", (device or "").upper()) if w and w not in MAKER_WORDS]
+    return words[0] if words else "UNKNOWN"
+
+
+def issues_of(r):
+    src = source_complaint(r["id"]) or {}  # full narrative when the complaint came from demo_set.csv (log text is cut at 500)
+    t = " ".join([r.get("text") or "", src.get("event_description") or "", src.get("manufacturer_narrative") or ""]).lower()
+    t = re.sub(r"(continuous |bi-?level )?positive airway pressure", " ", t)  # the device's name, not a pressure problem
+    return sorted({label for k, label in ISSUES.items() if k in t})
+
+
+def memory_parts(r):
+    """'3 prior complaints on DREAMSTATION in 90 days (top issue: foam)' -> {count, key, issue}; None if absent."""
+    m = re.search(r"(\d+)\s+prior complaints?\s+on\s+(.+?)\s+in\s+(\d+)\s+days(?:\s*\(top issue:\s*([^)]+)\))?",
+                  memory_text(r), re.I)
+    return {"count": int(m.group(1)), "key": m.group(2), "days": int(m.group(3)), "issue": m.group(4) or ""} if m else None
+
+
+def sentence_case(t):
+    """MAUDE narratives are ALL CAPS; soften them for excerpts (the full record keeps the original)."""
+    letters = [c for c in t if c.isalpha()]
+    if letters and sum(c.isupper() for c in letters) / len(letters) > 0.7:
+        t = re.sub(r"(^|[.!?]\s+)([a-z])", lambda m: m.group(1) + m.group(2).upper(), t.lower())
+        t = re.sub(r"\b(cpap|bipap|fda|mdr|er|icu|cfr|res|avaps\d*|udi|pt)\b", lambda m: m.group(1).upper(), t, flags=re.I)
+    return t
+
+
+def ptime(r):
+    try:
+        return dt.datetime.fromisoformat(r.get("time") or "")
+    except Exception:
+        return None
+
+
 def brief(r):
+    text = r.get("text") or ""
+    try:
+        conf = max(0, min(100, int(float(r.get("confidence") or 0))))
+    except ValueError:
+        conf = 0
     return {k: r.get(k, "") for k in ("time", "id", "device", "priority", "score", "decision", "category", "reason",
-                                       "due_date", "deadline_days", "confidence", "status", "product_code")} | {
-        "status_kind": status_kind(r.get("status")), "days_left": days_left(r), "memory": memory_text(r)}
+                                       "due_date", "deadline_days", "status", "product_code")} | {
+        "confidence": conf, "status_kind": status_kind(r.get("status")), "days_left": days_left(r),
+        "memory": memory_text(r), "mem": memory_parts(r), "excerpt": sentence_case(text[:260]),
+        "family": device_family(r.get("device")), "open": is_open(r)}
+
+
+def approvals_at():
+    """complaint id -> time of the latest console approval (for the Approved sparkline)."""
+    out = {}
+    if os.path.exists(ACTIONS):
+        with open(ACTIONS, newline="", encoding="utf-8") as f:
+            for a in csv.DictReader(f):
+                if a.get("kind") == "approve":
+                    out[a["id"]] = a["time"]
+    return out
+
+
+def kpis(rows):
+    now, today = dt.datetime.now(), dt.date.today()
+    appr_t = approvals_at()
+    preds = {
+        "processed": lambda r: (ptime(r) or now).date() == today,
+        "reportable": lambda r: r.get("decision") == "REPORTABLE",
+        "needs_info": lambda r: r.get("decision") == "NEEDS_INFO",
+        "due7": lambda r: is_open(r) and 0 <= (days_left(r) if days_left(r) is not None else 99) <= 7,
+        "overdue": lambda r: is_open(r) and (days_left(r) if days_left(r) is not None else 0) < 0,
+        "approved": lambda r: status_kind(r.get("status")) == "appr",
+    }
+    def when(k, r):
+        if k == "approved" and r["id"] in appr_t:
+            try: return dt.datetime.fromisoformat(appr_t[r["id"]])
+            except ValueError: pass
+        return ptime(r) or now
+    out = {}
+    edges = [now - dt.timedelta(minutes=30 - 2 * i) for i in range(16)]  # 15 two-minute buckets, cumulative
+    for k, pred in preds.items():
+        hits = [when(k, r) for r in rows if pred(r)]
+        out[k] = {"value": len(hits),
+                  "delta5": sum(t >= now - dt.timedelta(minutes=5) for t in hits),
+                  "spark": [sum(t <= e for t in hits) for e in edges]}
+    return out
+
+
+def pattern_alerts(rows, days=90, threshold=3):
+    since = dt.datetime.now() - dt.timedelta(days=days)
+    groups = defaultdict(lambda: defaultdict(list))
+    for r in rows:
+        if (ptime(r) or dt.datetime.now()) >= since:
+            for issue in issues_of(r):
+                groups[device_family(r.get("device"))][issue].append(r)
+    alerts = []
+    for fam, by_issue in groups.items():
+        issue, hits = max(by_issue.items(), key=lambda x: len(x[1]))
+        if len(hits) >= threshold:
+            hits = sorted(hits, key=lambda r: r.get("time") or "", reverse=True)
+            alerts.append({"family": fam, "issue": issue, "count": len(hits), "days": days,
+                           "reportable": sum(r.get("decision") == "REPORTABLE" for r in hits),
+                           "ids": [r["id"] for r in hits], "latest": hits[0].get("time")})
+    return sorted(alerts, key=lambda a: (-a["count"], a["family"]))
+
+
+def pipeline(rows):
+    reviewable = [r for r in rows if r.get("decision") in ("REPORTABLE", "NEEDS_INFO")]
+    decided = [r for r in reviewable if status_kind(r.get("status")) != "pend"]
+    return {"intake": len(rows), "urgent": sum(r.get("priority") == "URGENT" for r in rows),
+            "scored": sum(bool(str(r.get("score") or "").strip()) for r in rows),
+            "checked": sum(bool(r.get("decision")) for r in rows),
+            "reportable": sum(r.get("decision") == "REPORTABLE" for r in rows),
+            "needs_info": sum(r.get("decision") == "NEEDS_INFO" for r in rows),
+            "not_reportable": sum(r.get("decision") == "NOT_REPORTABLE" for r in rows),
+            "decided": len(decided), "reviewable": len(reviewable),
+            "approved": sum(status_kind(r.get("status")) == "appr" for r in rows),
+            "info": sum(status_kind(r.get("status")) == "info" for r in rows)}
+
+
+def all_rows():
+    return list(latest_by_id(read_rows()).values())
 
 
 @app.route("/api/state")
 def api_state():
-    rows = list(latest_by_id(read_rows()).values())
-    open_rows = [r for r in rows if is_open(r)]
-    kpi = {
-        "processed": len(rows),
-        "reportable": sum(r["decision"] == "REPORTABLE" for r in rows),
-        "needs_info": sum(r["decision"] == "NEEDS_INFO" for r in rows),
-        "due7": sum(0 <= (days_left(r) or 0) <= 7 for r in open_rows),
-        "overdue": sum((days_left(r) or 0) < 0 for r in open_rows),
-        "approved": sum(status_kind(r.get("status")) == "appr" for r in rows),
-    }
+    rows = all_rows()
     feed = sorted(rows, key=lambda r: r.get("time") or "", reverse=True)[:40]
-    clock = sorted(open_rows, key=lambda r: (r["due_date"], -int(r.get("score") or 0)))
-    return jsonify(kpi=kpi, feed=[brief(r) for r in feed], clock=[brief(r) for r in clock])
+    queue = sorted((r for r in rows if r.get("decision") in ("REPORTABLE", "NEEDS_INFO")
+                    and status_kind(r.get("status")) == "pend"),
+                   key=lambda r: (PRIORITY_RANK.get(r.get("priority"), 3), r.get("due_date") or "9999", -int(r.get("score") or 0)))
+    clock = sorted((r for r in rows if is_open(r)), key=lambda r: (r["due_date"], -int(r.get("score") or 0)))
+    return jsonify(kpi=kpis(rows), feed=[brief(r) for r in feed], queue=[brief(r) for r in queue],
+                   alerts=pattern_alerts(rows), pipeline=pipeline(rows), clock=[brief(r) for r in clock],
+                   demo={k: v for k, v in DEMO.public(since=10**12).items() if k in ("running", "kind", "processed", "total")})
+
+
+@app.route("/api/search")
+def api_search():
+    q = (request.args.get("q") or "").strip().lower()
+    if not q:
+        return jsonify(results=[])
+    rows = sorted(all_rows(), key=lambda r: r.get("time") or "", reverse=True)
+    hits = [r for r in rows if q in (r.get("id") or "").lower() or q in (r.get("device") or "").lower()
+            or q in (r.get("text") or "").lower() or q in (r.get("reason") or "").lower()]
+    return jsonify(results=[brief(r) for r in hits[:8]], total=len(hits))
+
+
+@app.route("/api/summary/<cid>")
+def api_summary(cid):
+    """Compact record for the detail drawer."""
+    r = latest_by_id(read_rows()).get(cid)
+    if not r:
+        abort(404)
+    return jsonify(brief(r) | {"text": r.get("text") or "", "missing": [m.strip() for m in (r.get("missing") or "").split(";") if m.strip()],
+                               "pdf": os.path.exists(os.path.join(REPORTS, f"MDR_{cid}.pdf")), "processed": fmt_time(r.get("time"))})
 
 
 # ---------------------------------------------------------------- complaint detail
@@ -469,8 +656,8 @@ def detail(r):
 def complaint(cid):
     r = latest_by_id(read_rows()).get(cid)
     if not r:
-        return render_template("missing.html", page="", cid=cid), 404
-    return render_template("complaint.html", page="", r=detail(r))
+        return render_template("missing.html", page="", cid=cid, title="Complaint not found"), 404
+    return render_template("complaint.html", page="", r=detail(r), title=f"Complaint #{cid}")
 
 
 @app.route("/api/complaint/<cid>")
@@ -508,7 +695,7 @@ def api_action(cid):
 
 @app.route("/demo")
 def demo():
-    return render_template("demo.html", page="demo", commands=DEMO_COMMANDS)
+    return render_template("demo.html", page="demo", commands=DEMO_COMMANDS, title="Demo Control")
 
 
 @app.route("/api/demo")
@@ -530,7 +717,12 @@ def api_demo_action(action):
 @app.route("/api/health")
 def api_health():
     d = DEMO.public(since=10**12)
-    return jsonify({**HEALTH, "demo": {k: d[k] for k in ("running", "kind", "processed", "total")}})
+    try:
+        changed = os.path.getmtime(LOG)
+    except OSError:
+        changed = None
+    return jsonify({**HEALTH, "log_changed": changed, "now": time.time(),
+                    "demo": {k: d[k] for k in ("running", "kind", "processed", "total")}})
 
 
 @app.route("/reports/<cid>.pdf")

@@ -1,92 +1,145 @@
 {% extends "base.html" %}
-{% block title %}Command center · Vigil Console{% endblock %}
+{% block content_class %}cc-page{% endblock %}
 {% block head %}
 <style>
-  .head { display: flex; align-items: flex-end; gap: 20px; }
-  .head .live { padding-bottom: 20px; }
-  .live { margin-left: auto; display: inline-flex; align-items: center; gap: 9px; font-size: 14px; color: var(--muted); padding-bottom: 6px; }
-  .live .dot { width: 8px; height: 8px; }
+  /* the command center fills exactly one screen; panels scroll inside */
+  .cc-page { padding-bottom: var(--s3); }
+  .cc { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--s3); height: calc(100vh - var(--topbar-h) - var(--s3) * 2); min-height: 760px; }
 
-  .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 18px; margin-bottom: 22px; }
-  .kpi { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 22px 14px; position: relative; overflow: hidden; }
-  .kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c, var(--navy)); }
-  .kpi .v { font-size: 42px; font-weight: 760; line-height: 1; color: var(--navy); font-variant-numeric: tabular-nums; letter-spacing: -1px; }
-  .kpi .l { margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
-  .kpi.alert .v { color: var(--c); }
-  .kpi .v.bump { animation: bump .6s ease; }
-  @keyframes bump { 30% { transform: scale(1.12); color: var(--teal); } }
+  /* KPI cards */
+  .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s2); }
+  .kpi { padding: var(--s2) 20px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; position: relative; overflow: hidden; }
+  .kpi .lbl { font-size: var(--fs-12); font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); align-self: center; }
+  .kpi .ic { width: 32px; height: 32px; border-radius: var(--r-btn); display: grid; place-items: center; background: color-mix(in srgb, var(--c) 10%, white); color: var(--c); }
+  .kpi .ic .i { width: 18px; height: 18px; }
+  .kpi .v { grid-column: 1 / 3; font-size: var(--fs-40); font-weight: 760; line-height: 1.05; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--text); }
+  .kpi.hot .v { color: var(--c); }
+  .kpi .foot { grid-column: 1 / 3; display: grid; grid-template-columns: 1fr 72px; align-items: end; gap: 12px; height: 32px; }
+  .kpi .delta { font-size: var(--fs-12); color: var(--muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi .delta.up { color: var(--c); }
+  .kpi .sp { position: relative; height: 32px; }
+  .spark-dot { position: absolute; right: -2px; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; box-shadow: 0 0 0 2px #fff; }
+  .kpi::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--c); opacity: .9; }
 
-  .cols { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 22px; align-items: start; }
-  .scroll { max-height: calc(100vh - 452px); min-height: 380px; overflow-y: auto; margin: 0 -10px; padding: 2px 10px 6px; }
-  .count { margin-left: auto; font-size: 13.5px; color: var(--muted); }
+  /* main grid */
+  .grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--s3); min-height: 0; }
+  .col { display: grid; grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--s3); min-height: 0; }
+  .panel { display: flex; flex-direction: column; min-height: 0; }
+  .panel-b { overflow-y: auto; min-height: 0; flex: 1; padding: var(--s2); }
 
   /* live feed */
-  .fi { display: block; color: inherit; border-radius: 12px; padding: 16px 18px 16px 22px; margin-bottom: 10px; background: var(--soft);
-    border: 1px solid var(--line); position: relative; transition: background .2s, border-color .2s; }
-  .fi:hover { text-decoration: none; background: #fff; border-color: #CBD5E1; }
-  .fi::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 5px; border-radius: 0 4px 4px 0; background: var(--pc); }
-  .fi.URGENT { --pc: var(--red); } .fi.HIGH { --pc: var(--orange); } .fi.NORMAL { --pc: var(--green); }
-  .fi .r1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .fi .ago { margin-left: auto; color: var(--faint); font-size: 13.5px; white-space: nowrap; }
-  .fi .r2 { margin-top: 8px; font-weight: 700; color: var(--navy); font-size: 17px; }
-  .fi .r2 .mono { font-weight: 600; color: var(--muted); font-size: 15px; margin-right: 6px; }
-  .fi .r3 { margin-top: 4px; color: #3A4657; font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .fi .r4 { margin-top: 6px; color: var(--muted); font-size: 14px; }
-  .fi .cat { font-size: 13px; font-weight: 600; color: var(--muted); }
-  .fi.enter { animation: slideIn .7s cubic-bezier(.2,.8,.2,1); }
-  @keyframes slideIn {
-    0% { opacity: 0; transform: translateY(-18px); max-height: 0; background: var(--teal-soft); }
-    40% { opacity: 1; transform: none; }
-    100% { max-height: 400px; }
-  }
-  .fi.changed { animation: flash 1.6s ease; }
-  @keyframes flash { 0%, 30% { background: var(--teal-soft); border-color: var(--teal); } }
+  .fc { display: grid; grid-template-columns: 4px minmax(0, 1fr); border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); margin-bottom: 12px; overflow: hidden; cursor: pointer;
+    transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
+  .fc:hover { border-color: var(--border-2); box-shadow: var(--shadow); }
+  .fc .edge { background: var(--pc); }
+  .fc.URGENT { --pc: var(--critical); } .fc.HIGH { --pc: var(--high); } .fc.NORMAL { --pc: var(--normal); }
+  .fc .body { padding: var(--s2) 20px; display: grid; gap: 8px; min-width: 0; }
+  .fc .r1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .fc .ago { margin-left: auto; font-size: var(--fs-12); color: var(--faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .fc .dev { font-size: var(--fs-16); font-weight: 700; letter-spacing: -.005em; display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+  .fc .dev .mono { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .fc .dev span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fc .ex { font-size: var(--fs-14); color: var(--text-2); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .fc .r4 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .conf { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-12); color: var(--muted); font-weight: 650; margin-right: 8px; }
+  .conf .bar { width: 72px; height: 6px; }
+  .conf b { color: var(--text); font-variant-numeric: tabular-nums; min-width: 32px; }
+  .fc.enter { animation: cardIn var(--t-slow) var(--ease), glow 2s var(--ease); }
+  .fc.changed { animation: glow 2s var(--ease); }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(-12px); } }
+  @keyframes glow { 0%, 25% { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-100), 0 8px 24px rgba(14,165,164,.25); } }
 
-  /* compliance clock */
-  .ck { display: block; color: inherit; padding: 15px 4px 15px 0; border-bottom: 1px solid var(--line); }
-  .ck:hover { text-decoration: none; background: var(--soft); }
-  .ck:last-child { border-bottom: 0; }
-  .ck .t { display: flex; align-items: baseline; gap: 12px; }
-  .ck .cd { font-size: 26px; font-weight: 760; font-variant-numeric: tabular-nums; letter-spacing: -.5px; color: var(--uc); min-width: 210px; }
-  .ck .cd small { font-size: 14px; font-weight: 700; letter-spacing: .03em; }
-  .ck .due { margin-left: auto; text-align: right; font-size: 13.5px; color: var(--muted); white-space: nowrap; }
-  .ck .due b { color: var(--ink); font-size: 15px; }
-  .ck .who { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 14.5px; }
-  .ck .who .dev { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ck .track { height: 5px; background: var(--line); border-radius: 3px; margin-top: 10px; overflow: hidden; }
-  .ck .track i { display: block; height: 100%; background: var(--uc); border-radius: 3px; transition: width .6s; }
-  .ck.red { --uc: var(--red); } .ck.orange { --uc: var(--orange); } .ck.green { --uc: var(--green); }
-  .legend { display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); margin-left: auto; }
-  .legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: var(--c); }
-  @media (max-width: 1280px) { .kpis { grid-template-columns: repeat(3, 1fr); } .cols { grid-template-columns: 1fr; } .scroll { max-height: none; } }
+  /* decision queue */
+  .qi { display: grid; grid-template-columns: 4px minmax(0, 1fr); gap: 0 14px; padding: 12px 4px 12px 0; cursor: pointer; transition: background var(--t-fast); }
+  .qi + .qi { border-top: 1px solid var(--border); }
+  .qi:hover { background: #FAFBFD; }
+  .qi .edge { border-radius: 0 3px 3px 0; background: var(--pc); }
+  .qi.URGENT { --pc: var(--critical); } .qi.HIGH { --pc: var(--high); } .qi.NORMAL { --pc: var(--normal); }
+  .qi .t { font-weight: 700; display: flex; gap: 8px; align-items: center; min-width: 0; font-size: var(--fs-14); }
+  .qi .t .mono { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .qi .t .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  .qi .m { display: flex; gap: 8px; margin-top: 8px; align-items: center; min-width: 0; }
+  .qi .acts { display: flex; gap: 8px; margin-left: auto; flex: none; }
+  .qi.enter { animation: cardIn var(--t-slow) var(--ease); }
+  .qi.leave { animation: leave var(--t-slow) var(--ease) forwards; }
+  @keyframes leave { to { opacity: 0; transform: translateX(16px); } }
+
+  /* pattern alerts */
+  .al { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 4px 14px; padding: var(--s2); border-radius: var(--r-card); background: var(--critical-50); border: 1px solid var(--critical-100); margin-bottom: 12px; }
+  .al .ai { grid-row: 1 / 4; width: 40px; height: 40px; border-radius: 10px; background: var(--critical); color: #fff; display: grid; place-items: center; }
+  .al b { font-size: var(--fs-16); color: var(--critical-dark); font-weight: 750; }
+  .al p { color: #7F1D1D; font-size: var(--fs-14); }
+  .al .ids { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .al .ids a { font: 600 12px/22px var(--mono); padding: 0 8px; border-radius: 6px; background: #fff; color: var(--critical-dark); box-shadow: inset 0 0 0 1px var(--critical-100); }
+  .al .ids a:hover { box-shadow: inset 0 0 0 1px var(--critical); }
+  .al.enter { animation: cardIn var(--t-slow) var(--ease); }
+
+  /* pipeline */
+  .pipe { display: grid; grid-template-columns: 1fr 64px 1fr 64px 1fr 64px 1fr; align-items: center; padding: var(--s2) var(--s3); }
+  .st { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 2px 14px; align-items: center; min-width: 0; }
+  .st .si { grid-row: 1 / 4; width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-50); color: var(--accent-600); }
+  .st .si .i { width: 22px; height: 22px; }
+  .st .layer { font-size: 11px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+  .st .nm { display: flex; align-items: baseline; gap: 10px; }
+  .st .nm b { font-size: var(--fs-28); font-weight: 760; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .st .nm span { font-weight: 700; font-size: var(--fs-16); white-space: nowrap; }
+  .st .sub { font-size: var(--fs-12); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 22px; display: flex; align-items: center; }
+  .st.human .si { background: var(--ok-50); color: var(--ok); }
+  .link { height: 2px; background: var(--border); position: relative; margin: 0 8px; border-radius: 2px; }
+  .link::after { content: ""; position: absolute; right: -6px; top: -5px; border: 6px solid transparent; border-left-color: var(--border-2); border-right: 0; }
+  .flow .link { background: repeating-linear-gradient(90deg, var(--accent) 0 8px, transparent 8px 16px); background-size: 32px 2px; animation: flow .8s linear infinite; }
+  .flow .link::after { border-left-color: var(--accent); }
+  @keyframes flow { to { background-position: 32px 0; } }
+  .chipline { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--r-pill); background: var(--accent-50); color: var(--accent-600); font-size: 11px; font-weight: 750; letter-spacing: .04em; }
+  .chipline i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: ping 1.2s infinite; }
 </style>
 {% endblock %}
 
 {% block body %}
-<div class="head">
-  <div><h1>Command center</h1><p class="lede" style="margin-bottom:18px">Complaints as they arrive, AI reportability decisions, and every FDA filing deadline.</p></div>
-  <div class="live"><i class="dot run" id="live-dot"></i><span id="live-l">Live · updates every 3 s</span></div>
-</div>
-
-<div class="kpis">
-  <div class="kpi" style="--c:var(--navy)"><div class="v" id="k-processed">–</div><div class="l">Processed</div></div>
-  <div class="kpi" style="--c:var(--red)"><div class="v" id="k-reportable">–</div><div class="l">Reportable</div></div>
-  <div class="kpi" style="--c:var(--orange)"><div class="v" id="k-needs_info">–</div><div class="l">Needs info</div></div>
-  <div class="kpi" id="kb-due7" style="--c:var(--orange)"><div class="v" id="k-due7">–</div><div class="l">Due ≤ 7 days</div></div>
-  <div class="kpi" id="kb-overdue" style="--c:var(--red)"><div class="v" id="k-overdue">–</div><div class="l">Overdue</div></div>
-  <div class="kpi" style="--c:var(--teal)"><div class="v" id="k-approved">–</div><div class="l">Approved</div></div>
-</div>
-
-<div class="cols">
-  <section class="card">
-    <div class="card-h"><h2>Live complaint feed</h2><span class="count" id="feed-n"></span></div>
-    <div class="scroll" id="feed"><div class="empty">Waiting for complaints…</div></div>
-  </section>
-  <section class="card">
-    <div class="card-h"><h2>Compliance clock</h2>
-      <div class="legend"><span style="--c:var(--red)">≤ 7 days</span><span style="--c:var(--orange)">8–14</span><span style="--c:var(--green)">&gt; 14</span></div>
+<div class="cc">
+  <section class="kpis" id="kpis">
+    {% for key, label, ic, color in [('processed','Processed today','inbox','var(--accent)'), ('reportable','Reportable','alert','var(--critical)'),
+        ('needs_info','Needs info','help','var(--info)'), ('due7','Due ≤ 7 days','clock','var(--high)'),
+        ('overdue','Overdue','zap','var(--critical-dark)'), ('approved','Approved','check','var(--ok)')] %}
+    <div class="card kpi" id="k-{{ key }}" style="--c:{{ color }}">
+      <span class="lbl">{{ label }}</span><span class="ic">{{ icon(ic) }}</span>
+      <span class="v" data-v="0">0</span>
+      <div class="foot"><span class="delta">&nbsp;</span><span class="sp"></span></div>
     </div>
-    <div class="scroll" id="clock"><div class="empty">No open FDA deadlines.</div></div>
+    {% endfor %}
+  </section>
+
+  <section class="grid">
+    <div class="card panel">
+      <div class="card-h"><h2>{{ icon('activity') }}Live intake feed</h2><div class="aside" id="feed-aside"></div></div>
+      <div class="panel-b" id="feed"></div>
+    </div>
+    <div class="col">
+      <div class="card panel">
+        <div class="card-h"><h2>{{ icon('user') }}Needs your decision</h2><span class="count-badge" id="q-n">0</span>
+          <div class="aside">Priority, then due date</div></div>
+        <div class="panel-b" id="queue" style="padding-top:4px;padding-bottom:4px"></div>
+      </div>
+      <div class="card panel">
+        <div class="card-h"><h2>{{ icon('alert') }}Pattern alerts</h2><span class="count-badge" id="al-n">0</span>
+          <div class="aside">Same device · same issue · ≥ 3 in 90 days</div></div>
+        <div class="panel-b" id="alerts"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card pipe" id="pipe">
+    <div class="st"><span class="si">{{ icon('inbox') }}</span><span class="layer">Intake</span>
+      <span class="nm"><b data-p="intake">0</b><span>Complaints in</span></span><span class="sub" id="ps-intake">Waiting for complaints</span></div>
+    <div class="link"></div>
+    <div class="st"><span class="si">{{ icon('list') }}</span><span class="layer">Layer 1 · Rules</span>
+      <span class="nm"><b data-p="scored">0</b><span>Rules scored</span></span><span class="sub" id="ps-scored">Keywords · event type · distress</span></div>
+    <div class="link"></div>
+    <div class="st"><span class="si">{{ icon('cpu') }}</span><span class="layer">Layer 2 · Local AI</span>
+      <span class="nm"><b data-p="checked">0</b><span>AI checked</span></span><span class="sub" id="ps-checked">21 CFR 803 reportability</span></div>
+    <div class="link"></div>
+    <div class="st human"><span class="si">{{ icon('user') }}</span><span class="layer">Layer 4 · Human</span>
+      <span class="nm"><b data-p="decided">0</b><span id="ps-decided-l">Human decided</span></span><span class="sub" id="ps-decided">Approve or request info</span></div>
   </section>
 </div>
 {% endblock %}
@@ -94,97 +147,99 @@
 {% block scripts %}
 <script>
 (function () {
-  var DAY = 864e5, first = true, nodes = { feed: {}, clock: {} }, sigs = { feed: {}, clock: {} }, last = {};
+  var first = true, nodes = {}, sigs = {};
+  var EMPTY = {
+    feed: '<div class="empty" style="height:100%"><div class="art">' + ICONS.inbox + '</div><b>No complaints yet — start the demo replay</b><p>Complaints appear here the moment Vigil classifies them on the local model.</p><a class="btn btn-primary" href="/demo">' + ICONS.play + "Open Demo Control</a></div>",
+    queue: '<div class="empty" style="height:100%;padding:16px"><div class="art" style="background:var(--ok-50);color:var(--ok)">' + ICONS.check + "</div><b>Nothing waiting for a decision</b><p>Reportable and needs-info complaints queue here for approval.</p></div>",
+    alerts: '<div class="empty" style="height:100%;padding:16px"><div class="art">' + ICONS.shield + "</div><b>No recurring patterns</b><p>Vigil flags a device when 3 or more complaints share the same issue.</p></div>"
+  };
 
-  function ago(t) {
-    var s = Math.max(0, (Date.now() - new Date(t).getTime()) / 1000);
-    if (s < 60) return Math.floor(s) + " s ago"; if (s < 3600) return Math.floor(s / 60) + " min ago";
-    if (s < 86400) return Math.floor(s / 3600) + " h ago"; return Math.floor(s / 86400) + " d ago";
-  }
-  function statusPill(r) {
-    if (!r.status || r.status === "LOGGED") return r.status ? '<span class="pill s-pend">LOGGED</span>' : "";
-    return '<span class="pill s-' + r.status_kind + '">' + esc(r.status.replace("PENDING_REVIEW", "PENDING REVIEW")) + "</span>";
-  }
-  function feedHTML(r) {
-    var cat = r.category && r.category !== "NONE" ? '<span class="cat">' + esc(r.category.replace(/_/g, " ")) + "</span>" : "";
-    return '<div class="r1"><span class="pill p-' + esc(r.priority) + '">' + esc(r.priority) + '</span>' +
-      '<span class="pill d-' + esc(r.decision) + '">' + esc((r.decision || "").replace(/_/g, " ")) + "</span>" + cat + statusPill(r) +
-      '<span class="ago" data-t="' + esc(r.time) + '">' + ago(r.time) + "</span></div>" +
-      '<div class="r2"><span class="mono">#' + esc(r.id) + "</span>" + esc(r.device || "Device not specified") + "</div>" +
-      '<div class="r3">' + esc(r.reason) + "</div>" +
-      (r.memory ? '<div class="r4"><span aria-hidden="true">🧠</span> ' + esc(r.memory) + "</div>" : "");
-  }
-  function dueEnd(r) { return new Date(r.due_date + "T23:59:59").getTime(); }
-  function urg(ms) { return ms <= 7 * DAY ? "red" : ms <= 14 * DAY ? "orange" : "green"; }
-  function pad(n) { return (n < 10 ? "0" : "") + n; }
-  function countdown(ms) {
-    var neg = ms < 0, a = Math.abs(ms), d = Math.floor(a / DAY), h = Math.floor(a % DAY / 36e5), m = Math.floor(a % 36e5 / 6e4), s = Math.floor(a % 6e4 / 1e3);
-    var t = d + "d " + pad(h) + ":" + pad(m) + ":" + pad(s);
-    return neg ? '<small>OVERDUE</small> ' + t : t;
-  }
-  function clockHTML(r) {
-    var ms = dueEnd(r) - Date.now(), total = (+r.deadline_days || 30) * DAY, pct = Math.max(0, Math.min(100, ms / total * 100));
-    var d = new Date(r.due_date + "T00:00:00");
-    return '<div class="t"><span class="cd" data-due="' + dueEnd(r) + '">' + countdown(ms) + "</span>" +
-      '<span class="due">due <b>' + d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + "</b><br>" +
-      esc(r.deadline_days) + "-day report</span></div>" +
-      '<div class="who"><span class="mono muted">#' + esc(r.id) + '</span><span class="dev">' + esc(r.device) + "</span>" +
-      '<span class="pill d-' + esc(r.decision) + '" style="margin-left:auto">' + esc((r.decision || "").replace(/_/g, " ")) + "</span>" + statusPill(r) + "</div>" +
-      '<div class="track"><i style="width:' + pct.toFixed(1) + '%"></i></div>';
-  }
-
-  // Keyed DOM diff: existing cards are reused (no flicker), new ones slide in, changed ones flash.
-  function sync(key, list, cls, html) {
-    var box = $(key), seen = {};
-    if (!list.length) { box.innerHTML = '<div class="empty">' + (key === "feed" ? "Waiting for complaints…" : "No open FDA deadlines.") + "</div>";
-      nodes[key] = {}; sigs[key] = {}; return; }
+  /* keyed DOM diff: reuse nodes (no flicker), animate new ones in, flash changed ones */
+  function sync(key, list, idOf, cls, html, opts) {
+    var box = $(key); nodes[key] = nodes[key] || {}; sigs[key] = sigs[key] || {};
+    if (!list.length) { if (!box.querySelector(".empty")) box.innerHTML = EMPTY[key]; nodes[key] = {}; sigs[key] = {}; return; }
     var emp = box.querySelector(".empty"); if (emp) emp.remove();
+    var seen = {};
     list.forEach(function (r, i) {
-      var sig = JSON.stringify(r), el = nodes[key][r.id];
+      var id = idOf(r), sig = JSON.stringify(r), el = nodes[key][id];
       if (!el) {
-        el = document.createElement("a"); el.href = "/complaint/" + encodeURIComponent(r.id);
-        el.innerHTML = html(r); nodes[key][r.id] = el;
-        if (!first && key === "feed") { el.classList.add("enter"); el.addEventListener("animationend", function () { el.classList.remove("enter", "changed"); }); }
-      } else if (sigs[key][r.id] !== sig) {
+        el = document.createElement("div"); el.innerHTML = html(r); nodes[key][id] = el;
+        if (!first) { el.classList.add("enter"); if (key === "feed") V.pulseLive(); el.addEventListener("animationend", function (e) { if (e.animationName === "glow" || e.animationName === "cardIn" && key !== "feed") el.classList.remove("enter", "changed"); }); }
+      } else if (sigs[key][id] !== sig) {
         el.innerHTML = html(r);
-        if (key === "feed") { el.classList.remove("enter", "changed"); void el.offsetWidth; el.classList.add("changed"); }
+        if (opts && opts.flash && !first) { el.classList.remove("changed"); void el.offsetWidth; el.classList.add("changed"); }
       }
-      el.className = el.className.replace(/\b(URGENT|HIGH|NORMAL|red|orange|green|fi|ck)\b/g, "").trim();
-      el.classList.add(key === "feed" ? "fi" : "ck", cls(r));
-      sigs[key][r.id] = sig; seen[r.id] = 1;
+      el.className = el.className.split(" ").filter(function (c) { return c === "enter" || c === "changed"; }).concat(cls(r).split(" ")).join(" ");
+      if (opts && opts.open) el.dataset.open = id;
+      sigs[key][id] = sig; seen[id] = 1;
       if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
     });
-    Object.keys(nodes[key]).forEach(function (id) { if (!seen[id]) { nodes[key][id].remove(); delete nodes[key][id]; delete sigs[key][id]; } });
+    Object.keys(nodes[key]).forEach(function (id) { if (!seen[id]) { var el = nodes[key][id]; delete nodes[key][id]; delete sigs[key][id];
+      if (opts && opts.leave && !REDUCED) { el.classList.add("leave"); setTimeout(function () { el.remove(); }, 260); } else el.remove(); } });
   }
 
-  function setKpi(k, v) {
-    var el = $("k-" + k);
-    if (String(last[k]) !== String(v)) { el.textContent = v; if (!first) { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); } }
-    last[k] = v;
+  function feedHTML(r) {
+    return '<i class="edge"></i><div class="body">' +
+      '<div class="r1"><span class="pill p-' + esc(r.priority) + '">' + esc(r.priority) + "</span>" + V.decisionPill(r) + V.statusPill(r) +
+        '<span class="ago" data-t="' + esc(r.time) + '">' + V.ago(r.time) + "</span></div>" +
+      '<div class="dev"><span class="mono">#' + esc(r.id) + "</span><span>" + esc(r.device || "Device not specified") + "</span></div>" +
+      '<p class="ex">' + esc(r.excerpt) + "</p>" +
+      '<div class="r4"><span class="conf">Confidence<span class="bar"><i style="width:' + r.confidence + '%"></i></span><b>' + r.confidence + "%</b></span>" +
+        V.dueChip(r) + V.memChip(r) + "</div></div>";
+  }
+  function queueHTML(r) {
+    return '<i class="edge"></i><div style="min-width:0"><div class="t"><span class="mono">#' + esc(r.id) + '</span><span class="nm">' + esc(r.device || "Device not specified") + "</span>" + V.dueChip(r) + "</div>" +
+      '<div class="m"><span class="pill p-' + esc(r.priority) + '">' + esc(r.priority) + "</span>" + V.decisionPill(r) +
+      '<span class="acts"><button class="btn btn-sm btn-primary" data-q="approve" data-id="' + esc(r.id) + '">' + ICONS.check + "Approve</button>" +
+      '<button class="btn btn-sm btn-amber" data-q="info" data-id="' + esc(r.id) + '">' + ICONS.help + "Request info</button></span></div></div>";
+  }
+  function alertHTML(a) {
+    return '<span class="ai">' + ICONS.alert + "</span><b>" + esc(a.family) + " · " + a.count + " " + esc(a.issue) + " complaints in " + a.days + " days</b>" +
+      "<p>" + a.reportable + " reportable · consider CAPA / investigation</p>" +
+      '<div class="ids">' + a.ids.slice(0, 8).map(function (id) { return '<a href="/complaint/' + encodeURIComponent(id) + '" data-open="' + esc(id) + '">#' + esc(id) + "</a>"; }).join("") +
+      (a.ids.length > 8 ? '<span style="font-size:12px;color:#7F1D1D;align-self:center">+' + (a.ids.length - 8) + " more</span>" : "") + "</div>";
+  }
+
+  function kpi(key, k) {
+    var card = $("k-" + key); V.countTo(card.querySelector(".v"), k.value);
+    var d = card.querySelector(".delta");
+    d.textContent = k.delta5 ? "+" + k.delta5 + " in last 5 min" : "No change · 5 min"; d.classList.toggle("up", k.delta5 > 0);
+    var sig = k.spark.join(","); if (card.dataset.sp !== sig) { card.dataset.sp = sig; card.querySelector(".sp").innerHTML = V.spark(k.spark, getComputedStyle(card).getPropertyValue("--c").trim()); }
+    card.classList.toggle("hot", (key === "overdue" || key === "due7") && k.value > 0);
   }
 
   function refresh() {
     fetch("/api/state", { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (s) {
-      Object.keys(s.kpi).forEach(function (k) { setKpi(k, s.kpi[k]); });
-      $("kb-due7").classList.toggle("alert", s.kpi.due7 > 0); $("kb-overdue").classList.toggle("alert", s.kpi.overdue > 0);
-      sync("feed", s.feed, function (r) { return r.priority; }, feedHTML);
-      sync("clock", s.clock, function (r) { return urg(dueEnd(r) - Date.now()); }, clockHTML);
-      $("feed-n").textContent = s.kpi.processed ? "latest " + s.feed.length + " of " + s.kpi.processed : "";
-      $("live-dot").className = "dot run"; $("live-l").textContent = "Live · updates every 3 s";
+      ["processed", "reportable", "needs_info", "due7", "overdue", "approved"].forEach(function (k) { kpi(k, s.kpi[k]); });
+      var id = function (r) { return r.id; };
+      sync("feed", s.feed, id, function (r) { return "fc " + r.priority; }, feedHTML, { flash: true, open: true });
+      sync("queue", s.queue, id, function (r) { return "qi " + r.priority; }, queueHTML, { leave: true, open: true });
+      sync("alerts", s.alerts, function (a) { return a.family + "|" + a.issue; }, function () { return "al"; }, alertHTML);
+      $("feed-aside").textContent = s.feed.length ? "Newest first · " + s.feed.length + " complaint" + (s.feed.length === 1 ? "" : "s") : "";
+      $("q-n").textContent = s.queue.length; $("q-n").classList.toggle("hot", s.queue.length > 0);
+      $("al-n").textContent = s.alerts.length; $("al-n").classList.toggle("hot", s.alerts.length > 0);
+      var nb = $("nav-queue"); nb.textContent = s.queue.length; nb.classList.toggle("show", s.queue.length > 0);
+
+      var p = s.pipeline, d = s.demo || {};
+      document.querySelectorAll("[data-p]").forEach(function (el) { V.countTo(el, +p[el.dataset.p] || 0); });
+      $("ps-intake").innerHTML = d.running && d.kind === "replay" ? '<span class="chipline"><i></i>REPLAY ' + d.processed + " / " + d.total + "</span>" : p.intake ? "Received and logged" : "Waiting for complaints";
+      $("ps-scored").textContent = p.scored ? p.urgent + " urgent · keywords, event, distress" : "Keywords · event type · distress";
+      $("ps-checked").textContent = p.checked ? p.reportable + " reportable · " + p.needs_info + " needs info · " + p.not_reportable + " not" : "21 CFR 803 reportability";
+      $("ps-decided-l").textContent = p.reviewable ? "of " + p.reviewable + " decided" : "Human decided";
+      $("ps-decided").textContent = p.reviewable ? p.approved + " approved · " + p.info + " info requested" : "Approve or request info";
+      $("pipe").classList.toggle("flow", !!(d.running && d.kind === "replay"));
       first = false;
-    }).catch(function () { $("live-dot").className = "dot bad"; $("live-l").textContent = "Reconnecting…"; });
+    }).catch(function () {});
   }
 
-  // Tick countdowns and "x s ago" every second without touching the rest of the DOM.
-  setInterval(function () {
-    document.querySelectorAll(".cd[data-due]").forEach(function (el) {
-      var ms = +el.dataset.due - Date.now(); el.innerHTML = countdown(ms);
-      var ck = el.closest(".ck"); ck.classList.remove("red", "orange", "green"); ck.classList.add(urg(ms));
-    });
-    document.querySelectorAll(".ago[data-t]").forEach(function (el) { el.textContent = ago(el.dataset.t); });
-  }, 1000);
-
-  refresh(); setInterval(refresh, 3000);
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-q]"); if (!b) return;
+    e.stopPropagation(); b.disabled = true;
+    V.act(b.dataset.id, b.dataset.q).then(function () { b.disabled = false; refresh(); });
+  }, true);
+  document.addEventListener("vigil:changed", refresh);
+  setInterval(function () { document.querySelectorAll(".ago[data-t]").forEach(function (el) { el.textContent = V.ago(el.dataset.t); }); }, 5000);
+  refresh(); setInterval(refresh, 2500);
 })();
 </script>
 {% endblock %}
