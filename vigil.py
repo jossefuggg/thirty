@@ -154,6 +154,10 @@ list anything the complaint already states.
 Complaint: {text}
 Device: {device}   Event date: {event_date}   Received: {received}
 
+Prior history for this device (long-term memory):
+{memory}
+Use history only to judge patterns and priority; base the decision on this complaint's facts.
+
 Answer ONLY with JSON:
 {{"decision": "REPORTABLE|NOT_REPORTABLE|NEEDS_INFO", "category": "DEATH|SERIOUS_INJURY|MALFUNCTION|NONE",
  "reason": "one sentence citing the rule", "deadline_days": 30 or 5 or null, "missing_info": [], "confidence": 0-100}}"""
@@ -178,8 +182,8 @@ def llm(prompt, max_tokens=600):
     return re.sub(r"<think>.*?</think>", "", out, flags=re.S).strip()
 
 
-def classify(c):
-    raw = llm(CLASSIFY.format(**c), 400)
+def classify(c, memory=""):
+    raw = llm(CLASSIFY.format(memory=memory or "No prior complaints on this device in the last 90 days.", **c), 400)
     m = re.search(r"\{.*\}", raw, re.S)
     try:
         return json.loads(m.group(0))
@@ -457,7 +461,8 @@ def make_mdr(c, row):
 
 # ---------------------------------------------------------------- log
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
-          "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text"]
+          "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text",
+          "product_code", "memory"]
 
 # replay (append) and sync (read-modify-write) run as separate processes: every access to decisions.csv
 # holds an exclusive flock on decisions.csv.lock. Re-entrant within a process, so write_log() can run
@@ -481,6 +486,8 @@ def log_lock():
 
 def log(row):
     with log_lock():
+        if os.path.exists(LOG) and next(csv.reader(open(LOG)), None) != FIELDS:
+            write_log(read_log())  # older header: rewrite once with the current columns before appending
         new = not os.path.exists(LOG)
         with open(LOG, "a", newline="") as f:
             w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
@@ -557,6 +564,35 @@ def pull_approvals():
             write_log(rows)
     return new
 
+# ---------------------------------------------------------------- long-term memory
+PROBLEM_WORDS = ["foam", "particle", "black dust", "debris", "shock", "shutdown", "shut off", "fire", "smoke",
+                 "burn", "overheat", "alarm", "pressure", "water", "leak", "noise", "cough", "headache",
+                 "breathing", "cancer", "death", "suffocat", "injury"]
+
+
+def device_memory(c, days=90):
+    """Prior complaints on the same device (first word of the device name, or product code) logged in the last
+    `days` days. Returns (prompt summary, card line) or ("", "") when there are none."""
+    key = (c.get("device") or "").split()[0].upper() if (c.get("device") or "").split() else ""
+    code = (c.get("product_code") or "").upper()
+    since = (dt.datetime.now() - dt.timedelta(days=days)).isoformat()
+    prior = [r for r in read_log() if r["id"] != c["id"] and (r.get("time") or "") >= since and
+             ((key and (r.get("device") or "").split()[:1] == [key]) or
+              (code and (r.get("product_code") or "").upper() == code))]
+    if not prior:
+        return "", ""
+    words = {w: sum(w in (r.get("text") or "").lower() for r in prior) for w in PROBLEM_WORDS}
+    top = [w for w, n in sorted(words.items(), key=lambda x: -x[1]) if n][:3]
+    rep_n = sum(r.get("decision") == "REPORTABLE" for r in prior)
+    recent = [r["id"] for r in sorted(prior, key=lambda r: r.get("time") or "", reverse=True)[:2]]
+    summary = (f"{len(prior)} prior complaints on {key or code} in the last {days} days, {rep_n} REPORTABLE.\n"
+               f"Most common problem words: {', '.join(f'{w} ({words[w]})' for w in top) or 'none'}.\n"
+               f"Most recent: {', '.join('#' + i for i in recent)}.")
+    card = f"🧠 Memory: {len(prior)} prior complaint{'s' * (len(prior) != 1)} on {key or code} in {days} days" + \
+           (f" (top issue: {top[0]})" if top else "")
+    return summary, card
+
+
 # ---------------------------------------------------------------- pipeline
 def add_deadline(start, days):
     """21 CFR 803: 30 calendar days, but the 5-day report counts work days (Mon-Fri; federal holidays not modeled)."""
@@ -580,7 +616,8 @@ def process(c, demo_today=None):
     score, level, dist = priority(c)
     dup = duplicate_of(c)
     miss = missing_fields(c)
-    res = classify(c)  # EVERY complaint gets an AI check
+    memory, memory_line = device_memory(c)
+    res = classify(c, memory)  # EVERY complaint gets an AI check
     days = res.get("deadline_days") or (30 if res.get("decision") != "NOT_REPORTABLE" else None)
     if days: days = 5 if str(days).strip() == "5" else 30  # 21 CFR 803: 5 only for urgent remedial action, else 30
     base = demo_today or dt.date.today()
@@ -589,7 +626,7 @@ def process(c, demo_today=None):
                device=c["device"], priority=level, score=score, distress=dist, decision=res.get("decision"),
                category=res.get("category"), reason=res.get("reason"), deadline_days=days or "", due_date=due,
                confidence=res.get("confidence"), missing="; ".join(miss + list(res.get("missing_info") or [])),
-               duplicate_of=dup or "", status="PENDING_REVIEW" if res.get("decision") != "NOT_REPORTABLE" else "LOGGED",
+               duplicate_of=dup or "", product_code=c.get("product_code") or "", memory=memory_line, status="PENDING_REVIEW" if res.get("decision") != "NOT_REPORTABLE" else "LOGGED",
                text=c["text"][:500])
     log(row)
     row["awareness"] = base.isoformat()  # not logged; used for 3500A G4
@@ -603,6 +640,7 @@ def process(c, demo_today=None):
         lines.append(f"⏰ Due {d.day} {d:%b %Y} ({'5-day' if str(days) == '5' else '30-day'} report)")
     missing = [short_words(re.sub(r"\s*\(.*?\)", "", m), 5) for m in row["missing"].split(";") if m.strip()]
     if missing: lines.append("❓ Missing: " + " · ".join(missing[:3]))
+    if memory_line: lines.append(memory_line)
     if dup: lines.append(f"Possible duplicate of #{dup}")
     if reportable: lines += ["📄 Draft FDA 3500A attached", f"Reply: approve {c['id']}"]
     msg = "\n".join(lines)
