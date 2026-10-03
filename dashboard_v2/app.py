@@ -170,6 +170,46 @@ def home():
     return render_template("home.html", page="home")
 
 
+def status_kind(s):
+    s = s or ""
+    return "appr" if s.startswith("APPROVED") else "info" if s.startswith("INFO REQUESTED") else "pend"
+
+
+def days_left(r):
+    try:
+        return (dt.date.fromisoformat(r["due_date"]) - dt.date.today()).days
+    except Exception:
+        return None
+
+
+def is_open(r):
+    """Still owes the FDA a report: has a deadline, is reportable/unsure, and is not approved yet."""
+    return bool(r.get("due_date")) and r.get("decision") != "NOT_REPORTABLE" and status_kind(r.get("status")) != "appr"
+
+
+def brief(r):
+    return {k: r.get(k, "") for k in ("time", "id", "device", "priority", "score", "decision", "category", "reason",
+                                       "due_date", "deadline_days", "confidence", "status")} | {
+        "status_kind": status_kind(r.get("status")), "days_left": days_left(r)}
+
+
+@app.route("/api/state")
+def api_state():
+    rows = list(latest_by_id(read_rows()).values())
+    open_rows = [r for r in rows if is_open(r)]
+    kpi = {
+        "processed": len(rows),
+        "reportable": sum(r["decision"] == "REPORTABLE" for r in rows),
+        "needs_info": sum(r["decision"] == "NEEDS_INFO" for r in rows),
+        "due7": sum(0 <= (days_left(r) or 0) <= 7 for r in open_rows),
+        "overdue": sum((days_left(r) or 0) < 0 for r in open_rows),
+        "approved": sum(status_kind(r.get("status")) == "appr" for r in rows),
+    }
+    feed = sorted(rows, key=lambda r: r.get("time") or "", reverse=True)[:40]
+    clock = sorted(open_rows, key=lambda r: (r["due_date"], -int(r.get("score") or 0)))
+    return jsonify(kpi=kpi, feed=[brief(r) for r in feed], clock=[brief(r) for r in clock])
+
+
 @app.route("/api/health")
 def api_health():
     return jsonify({**HEALTH, "demo": DEMO.public() if "DEMO" in globals() else None})
@@ -188,4 +228,4 @@ def chart():
 if __name__ == "__main__":
     threading.Thread(target=health_loop, daemon=True).start()
     print(f"Vigil Console v2 on http://localhost:5001  (data: {VIGIL_DIR})", flush=True)
-    app.run(host="127.0.0.1", port=5001, debug=False, threaded=True)
+    app.run(host="127.0.0.1", port=int(os.environ.get("VIGIL_CONSOLE_PORT", 5001)), debug=False, threaded=True)

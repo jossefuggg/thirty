@@ -1,5 +1,188 @@
 {% extends "base.html" %}
+{% block title %}Command center · Vigil Console{% endblock %}
+{% block head %}
+<style>
+  .head { display: flex; align-items: flex-end; gap: 20px; }
+  .head .live { padding-bottom: 20px; }
+  .live { margin-left: auto; display: inline-flex; align-items: center; gap: 9px; font-size: 14px; color: var(--muted); padding-bottom: 6px; }
+  .live .dot { width: 8px; height: 8px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 18px; margin-bottom: 22px; }
+  .kpi { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 22px 14px; position: relative; overflow: hidden; }
+  .kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c, var(--navy)); }
+  .kpi .v { font-size: 42px; font-weight: 760; line-height: 1; color: var(--navy); font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+  .kpi .l { margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .kpi.alert .v { color: var(--c); }
+  .kpi .v.bump { animation: bump .6s ease; }
+  @keyframes bump { 30% { transform: scale(1.12); color: var(--teal); } }
+
+  .cols { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+  .scroll { max-height: calc(100vh - 452px); min-height: 380px; overflow-y: auto; margin: 0 -10px; padding: 2px 10px 6px; }
+  .count { margin-left: auto; font-size: 13.5px; color: var(--muted); }
+
+  /* live feed */
+  .fi { display: block; color: inherit; border-radius: 12px; padding: 16px 18px 16px 22px; margin-bottom: 10px; background: var(--soft);
+    border: 1px solid var(--line); position: relative; transition: background .2s, border-color .2s; }
+  .fi:hover { text-decoration: none; background: #fff; border-color: #CBD5E1; }
+  .fi::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 5px; border-radius: 0 4px 4px 0; background: var(--pc); }
+  .fi.URGENT { --pc: var(--red); } .fi.HIGH { --pc: var(--orange); } .fi.NORMAL { --pc: var(--green); }
+  .fi .r1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .fi .ago { margin-left: auto; color: var(--faint); font-size: 13.5px; white-space: nowrap; }
+  .fi .r2 { margin-top: 8px; font-weight: 700; color: var(--navy); font-size: 17px; }
+  .fi .r2 .mono { font-weight: 600; color: var(--muted); font-size: 15px; margin-right: 6px; }
+  .fi .r3 { margin-top: 4px; color: #3A4657; font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .fi .cat { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .fi.enter { animation: slideIn .7s cubic-bezier(.2,.8,.2,1); }
+  @keyframes slideIn {
+    0% { opacity: 0; transform: translateY(-18px); max-height: 0; background: var(--teal-soft); }
+    40% { opacity: 1; transform: none; }
+    100% { max-height: 400px; }
+  }
+  .fi.changed { animation: flash 1.6s ease; }
+  @keyframes flash { 0%, 30% { background: var(--teal-soft); border-color: var(--teal); } }
+
+  /* compliance clock */
+  .ck { display: block; color: inherit; padding: 15px 4px 15px 0; border-bottom: 1px solid var(--line); }
+  .ck:hover { text-decoration: none; background: var(--soft); }
+  .ck:last-child { border-bottom: 0; }
+  .ck .t { display: flex; align-items: baseline; gap: 12px; }
+  .ck .cd { font-size: 26px; font-weight: 760; font-variant-numeric: tabular-nums; letter-spacing: -.5px; color: var(--uc); min-width: 210px; }
+  .ck .cd small { font-size: 14px; font-weight: 700; letter-spacing: .03em; }
+  .ck .due { margin-left: auto; text-align: right; font-size: 13.5px; color: var(--muted); white-space: nowrap; }
+  .ck .due b { color: var(--ink); font-size: 15px; }
+  .ck .who { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 14.5px; }
+  .ck .who .dev { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ck .track { height: 5px; background: var(--line); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+  .ck .track i { display: block; height: 100%; background: var(--uc); border-radius: 3px; transition: width .6s; }
+  .ck.red { --uc: var(--red); } .ck.orange { --uc: var(--orange); } .ck.green { --uc: var(--green); }
+  .legend { display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); margin-left: auto; }
+  .legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: var(--c); }
+  @media (max-width: 1280px) { .kpis { grid-template-columns: repeat(3, 1fr); } .cols { grid-template-columns: 1fr; } .scroll { max-height: none; } }
+</style>
+{% endblock %}
+
 {% block body %}
-<h1>Command center</h1>
-<p class="lede">Coming up in the next step.</p>
+<div class="head">
+  <div><h1>Command center</h1><p class="lede" style="margin-bottom:18px">Complaints as they arrive, AI reportability decisions, and every FDA filing deadline.</p></div>
+  <div class="live"><i class="dot run" id="live-dot"></i><span id="live-l">Live · updates every 3 s</span></div>
+</div>
+
+<div class="kpis">
+  <div class="kpi" style="--c:var(--navy)"><div class="v" id="k-processed">–</div><div class="l">Processed</div></div>
+  <div class="kpi" style="--c:var(--red)"><div class="v" id="k-reportable">–</div><div class="l">Reportable</div></div>
+  <div class="kpi" style="--c:var(--orange)"><div class="v" id="k-needs_info">–</div><div class="l">Needs info</div></div>
+  <div class="kpi" id="kb-due7" style="--c:var(--orange)"><div class="v" id="k-due7">–</div><div class="l">Due ≤ 7 days</div></div>
+  <div class="kpi" id="kb-overdue" style="--c:var(--red)"><div class="v" id="k-overdue">–</div><div class="l">Overdue</div></div>
+  <div class="kpi" style="--c:var(--teal)"><div class="v" id="k-approved">–</div><div class="l">Approved</div></div>
+</div>
+
+<div class="cols">
+  <section class="card">
+    <div class="card-h"><h2>Live complaint feed</h2><span class="count" id="feed-n"></span></div>
+    <div class="scroll" id="feed"><div class="empty">Waiting for complaints…</div></div>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>Compliance clock</h2>
+      <div class="legend"><span style="--c:var(--red)">≤ 7 days</span><span style="--c:var(--orange)">8–14</span><span style="--c:var(--green)">&gt; 14</span></div>
+    </div>
+    <div class="scroll" id="clock"><div class="empty">No open FDA deadlines.</div></div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var DAY = 864e5, first = true, nodes = { feed: {}, clock: {} }, sigs = { feed: {}, clock: {} }, last = {};
+
+  function ago(t) {
+    var s = Math.max(0, (Date.now() - new Date(t).getTime()) / 1000);
+    if (s < 60) return Math.floor(s) + " s ago"; if (s < 3600) return Math.floor(s / 60) + " min ago";
+    if (s < 86400) return Math.floor(s / 3600) + " h ago"; return Math.floor(s / 86400) + " d ago";
+  }
+  function statusPill(r) {
+    if (!r.status || r.status === "LOGGED") return r.status ? '<span class="pill s-pend">LOGGED</span>' : "";
+    return '<span class="pill s-' + r.status_kind + '">' + esc(r.status.replace("PENDING_REVIEW", "PENDING REVIEW")) + "</span>";
+  }
+  function feedHTML(r) {
+    var cat = r.category && r.category !== "NONE" ? '<span class="cat">' + esc(r.category.replace(/_/g, " ")) + "</span>" : "";
+    return '<div class="r1"><span class="pill p-' + esc(r.priority) + '">' + esc(r.priority) + '</span>' +
+      '<span class="pill d-' + esc(r.decision) + '">' + esc((r.decision || "").replace(/_/g, " ")) + "</span>" + cat + statusPill(r) +
+      '<span class="ago" data-t="' + esc(r.time) + '">' + ago(r.time) + "</span></div>" +
+      '<div class="r2"><span class="mono">#' + esc(r.id) + "</span>" + esc(r.device || "Device not specified") + "</div>" +
+      '<div class="r3">' + esc(r.reason) + "</div>";
+  }
+  function dueEnd(r) { return new Date(r.due_date + "T23:59:59").getTime(); }
+  function urg(ms) { return ms <= 7 * DAY ? "red" : ms <= 14 * DAY ? "orange" : "green"; }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function countdown(ms) {
+    var neg = ms < 0, a = Math.abs(ms), d = Math.floor(a / DAY), h = Math.floor(a % DAY / 36e5), m = Math.floor(a % 36e5 / 6e4), s = Math.floor(a % 6e4 / 1e3);
+    var t = d + "d " + pad(h) + ":" + pad(m) + ":" + pad(s);
+    return neg ? '<small>OVERDUE</small> ' + t : t;
+  }
+  function clockHTML(r) {
+    var ms = dueEnd(r) - Date.now(), total = (+r.deadline_days || 30) * DAY, pct = Math.max(0, Math.min(100, ms / total * 100));
+    var d = new Date(r.due_date + "T00:00:00");
+    return '<div class="t"><span class="cd" data-due="' + dueEnd(r) + '">' + countdown(ms) + "</span>" +
+      '<span class="due">due <b>' + d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + "</b><br>" +
+      esc(r.deadline_days) + "-day report</span></div>" +
+      '<div class="who"><span class="mono muted">#' + esc(r.id) + '</span><span class="dev">' + esc(r.device) + "</span>" +
+      '<span class="pill d-' + esc(r.decision) + '" style="margin-left:auto">' + esc((r.decision || "").replace(/_/g, " ")) + "</span>" + statusPill(r) + "</div>" +
+      '<div class="track"><i style="width:' + pct.toFixed(1) + '%"></i></div>';
+  }
+
+  // Keyed DOM diff: existing cards are reused (no flicker), new ones slide in, changed ones flash.
+  function sync(key, list, cls, html) {
+    var box = $(key), seen = {};
+    if (!list.length) { box.innerHTML = '<div class="empty">' + (key === "feed" ? "Waiting for complaints…" : "No open FDA deadlines.") + "</div>";
+      nodes[key] = {}; sigs[key] = {}; return; }
+    var emp = box.querySelector(".empty"); if (emp) emp.remove();
+    list.forEach(function (r, i) {
+      var sig = JSON.stringify(r), el = nodes[key][r.id];
+      if (!el) {
+        el = document.createElement("a"); el.href = "/complaint/" + encodeURIComponent(r.id);
+        el.innerHTML = html(r); nodes[key][r.id] = el;
+        if (!first && key === "feed") { el.classList.add("enter"); el.addEventListener("animationend", function () { el.classList.remove("enter", "changed"); }); }
+      } else if (sigs[key][r.id] !== sig) {
+        el.innerHTML = html(r);
+        if (key === "feed") { el.classList.remove("enter", "changed"); void el.offsetWidth; el.classList.add("changed"); }
+      }
+      el.className = el.className.replace(/\b(URGENT|HIGH|NORMAL|red|orange|green|fi|ck)\b/g, "").trim();
+      el.classList.add(key === "feed" ? "fi" : "ck", cls(r));
+      sigs[key][r.id] = sig; seen[r.id] = 1;
+      if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
+    });
+    Object.keys(nodes[key]).forEach(function (id) { if (!seen[id]) { nodes[key][id].remove(); delete nodes[key][id]; delete sigs[key][id]; } });
+  }
+
+  function setKpi(k, v) {
+    var el = $("k-" + k);
+    if (String(last[k]) !== String(v)) { el.textContent = v; if (!first) { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); } }
+    last[k] = v;
+  }
+
+  function refresh() {
+    fetch("/api/state", { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (s) {
+      Object.keys(s.kpi).forEach(function (k) { setKpi(k, s.kpi[k]); });
+      $("kb-due7").classList.toggle("alert", s.kpi.due7 > 0); $("kb-overdue").classList.toggle("alert", s.kpi.overdue > 0);
+      sync("feed", s.feed, function (r) { return r.priority; }, feedHTML);
+      sync("clock", s.clock, function (r) { return urg(dueEnd(r) - Date.now()); }, clockHTML);
+      $("feed-n").textContent = s.kpi.processed ? "latest " + s.feed.length + " of " + s.kpi.processed : "";
+      $("live-dot").className = "dot run"; $("live-l").textContent = "Live · updates every 3 s";
+      first = false;
+    }).catch(function () { $("live-dot").className = "dot bad"; $("live-l").textContent = "Reconnecting…"; });
+  }
+
+  // Tick countdowns and "x s ago" every second without touching the rest of the DOM.
+  setInterval(function () {
+    document.querySelectorAll(".cd[data-due]").forEach(function (el) {
+      var ms = +el.dataset.due - Date.now(); el.innerHTML = countdown(ms);
+      var ck = el.closest(".ck"); ck.classList.remove("red", "orange", "green"); ck.classList.add(urg(ms));
+    });
+    document.querySelectorAll(".ago[data-t]").forEach(function (el) { el.textContent = ago(el.dataset.t); });
+  }, 1000);
+
+  refresh(); setInterval(refresh, 3000);
+})();
+</script>
 {% endblock %}
