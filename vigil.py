@@ -916,7 +916,7 @@ def cmd_replay(a):
                 break
         else:
             time.sleep(a.delay)
-    tg("⏹ Replay finished. Send /due for open deadlines.")
+    tg("⏹ Replay finished. Type due for open deadlines.")
 
 
 def cmd_sync(a):
