@@ -1,0 +1,10 @@
+<div class="card-h"><h2>{{ icon('activity') }}Timeline</h2></div>
+<ol class="tl">
+  {% for st, name, desc, when in r.timeline %}
+  <li class="tl-s {{ st }}">
+    <span class="tl-ic">{% if st == 'done' %}{{ icon('check') }}{% elif st == 'warn' %}{{ icon('alert') }}{% elif st == 'current' %}<i></i>{% elif st == 'skip' %}{{ icon('x') }}{% endif %}</span>
+    <div class="tl-t"><b>{{ name }}</b><span>{{ desc }}</span></div>
+    <time class="tnum">{{ when }}</time>
+  </li>
+  {% endfor %}
+</ol>

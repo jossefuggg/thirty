@@ -1,211 +1,334 @@
 {% extends "base.html" %}
-{% block title %}#{{ r.id }} · Vigil Console{% endblock %}
+{% block content_class %}dt-page{% endblock %}
 {% block head %}
 <style>
-  .crumb { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
-  .title { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .title h1 .mono { font-size: 26px; color: var(--muted); font-weight: 600; margin-right: 6px; }
-  .title .pill { font-size: 13.5px; padding: 5px 13px; }
-  .meta { color: var(--muted); margin: 6px 0 20px; font-size: 15px; }
+  /* ---------- page header ---------- */
+  .crumb { display: flex; align-items: center; gap: 8px; font-size: var(--fs-14); color: var(--muted); margin-bottom: var(--s2); }
+  .crumb a { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-weight: 600; } .crumb a:hover { color: var(--text); }
+  .crumb .i { width: 16px; height: 16px; }
+  .head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .head h2 { font-size: var(--fs-28); font-weight: 760; letter-spacing: -.015em; line-height: 1.2; }
+  .head .id { font: 600 var(--fs-20)/1 var(--mono); color: var(--muted); }
+  .meta { display: flex; gap: 8px 24px; flex-wrap: wrap; color: var(--muted); font-size: var(--fs-14); margin-bottom: var(--s3); }
+  .meta b { color: var(--text-2); font-weight: 650; }
 
-  /* timeline stepper */
-  .steps { display: grid; grid-template-columns: repeat(5, 1fr); }
-  .step { position: relative; padding-right: 16px; }
-  .step::after { content: ""; position: absolute; top: 17px; left: 44px; right: 8px; height: 3px; border-radius: 2px; background: var(--line); }
-  .step:last-child::after { display: none; }
-  .step.done::after { background: var(--teal); }
-  .step .ic { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2.5px dashed #C3CCD8; color: var(--faint); position: relative; z-index: 1; }
-  .step.done .ic { background: var(--teal); border: 0; color: #fff; }
-  .step.info .ic { background: var(--orange); border: 0; color: #fff; }
-  .step.todo .ic { border-color: var(--teal); color: var(--teal); animation: pulse 1.6s infinite; }
-  .step .ic svg { width: 18px; height: 18px; }
-  .step b { display: block; margin-top: 12px; color: var(--navy); font-size: 16px; }
-  .step .d { color: var(--muted); font-size: 13.5px; line-height: 1.45; margin-top: 3px; }
-  .step .w { color: var(--teal-ink); font-size: 13px; font-weight: 600; margin-top: 2px; }
+  /* ---------- layout: 64 / 36 ---------- */
+  .dt { display: grid; grid-template-columns: minmax(0, 64fr) minmax(0, 36fr); gap: var(--s3); align-items: start; }
+  .dt-l { display: grid; gap: var(--s3); min-width: 0; }
+  .dt-r { display: grid; gap: var(--s2); position: sticky; top: calc(var(--topbar-h) + var(--s3)); max-height: calc(100vh - var(--topbar-h) - var(--s3) * 2);
+    overflow-y: auto; padding: 2px 6px 2px 2px; margin: -2px -6px -2px -2px; min-width: 0; }
+  .cb { padding: var(--s3); }
+  .k { font-size: var(--fs-12); font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 
-  .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: 22px; align-items: start; margin-top: 22px; }
-  .stack { display: grid; gap: 22px; }
-  .text { font-size: 16px; line-height: 1.65; color: #253041; white-space: pre-wrap; max-height: 260px; overflow-y: auto; margin: 0; }
-  .memory { margin: -8px 0 18px; padding: 10px 14px; border-radius: 10px; background: var(--soft); border: 1px solid var(--line); color: #3A4657; font-size: 15px; }
-  .reason { font-size: 17px; line-height: 1.55; color: var(--ink); margin: 0 0 18px; }
-  .kv { display: grid; grid-template-columns: 150px 1fr; gap: 10px 16px; font-size: 15px; align-items: center; }
-  .kv dt { color: var(--muted); font-weight: 600; } .kv dd { margin: 0; }
-  .conf { display: flex; align-items: center; gap: 12px; }
-  .bar { flex: 1; height: 10px; border-radius: 6px; background: var(--line); overflow: hidden; }
-  .bar i { display: block; height: 100%; border-radius: 6px; background: var(--teal); }
-  .bar.low i { background: var(--orange); }
+  /* ---------- hero decision card ---------- */
+  .hero { overflow: hidden; }
+  .hero-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s3); padding: var(--s3); align-items: center; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--tint) 0%, #fff 100%); }
+  .hero.REPORTABLE { --tint: #FEF2F2; --tone: #B91C1C; } .hero.NEEDS_INFO { --tint: #FFFBEB; --tone: #B45309; } .hero.NOT_REPORTABLE { --tint: #F0FDF4; --tone: #15803D; }
+  .big-pill { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 20px; border-radius: var(--r-pill); background: var(--tone); color: #fff;
+    font-size: var(--fs-20); font-weight: 800; letter-spacing: .04em; box-shadow: 0 4px 14px color-mix(in srgb, var(--tone) 35%, transparent); }
+  .big-pill .i { width: 22px; height: 22px; stroke-width: 2.25; }
+  .hero-cat { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .hero-cat .c { font-size: var(--fs-20); font-weight: 750; color: var(--text); }
+  .legal { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: var(--r-pill); background: var(--sidebar); color: #fff; font-size: 13px; font-weight: 650; }
+  .legal .i { width: 15px; height: 15px; color: #5EEAD4; }
+  .cd { text-align: right; }
+  .cd .n { font-size: var(--fs-40); font-weight: 780; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--cd); }
+  .cd .n small { font-size: var(--fs-20); font-weight: 700; letter-spacing: 0; }
+  .cd .d { margin-top: 8px; font-size: var(--fs-14); color: var(--muted); font-weight: 600; }
+  .cd.green { --cd: #15803D; } .cd.orange { --cd: #C2410C; } .cd.red { --cd: var(--critical); } .cd.over { --cd: var(--critical-dark); } .cd.na { --cd: var(--muted); }
+  .hero-b { padding: var(--s3); display: grid; gap: var(--s3); }
+  .why p { font-size: 17px; line-height: 1.65; color: var(--text); margin-top: 8px; max-width: 72ch; }
+  .conf-row { display: grid; grid-template-columns: 120px minmax(0, 1fr) 56px; gap: 16px; align-items: center; }
+  .track { height: 12px; border-radius: var(--r-pill); background: #E2E8F0; overflow: hidden; box-shadow: inset 0 1px 2px rgba(15,23,42,.08); }
+  .track i { display: block; height: 100%; border-radius: var(--r-pill); background: linear-gradient(90deg, var(--accent-600), var(--accent)); }
+  .track.low i { background: linear-gradient(90deg, #B45309, var(--info)); }
+  .conf-row b { font-size: var(--fs-20); font-weight: 780; text-align: right; font-variant-numeric: tabular-nums; }
+  .model-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .model-line .i { width: 16px; height: 16px; color: var(--accent); }
 
-  .score-top { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
-  .score-top .big { font-size: 46px; font-weight: 760; color: var(--navy); line-height: 1; font-variant-numeric: tabular-nums; }
-  .stackbar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--line); gap: 2px; }
-  .stackbar i { display: block; height: 100%; }
-  .parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0 12px; }
-  .parts div { border-left: 4px solid var(--c); padding-left: 10px; }
-  .parts b { font-size: 22px; color: var(--navy); font-variant-numeric: tabular-nums; } .parts span { display: block; font-size: 13px; color: var(--muted); }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { font-size: 13px; padding: 3px 10px; border-radius: 6px; background: #EEF2F8; color: var(--navy-2); font-weight: 600; }
-  .chip i { font-style: normal; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  /* ---------- complaint text ---------- */
+  .qt { font-size: var(--fs-16); line-height: 1.75; color: var(--text-2); padding: var(--s2) var(--s3); border-left: 4px solid var(--accent); background: #F8FAFC; border-radius: 0 var(--r-btn) var(--r-btn) 0; white-space: pre-wrap; }
+  .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s2); margin-top: var(--s2); }
+  .facts div { padding: 12px 14px; border-radius: var(--r-btn); background: var(--hover); }
+  .facts span { display: block; font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .facts b { font-size: var(--fs-14); font-weight: 650; }
+  details.narr { margin-top: var(--s2); } details.narr summary { cursor: pointer; font-weight: 650; color: var(--accent-600); font-size: var(--fs-14); list-style: none; display: inline-flex; gap: 6px; align-items: center; }
+  details.narr summary::-webkit-details-marker { display: none; } details.narr summary .i { width: 16px; height: 16px; transition: transform var(--t); } details.narr[open] summary .i { transform: rotate(90deg); }
+  details.narr p { margin-top: 12px; font-size: var(--fs-14); line-height: 1.7; color: var(--text-2); }
 
-  ul.list, ol.list { margin: 0; padding-left: 22px; font-size: 15.5px; } .list li { margin-bottom: 7px; } .list li::marker { color: var(--teal); font-weight: 700; }
+  /* ---------- priority breakdown ---------- */
+  .pb-top { display: flex; align-items: center; gap: 16px; }
+  .pb-top .score { font-size: var(--fs-40); font-weight: 780; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .pb-top .rule { margin-left: auto; font-size: 13px; color: var(--muted); }
+  .sbar { display: flex; height: 16px; border-radius: var(--r-pill); overflow: hidden; gap: 3px; margin: var(--s2) 0; background: var(--hover); }
+  .sbar i { display: block; height: 100%; }
+  .parts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s2); }
+  .parts div { display: grid; grid-template-columns: 12px 1fr; gap: 2px 10px; align-items: center; }
+  .parts .sw { width: 12px; height: 12px; border-radius: 3px; background: var(--c); }
+  .parts b { font-size: var(--fs-20); font-weight: 760; font-variant-numeric: tabular-nums; }
+  .parts span { grid-column: 2; font-size: 13px; color: var(--muted); }
+  .kws { display: flex; gap: 8px; flex-wrap: wrap; margin-top: var(--s2); }
+  .kw { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--r-pill); background: var(--sidebar); color: #fff; font-size: 13px; font-weight: 650; }
+  .kw em { font-style: normal; color: #5EEAD4; font-variant-numeric: tabular-nums; }
 
-  .review { border: 2px solid var(--teal-soft); }
-  .review .now { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-size: 15px; color: var(--muted); }
-  .review .now .pill { font-size: 14px; padding: 5px 14px; }
-  .review form { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: end; }
-  .msg { margin-top: 12px; font-size: 14.5px; font-weight: 600; min-height: 1.4em; }
-  .msg.ok { color: var(--teal-ink); } .msg.err { color: var(--red); }
-  .pdf { width: 100%; height: calc(100vh - 210px); min-height: 760px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
-  .pdf-empty { height: 320px; display: grid; place-items: center; text-align: center; color: var(--muted); border: 2px dashed var(--line); border-radius: 12px; }
-  .due-chip { font-weight: 700; }
-  .due-chip.red { color: var(--red); } .due-chip.orange { color: var(--orange); } .due-chip.green { color: var(--green); }
-  @media (max-width: 1280px) { .layout { grid-template-columns: 1fr; } .steps { grid-template-columns: 1fr 1fr; gap: 18px; } .step::after { display: none; } }
+  /* ---------- missing info + follow-up ---------- */
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+  .li { display: grid; gap: 10px; } .li li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; font-size: var(--fs-14); line-height: 1.5; }
+  .li .mk { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #B45309; color: #fff; font-size: 12px; font-weight: 800; }
+  .li .mk .i { width: 14px; height: 14px; stroke-width: 2.5; }
+  .li.q .mk { background: var(--accent-600); }
+  .none { color: var(--muted); font-size: var(--fs-14); display: flex; gap: 8px; align-items: center; } .none .i { color: var(--ok); }
+
+  /* ---------- right column ---------- */
+  .rv-b { padding: var(--s2) var(--s3) var(--s3); }
+  .rv-p { color: var(--muted); font-size: var(--fs-14); margin-bottom: var(--s2); }
+  .rv-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .rv-acts .btn { width: 100%; }
+  .rv-acts .btn:only-child { grid-column: 1 / 3; }
+  .banner + .rv-acts { margin-top: 12px; }
+  .btn-outline { background: #fff; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--border-2); } .btn-outline:hover:not(:disabled) { background: var(--hover); box-shadow: inset 0 0 0 1.5px var(--muted); }
+  .banner { display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: center; padding: 14px 16px; border-radius: var(--r-btn); color: #fff; }
+  .banner .i { width: 24px; height: 24px; }
+  .banner b { display: block; font-size: var(--fs-16); font-weight: 750; } .banner span { font-size: 13px; opacity: .9; }
+  .banner.ok { background: #15803D; } .banner.info { background: #B45309; } .banner.muted { background: #475569; grid-template-columns: 24px 1fr; }
+  .undo { color: #fff; font-size: 13px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; opacity: .9; } .undo:hover { opacity: 1; }
+
+  .tl { padding: var(--s2) var(--s3) 20px; display: grid; }
+  .tl-s { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 0 14px; position: relative; padding-bottom: 8px; }
+  .tl-s:last-child { padding-bottom: 0; }
+  .tl-s::before { content: ""; position: absolute; left: 13px; top: 30px; bottom: 0; width: 2px; border-radius: 2px; background: var(--border); }
+  .tl-s:last-child::before { display: none; }
+  .tl-s.done::before { background: var(--accent); }
+  .tl-ic { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--border); color: #fff; position: relative; z-index: 1; }
+  .tl-ic .i { width: 15px; height: 15px; stroke-width: 2.5; }
+  .tl-s.done .tl-ic { background: var(--accent); }
+  .tl-s.warn .tl-ic { background: var(--info); }
+  .tl-s.skip .tl-ic { background: #CBD5E1; }
+  .tl-s.current .tl-ic { background: #fff; box-shadow: inset 0 0 0 2.5px var(--accent), 0 0 0 4px var(--accent-50); }
+  .tl-s.current .tl-ic i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: ping 1.4s infinite; }
+  .tl-s.future .tl-ic { background: #fff; box-shadow: inset 0 0 0 2px var(--border-2); }
+  .tl-t b { display: block; font-size: var(--fs-14); font-weight: 700; line-height: 28px; height: 24px; }
+  .tl-t span { display: block; font-size: 13px; color: var(--muted); line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tl-s.current .tl-t b { color: var(--accent-600); }
+  .tl-s.future .tl-t b, .tl-s.skip .tl-t b { color: var(--faint); } .tl-s.future .tl-t span, .tl-s.skip .tl-t span { color: var(--faint); }
+  .tl-s time { font-size: var(--fs-12); color: var(--muted); line-height: 28px; white-space: nowrap; }
+
+  .mem-b { padding: var(--s2) var(--s3) var(--s3); display: grid; gap: 12px; }
+  .mem-top { display: flex; align-items: center; gap: 14px; }
+  .mem-top .mem-n { width: 48px; height: 48px; border-radius: 12px; background: #6D28D9; color: #fff; display: grid; place-items: center; font-size: var(--fs-20); font-weight: 800; font-variant-numeric: tabular-nums; flex: none; }
+  .mem-top .mem-n.zero { background: var(--hover); color: var(--muted); } .mem-n .i { width: 22px; height: 22px; }
+  .mem-top b { display: block; font-size: var(--fs-14); font-weight: 700; } .mem-top span { font-size: 13px; color: var(--muted); }
+  .issues { display: flex; gap: 6px; flex-wrap: wrap; }
+  .issue { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: var(--r-pill); background: #6D28D9; color: #fff; font-size: 12px; font-weight: 700; }
+  .issue em { font-style: normal; opacity: .75; }
+  .mem-list { display: grid; gap: 2px; }
+  .mem-list a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; margin: 0 -10px; border-radius: var(--r-btn); font-size: 13px; }
+  .mem-list a:hover { background: var(--hover); }
+  .mem-list .mono { color: var(--muted); font-weight: 600; } .mem-list .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .mem-list .pill { height: 20px; font-size: 11px; padding: 0 8px; }
+  .more { font-size: 12px; color: var(--muted); padding: 4px 0 0; }
+  .model-saw { font-size: 12px; color: var(--muted); padding: 10px 12px; border-radius: var(--r-btn); background: #F5F3FF; display: flex; gap: 8px; align-items: flex-start; }
+  .model-saw .i { width: 16px; height: 16px; color: #6D28D9; margin-top: 1px; }
+
+  .pdf-b { padding: var(--s2) var(--s3) var(--s3); display: grid; gap: 12px; }
+  .thumb { display: block; position: relative; height: 220px; border-radius: var(--r-btn); overflow: hidden; border: 1px solid var(--border); background: #F1F5F9; cursor: zoom-in; width: 100%; padding: 0; }
+  .thumb iframe { width: 100%; height: 100%; border: 0; pointer-events: none; background: #fff; }
+  .thumb-cover { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, rgba(15,23,42,.08)); transition: background var(--t); }
+  .thumb:hover .thumb-cover { background: rgba(14,165,164,.08); }
+  .pdf-note { font-size: 12px; color: var(--muted); }
+  .lnk { display: inline-flex; align-items: center; gap: 6px; font-weight: 650; color: var(--accent-600); font-size: 13px; } .lnk .i { width: 16px; height: 16px; }
+  .pdf-empty { display: grid; justify-items: center; text-align: center; gap: 8px; padding: var(--s4) var(--s2); border: 2px dashed var(--border); border-radius: var(--r-btn); color: var(--muted); font-size: 13px; }
+  .pdf-empty b { color: var(--text); font-size: var(--fs-14); } .pdf-empty .i { width: 28px; height: 28px; color: var(--faint); }
+  .spin { width: 24px; height: 24px; border-radius: 50%; border: 3px solid var(--accent-100); border-top-color: var(--accent); animation: spin .9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* full-form lightbox */
+  .lb { position: fixed; inset: 0; z-index: 80; background: rgba(15,23,42,.72); display: grid; place-items: center; opacity: 0; pointer-events: none; transition: opacity var(--t) var(--ease); }
+  .lb.show { opacity: 1; pointer-events: auto; }
+  .lb-c { width: min(1100px, 92vw); height: 92vh; background: #fff; border-radius: var(--r-card); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; overflow: hidden; }
+  .lb-h { display: flex; align-items: center; gap: 12px; padding: 12px 16px 12px 24px; border-bottom: 1px solid var(--border); }
+  .lb-h b { font-size: var(--fs-16); }
+  .lb iframe { flex: 1; border: 0; width: 100%; }
+
+  .changed { animation: glowc 1.6s var(--ease); }
+  @keyframes glowc { 0%, 30% { box-shadow: 0 0 0 3px var(--accent-100), var(--shadow); } }
+
+  @media (max-width: 1280px) { .dt { grid-template-columns: 1fr; } .dt-r { position: static; max-height: none; overflow: visible; } .facts, .parts { grid-template-columns: 1fr 1fr; } }
+  @media print {
+    .dt { grid-template-columns: 1fr; } .dt-r { position: static; max-height: none; overflow: visible; margin: 0; padding: 0; }
+    .two { grid-template-columns: 1fr 1fr; } .rv-acts, .undo, .thumb, [data-pdf], .lb, .crumb { display: none !important; }
+    .pdf-b::after { content: "Form 3500A draft: reports/MDR_{{ r.id }}.pdf"; font-size: 12px; color: var(--muted); }
+    .dt-r > *, .hero, .two .card { break-inside: avoid; } .qt { break-inside: auto; }
+  }
 </style>
 {% endblock %}
 
 {% block body %}
-<div class="crumb"><a href="/">← Command center</a></div>
-<div class="title">
-  <h1><span class="mono">#{{ r.id }}</span>{{ r.device or "Device not specified" }}</h1>
+{% set b = r.breakdown %}
+{% set dl = r.days_left %}
+<nav class="crumb no-print"><a href="/">{{ icon('arrow-left') }}Command Center</a><span>/</span><span>Complaint #{{ r.id }}</span></nav>
+<div class="head">
+  <span class="id">#{{ r.id }}</span>
+  <h2>{{ r.device or "Device not specified" }}</h2>
   <span class="pill p-{{ r.priority }}">{{ r.priority }}</span>
   <span class="pill d-{{ r.decision }}">{{ (r.decision or '')|replace('_', ' ') }}</span>
-  {% if r.category and r.category != 'NONE' %}<span class="pill s-info">{{ r.category|replace('_', ' ') }}</span>{% endif %}
+  <span id="f-hstatus">{% include "_detail_status_pill.html" %}</span>
 </div>
-<p class="meta">Processed {{ r.processed }}{% if r.received_iso %} · original FDA receipt {{ r.received_iso }}{% endif %}{% if r.due_date %} ·
-  <span class="due-chip {{ 'red' if r.days_left is not none and r.days_left <= 7 else 'orange' if r.days_left is not none and r.days_left <= 14 else 'green' }}">
-  {{ r.deadline_days }}-day report due {{ r.due_date }}{% if r.days_left is not none %} ({% if r.days_left < 0 %}{{ -r.days_left }} days overdue{% else %}{{ r.days_left }} days left{% endif %}){% endif %}</span>{% endif %}
-  {% if r.duplicate_of %} · possible duplicate of <a class="mono" href="/complaint/{{ r.duplicate_of }}">#{{ r.duplicate_of }}</a>{% endif %}</p>
+<div class="meta">
+  <span>Processed <b>{{ r.processed }}</b></span>
+  {% if r.received_d %}<span>FDA receipt <b>{{ r.received_d.strftime('%-d %b %Y') }}</b></span>{% endif %}
+  {% if r.product_code %}<span>Product code <b>{{ r.product_code }}</b></span>{% endif %}
+  <span>Device family <b>{{ r.family }}</b></span>
+  {% if r.duplicate_of %}<span>Possible duplicate of <a href="/complaint/{{ r.duplicate_of }}"><b>#{{ r.duplicate_of }}</b></a></span>{% endif %}
+</div>
 
-<section class="card">
-  <div class="steps" id="steps">
-    {% for st, name, desc, when in r.timeline %}
-    <div class="step {{ st }}"><div class="ic">{{ ICON[st]|safe }}</div><b>{{ name }}</b><div class="d">{{ desc }}</div>{% if when %}<div class="w">{{ when }}</div>{% endif %}</div>
-    {% endfor %}
-  </div>
-</section>
-
-<div class="layout">
-  <div class="stack">
-    <section class="card">
-      <div class="card-h"><h2>AI decision · local model</h2></div>
-      <p class="reason">{{ r.reason }}</p>
-      {% if r.memory_text %}<p class="memory"><span aria-hidden="true">🧠</span> <b>Memory:</b> {{ r.memory_text }}</p>{% endif %}
-      <dl class="kv">
-        <dt>Decision</dt><dd><span class="pill d-{{ r.decision }}">{{ (r.decision or '')|replace('_', ' ') }}</span>{% if r.category and r.category != 'NONE' %} <span class="muted">· {{ r.category|replace('_', ' ') }}</span>{% endif %}</dd>
-        <dt>Confidence</dt><dd><div class="conf"><div class="bar {{ 'low' if (r.confidence|int) < 70 }}"><i style="width:{{ r.confidence|int }}%"></i></div><b class="num">{{ r.confidence|int }}%</b></div></dd>
-        <dt>Deadline rule</dt><dd>{% if r.due_date %}{{ r.deadline_days }}-day MDR under 21 CFR 803{% else %}No FDA report required{% endif %}</dd>
-      </dl>
-    </section>
-
-    <section class="card">
-      <div class="card-h"><h2>Priority score breakdown</h2></div>
-      {% set b = r.breakdown %}
-      <div class="score-top"><span class="big">{{ b.total }}</span><span class="pill p-{{ r.priority }}">{{ r.priority }}</span>
-        <span class="muted small" style="margin-left:auto">URGENT ≥ 15 · HIGH ≥ 8 · distress only raises priority</span></div>
-      {% set denom = [b.parts|map(attribute=1)|sum, 1]|max %}
-      <div class="stackbar">{% for name, val, col in b.parts %}{% if val %}<i style="width:{{ (val / denom * 100)|round(1) }}%;background:{{ col }}"></i>{% endif %}{% endfor %}</div>
-      <div class="parts">{% for name, val, col in b.parts %}<div style="--c:{{ col }}"><b>+{{ val }}</b><span>{{ name }}</span></div>{% endfor %}</div>
-      {% if b.keywords %}<div class="chips">{% for k, w in b.keywords %}<span class="chip">{{ k }}<i>+{{ w }}</i></span>{% endfor %}</div>{% endif %}
-      {% if b.event_type or b.outcomes %}<p class="small muted" style="margin:12px 0 0">Event type: <b>{{ b.event_type or 'n/a' }}</b> · Patient outcome: <b>{{ b.outcomes or 'n/a' }}</b> · Distress level {{ r.distress }}/5</p>{% endif %}
-    </section>
-
-    <section class="card">
-      <div class="card-h"><h2>Complaint text</h2></div>
-      <p class="text">{{ r.full_text }}</p>
-    </section>
-
-    <section class="card">
-      <div class="card-h"><h2>Missing information</h2></div>
-      {% if r.missing_list %}<ul class="list">{% for m in r.missing_list %}<li>{{ m }}</li>{% endfor %}</ul>
-      {% else %}<p class="muted" style="margin:0">Nothing flagged as missing.</p>{% endif %}
-    </section>
-
-    <section class="card">
-      <div class="card-h"><h2>Follow-up questions for the reporter</h2></div>
-      <div id="questions">
-      {% if r.questions %}<ol class="list">{% for q in r.questions %}<li>{{ q }}</li>{% endfor %}</ol>
-      {% else %}<p class="muted" style="margin:0">{{ 'Drafted with the Form 3500A…' if r.reportable else 'None needed: complaint is not reportable.' }}</p>{% endif %}
+<div class="dt">
+  <!-- ================= left 64% ================= -->
+  <div class="dt-l">
+    <section class="card hero {{ r.decision }}">
+      <div class="hero-top">
+        <div>
+          <span class="big-pill">{% if r.decision == 'REPORTABLE' %}{{ icon('alert') }}{% elif r.decision == 'NEEDS_INFO' %}{{ icon('help') }}{% else %}{{ icon('check') }}{% endif %}{{ (r.decision or '')|replace('_', ' ') }}</span>
+          <div class="hero-cat">
+            {% if r.category and r.category != 'NONE' %}<span class="c">{{ r.category|replace('_', ' ')|title }}</span>{% endif %}
+            <span class="legal">{{ icon('scale') }}{{ r.legal }}</span>
+          </div>
+        </div>
+        <div id="f-cd">{% include "_detail_cd.html" %}</div>
+      </div>
+      <div class="hero-b">
+        <div class="why"><span class="k">Why Vigil decided this</span><p>{{ r.reason }}</p></div>
+        <div class="conf-row"><span class="k">Confidence</span>
+          <div class="track {{ 'low' if r.conf < 70 }}" role="meter" aria-valuenow="{{ r.conf }}" aria-valuemin="0" aria-valuemax="100"><i style="width:{{ r.conf }}%"></i></div>
+          <b>{{ r.conf }}%</b></div>
+        <div class="model-line">{{ icon('cpu') }}Classified on the local model (Dell Pro Max GB10) · 0 bytes sent to cloud AI</div>
       </div>
     </section>
-  </div>
 
-  <div class="stack">
-    <section class="card review">
-      <div class="card-h"><h2>Human review</h2></div>
-      <div class="now">Current status <span id="status" class="pill s-{{ r.status_kind }}">{{ (r.status or 'n/a')|replace('PENDING_REVIEW', 'PENDING REVIEW') }}</span></div>
-      {% if r.reportable %}
-      <form id="act" onsubmit="return false">
-        <div><label for="name">Reviewer name</label><input type="text" id="name" maxlength="60" placeholder="e.g. Dr. A. Rivera, Regulatory Affairs" autocomplete="name"></div>
-        <button class="btn btn-teal" type="button" data-kind="approve">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Approve</button>
-        <button class="btn btn-line" type="button" data-kind="info">Request info</button>
-      </form>
-      <div class="msg" id="msg"></div>
-      {% else %}
-      <p class="muted" style="margin:0">Not reportable. Logged with its reason for the audit trail; no FDA submission needed.</p>
-      {% endif %}
+    <section class="card">
+      <div class="card-h"><h2>{{ icon('file') }}Complaint text</h2>{% if r.src %}<span class="aside">FDA MAUDE report {{ r.src.report_number }}</span>{% endif %}</div>
+      <div class="cb">
+        <blockquote class="qt">{{ r.full_text }}</blockquote>
+        {% if r.src %}
+        <div class="facts">
+          <div><span>Event type</span><b>{{ r.src.event_type or '—' }}</b></div>
+          <div><span>Patient outcome</span><b>{{ r.src.patient_outcomes or 'Not stated' }}</b></div>
+          <div><span>Event date</span><b>{% set e = r.src.date_of_event %}{{ (e[:4] ~ '-' ~ e[4:6] ~ '-' ~ e[6:8]) if e|length == 8 else 'Not stated' }}</b></div>
+          <div><span>Source</span><b>{{ r.src.report_source or '—' }}</b></div>
+        </div>
+        {% endif %}
+        {% if r.narrative and r.narrative != r.full_text %}
+        <details class="narr"><summary>{{ icon('chevron') }}Manufacturer narrative</summary><p>{{ r.narrative }}</p></details>
+        {% endif %}
+      </div>
     </section>
 
     <section class="card">
-      <div class="card-h"><h2>Draft FDA Form 3500A</h2>
-        <a id="pdf-open" class="small" href="/reports/{{ r.id }}.pdf" target="_blank" style="margin-left:auto;{{ '' if r.pdf else 'display:none' }}">Open in new tab ↗</a></div>
-      <div id="pdf-box">
-      {% if r.pdf %}<iframe class="pdf" src="/reports/{{ r.id }}.pdf#view=FitH" title="Form 3500A draft"></iframe>
-      {% elif r.reportable %}<div class="pdf-empty"><div><i class="dot run" style="display:inline-block"></i><br><br>Drafting the Form 3500A on the local model…<br><span class="small">It appears here automatically.</span></div></div>
-      {% else %}<div class="pdf-empty"><div>No MDR draft: the complaint was judged not reportable.</div></div>{% endif %}
+      <div class="card-h"><h2>{{ icon('list') }}Priority breakdown</h2><span class="aside">Layer 1 · deterministic rules</span></div>
+      <div class="cb">
+        <div class="pb-top"><span class="score">{{ b.total }}</span><span class="pill p-{{ r.priority }}">{{ r.priority }}</span>
+          <span class="rule">URGENT ≥ 15 · HIGH ≥ 8 · distress can only raise priority</span></div>
+        {% set denom = [b.parts|map(attribute=1)|sum, 1]|max %}
+        <div class="sbar">{% for name, val, col in b.parts %}{% if val %}<i style="width:{{ (val / denom * 100)|round(2) }}%;background:{{ col }}" title="{{ name }} +{{ val }}"></i>{% endif %}{% endfor %}</div>
+        <div class="parts" style="grid-template-columns: repeat({{ b.parts|length }}, minmax(0, 1fr))">
+          {% for name, val, col in b.parts %}<div style="--c:{{ col }}"><i class="sw"></i><b>+{{ val }}</b><span>{{ name }}</span></div>{% endfor %}
+        </div>
+        {% if b.keywords %}<div class="kws">{% for k, w in b.keywords %}<span class="kw">{{ k|lower }}<em>+{{ w }}</em></span>{% endfor %}</div>{% endif %}
       </div>
     </section>
+
+    <div class="two">
+      <section class="card">
+        <div class="card-h"><h2>{{ icon('help') }}Missing information</h2><span class="count-badge">{{ r.missing_list|length }}</span></div>
+        <div class="cb">
+          {% if r.missing_list %}<ul class="li">{% for m in r.missing_list %}<li><span class="mk">!</span><span>{{ m }}</span></li>{% endfor %}</ul>
+          {% else %}<p class="none">{{ icon('check') }}Nothing flagged as missing.</p>{% endif %}
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-h"><h2>{{ icon('send') }}Follow-up questions</h2><span class="count-badge">{{ r.questions|length }}</span></div>
+        <div class="cb" id="questions">
+          {% if r.questions %}<ol class="li q">{% for q in r.questions %}<li><span class="mk">{{ loop.index }}</span><span>{{ q }}</span></li>{% endfor %}</ol>
+          {% else %}<p class="none">{{ icon('check') }}{{ 'Drafted with the Form 3500A…' if r.reportable else 'None needed: not reportable.' }}</p>{% endif %}
+        </div>
+      </section>
+    </div>
   </div>
+
+  <!-- ================= right 36%, sticky ================= -->
+  <aside class="dt-r">
+    <section class="card" id="f-review">{% include "_detail_review.html" %}</section>
+    <section class="card" id="f-timeline">{% include "_detail_timeline.html" %}</section>
+    <section class="card">
+      <div class="card-h"><h2>{{ icon('brain') }}Device memory</h2><span class="aside">{{ r.history.family }} · {{ r.history.days }} days</span></div>
+      <div class="mem-b">
+        {% set h = r.history %}
+        {% if h.count %}
+          <div class="mem-top"><span class="mem-n">{{ h.count }}</span>
+            <div><b>{{ h.count }} prior complaint{{ 's' if h.count != 1 }} on {{ h.family }}</b><span>in the {{ h.days }} days before this one</span></div></div>
+          {% if h.top %}<div class="issues">{% for name, n in h.top %}<span class="issue">{{ name }}<em>×{{ n }}</em></span>{% endfor %}</div>{% endif %}
+          <div class="mem-list">{% for x in h.recent[:5] %}<a href="/complaint/{{ x.id }}" data-open="{{ x.id }}"><span class="mono">#{{ x.id }}</span><span class="nm">{{ x.device }}</span><span class="pill d-{{ x.decision }}">{{ (x.decision or '')|replace('_', ' ') }}</span></a>{% endfor %}{% if h.count > 5 %}<span class="more">+{{ h.count - 5 }} earlier</span>{% endif %}</div>
+        {% else %}
+          <div class="mem-top"><span class="mem-n zero">{{ icon('brain') }}</span><div><b>First complaint on this device</b><span>No earlier {{ h.family }} complaints in {{ h.days }} days</span></div></div>
+        {% endif %}
+        {% if h.model_line %}<div class="model-saw">{{ icon('cpu') }}<span>Model was told: {{ h.model_line }}</span></div>{% endif %}
+      </div>
+    </section>
+    <section class="card" id="f-pdf">{% include "_detail_pdf.html" %}</section>
+  </aside>
 </div>
+
+<div class="lb" id="lb"><div class="lb-c">
+  <div class="lb-h"><b>Form 3500A · draft for #{{ r.id }}</b>
+    <a class="btn btn-sm btn-ghost" style="margin-left:auto" href="/reports/{{ r.id }}.pdf" download="MDR_{{ r.id }}.pdf">{{ icon('download') }}Download</a>
+    <a class="btn btn-sm btn-ghost" href="/reports/{{ r.id }}.pdf" target="_blank">{{ icon('external') }}New tab</a>
+    <button class="x-btn" style="margin-left:0" data-lb-close aria-label="Close">{{ icon('x') }}</button></div>
+  <iframe id="lb-frame" title="Form 3500A"></iframe>
+</div></div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function () {
-  var CID = {{ r.id|tojson }}, ICON = {{ ICON|tojson }}, hasPdf = {{ 'true' if r.pdf else 'false' }}, reportable = {{ 'true' if r.reportable else 'false' }};
-  var lastSig = "", nameEl = $("name");
-  try { if (nameEl) nameEl.value = localStorage.getItem("vigil-reviewer") || ""; } catch (e) {}
-
-  function render(d) {
-    var sig = JSON.stringify([d.status, d.timeline, d.pdf, d.questions]);
-    if (sig === lastSig) return; lastSig = sig;
-    var st = $("status"); st.className = "pill s-" + d.status_kind; st.textContent = (d.status || "n/a").replace("PENDING_REVIEW", "PENDING REVIEW");
-    $("steps").innerHTML = d.timeline.map(function (t) {
-      return '<div class="step ' + t[0] + '"><div class="ic">' + ICON[t[0]] + "</div><b>" + esc(t[1]) + '</b><div class="d">' + esc(t[2]) + "</div>" +
-        (t[3] ? '<div class="w">' + esc(t[3]) + "</div>" : "") + "</div>";
-    }).join("");
-    var approved = d.status_kind === "appr";
-    document.querySelectorAll("#act button").forEach(function (b) { b.disabled = approved; });
-    if (d.pdf && !hasPdf) {
-      hasPdf = true;
-      $("pdf-box").innerHTML = '<iframe class="pdf" src="/reports/' + encodeURIComponent(CID) + '.pdf#view=FitH" title="Form 3500A draft"></iframe>';
-      $("pdf-open").style.display = "";
-    }
-    if (d.questions.length) $("questions").innerHTML = '<ol class="list">' + d.questions.map(function (q) { return "<li>" + esc(q) + "</li>"; }).join("") + "</ol>";
+  var CID = {{ r.id|tojson }}, sigs = {};
+  /* hero countdown: '29 days 23 h left' */
+  function tickCd() {
+    var el = $("cd"); if (!el) return;
+    var ms = V.dueEnd(el.dataset.due) - Date.now(), a = Math.abs(ms), d = Math.floor(a / V.DAY), h = Math.floor(a % V.DAY / 36e5), m = Math.floor(a % 36e5 / 6e4);
+    var t = d ? d + ' <small>day' + (d === 1 ? "" : "s") + "</small> " + h + " <small>h</small>" : h + " <small>h</small> " + m + " <small>min</small>";
+    el.querySelector(".n").innerHTML = t + (ms < 0 ? " <small>overdue</small>" : " <small>left</small>");
+    el.className = "cd " + (ms < 0 ? "over" : ms <= 7 * V.DAY ? "red" : ms <= 14 * V.DAY ? "orange" : "green");
   }
-  function poll() { fetch("/api/complaint/" + encodeURIComponent(CID), { cache: "no-store" }).then(function (r) { return r.json(); }).then(render).catch(function () {}); }
+  tickCd(); setInterval(tickCd, 30000);
 
-  document.querySelectorAll("#act button").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var name = nameEl.value.trim(), msg = $("msg");
-      if (!name) { msg.className = "msg err"; msg.textContent = "Enter your name first."; nameEl.focus(); return; }
-      try { localStorage.setItem("vigil-reviewer", name); } catch (e) {}
-      document.querySelectorAll("#act button").forEach(function (b) { b.disabled = true; });
-      msg.className = "msg"; msg.textContent = "Saving to decisions.csv…";
+  /* live fragments: review card, timeline, 3500A card */
+  function refresh() {
+    fetch("/api/complaint/" + encodeURIComponent(CID), { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (d) {
+      ["review", "timeline", "pdf", "hstatus", "cd"].forEach(function (k) {
+        if (sigs[k] === d[k]) return;
+        var el = $("f-" + k), had = sigs[k] !== undefined; sigs[k] = d[k];
+        if (!had) return;  // first poll: server already rendered the same markup
+        el.innerHTML = d[k];
+        if (k === "cd") tickCd(); else if (k !== "hstatus") { el.classList.remove("changed"); void el.offsetWidth; el.classList.add("changed"); }
+      });
+    }).catch(function () {});
+  }
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest("[data-act]");
+    if (a && a.closest("#f-review")) { e.stopPropagation(); a.disabled = true; V.act(CID, a.dataset.act).then(function () { a.disabled = false; refresh(); }); return; }
+    var u = e.target.closest("[data-undo]");
+    if (u) { u.disabled = true;
       fetch("/api/complaint/" + encodeURIComponent(CID) + "/action", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: btn.dataset.kind, name: name }) })
-        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-        .then(function (x) {
-          msg.className = "msg " + (x.ok ? "ok" : "err");
-          msg.textContent = x.ok ? "Saved: " + x.j.status + ". Written to decisions.csv; sandbox sync started." : x.j.error;
-          lastSig = ""; poll();
-        })
-        .catch(function () { msg.className = "msg err"; msg.textContent = "Could not reach the console."; })
-        .finally(function () { setTimeout(poll, 300); });
-    });
-  });
-  if ({{ 'true' if r.status_kind == 'appr' else 'false' }}) document.querySelectorAll("#act button").forEach(function (b) { b.disabled = true; });
-  setInterval(poll, 3000);
-  window.addEventListener("load", function () { if (!location.hash) window.scrollTo(0, 0); });  // PDF iframe can steal scroll
+        body: JSON.stringify({ kind: "undo", name: (function () { try { return localStorage.getItem("vigil-reviewer") || "console"; } catch (e) { return "console"; } })() }) })
+        .then(function (r) { return r.json(); }).then(function (j) { V.toast(j.ok ? "#" + CID + " is back in the review queue" : j.error, !j.ok); refresh(); }); return; }
+    if (e.target.closest("[data-pdf]")) { $("lb-frame").src = "/reports/" + encodeURIComponent(CID) + ".pdf#view=FitH"; $("lb").classList.add("show"); return; }
+    if (e.target.closest("[data-lb-close]") || e.target === $("lb")) { $("lb").classList.remove("show"); }
+  }, true);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("lb").classList.contains("show")) { e.stopPropagation(); $("lb").classList.remove("show"); } }, true);
+  document.addEventListener("vigil:changed", refresh);
+  window.addEventListener("load", function () { if (!location.hash) window.scrollTo(0, 0); });  // a PDF iframe can steal scroll
+  refresh(); setInterval(refresh, 3000);
 })();
 </script>
 {% endblock %}

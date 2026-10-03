@@ -25,7 +25,7 @@ VENV_BIN = os.path.expanduser(os.environ.get("VIGIL_VENV_BIN", "~/hackathon/venv
 LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "http://localhost:8000/v1")
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
           "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text",
-          "product_code", "memory"]  # same order as vigil.FIELDS; older files stop after "text"
+          "product_code", "memory", "failure_mode"]  # same order as vigil.FIELDS; older files stop earlier
 
 app = Flask(__name__)
 import logging; logging.getLogger("werkzeug").setLevel(logging.WARNING)  # polling would flood console.log
@@ -361,9 +361,12 @@ ISSUES = {"foam": "foam", "particle": "particles", "black dust": "particles", "d
 
 
 def device_family(device):
-    """'PHILIPS DREAMSTATION CPAP' and 'DREAMSTATION AUTO CPAP' -> 'DREAMSTATION' (maker words skipped)."""
-    words = [w for w in re.split(r"[\s,/]+", (device or "").upper()) if w and w not in MAKER_WORDS]
-    return words[0] if words else "UNKNOWN"
+    """Same grouping as vigil.py (memory, spike alerts): 'PHILIPS CPAP SYSTEM ONE REMSTAR' -> 'SYSTEM ONE'."""
+    try:
+        return vigil().device_family(device)
+    except Exception:  # vigil.py not importable: first non-maker word
+        words = [w for w in re.split(r"[\s,/]+", (device or "").upper()) if w and w not in MAKER_WORDS]
+        return words[0] if words else "UNKNOWN"
 
 
 def issues_of(r):
@@ -374,10 +377,12 @@ def issues_of(r):
 
 
 def memory_parts(r):
-    """'3 prior complaints on DREAMSTATION in 90 days (top issue: foam)' -> {count, key, issue}; None if absent."""
-    m = re.search(r"(\d+)\s+prior complaints?\s+on\s+(.+?)\s+in\s+(\d+)\s+days(?:\s*\(top issue:\s*([^)]+)\))?",
-                  memory_text(r), re.I)
-    return {"count": int(m.group(1)), "key": m.group(2), "days": int(m.group(3)), "issue": m.group(4) or ""} if m else None
+    """'412 prior complaints on DREAMSTATION (top issue: material degradation/particles, last: 2 Nov 2021)'
+    (or the older '... on X in 90 days (top issue: foam)') -> {count, key, days, issue, last}; None if absent."""
+    m = re.search(r"(\d+)\s+prior complaints?\s+on\s+(.+?)(?:\s+in\s+(\d+)\s+days)?\s*"
+                  r"(?:\(top issue:\s*([^,)]+)(?:,\s*last:\s*([^)]+))?\))?\s*$", memory_text(r), re.I)
+    return {"count": int(m.group(1)), "key": m.group(2), "days": int(m.group(3) or 0), "issue": m.group(4) or "",
+            "last": m.group(5) or ""} if m else None
 
 
 def sentence_case(t):
@@ -541,18 +546,21 @@ def score_breakdown(r):
     except Exception:
         flags, weights = {}, {}
     raw = src.get("event_description") or src.get("manufacturer_narrative") or r.get("text") or ""
-    hits = v.red_flag_hits(raw) if flags else []  # same whole-word matcher as vigil.priority()
+    matcher = getattr(vigil(), "red_flag_hits", None) if flags else None  # same whole-word matcher as vigil.priority()
+    hits = matcher(raw) if matcher else [(k, w) for k, w in flags.items() if k in raw.lower()]  # older vigil.py
     kws = sorted(hits, key=lambda x: -x[1])
     kw = sum(w for _, w in kws)
     distress = int(r.get("distress") or 0) * 2
     total = int(r.get("score") or 0)
     event_type, outcomes = src.get("event_type") or "", src.get("patient_outcomes") or ""
     if src:
-        event = weights.get(event_type, 0) + (10 if "death" in outcomes.lower() else 4 if outcomes else 0)
-    else:
-        event = max(0, total - kw - distress)  # source row unknown: whatever the keywords and distress don't explain
-    parts = [("Red-flag keywords", kw, "var(--navy)"), ("Event type & outcome", event, "var(--orange)"),
-             ("Distress (×2)", distress, "var(--teal)")]
+        event = weights.get(event_type, 0)
+        outcome = 10 if "death" in outcomes.lower() else 4 if outcomes else 0
+        parts = [("Red-flag keywords", kw, "#0B1F3A"), ("Event type", event, "#EA580C"),
+                 ("Patient outcome", outcome, "#DC2626"), ("Distress ×2", distress, "#0EA5A4")]
+    else:  # source row unknown: whatever keywords and distress don't explain is event type + outcome
+        parts = [("Red-flag keywords", kw, "#0B1F3A"), ("Event type & outcome", max(0, total - kw - distress), "#EA580C"),
+                 ("Distress ×2", distress, "#0EA5A4")]
     return {"total": total, "keywords": kws, "parts": parts, "event_type": event_type, "outcomes": outcomes,
             "level": r.get("priority")}
 
@@ -617,69 +625,133 @@ def fmt_time(iso):
         return iso or ""
 
 
-def detail(r):
+LEGAL = {"DEATH": "21 CFR 803.50(a)(1)", "SERIOUS_INJURY": "21 CFR 803.50(a)(1)", "MALFUNCTION": "21 CFR 803.50(a)(2)"}
+
+
+def legal_basis(r):
+    if r.get("decision") == "NOT_REPORTABLE":
+        return "21 CFR 803 · no MDR required"
+    base = LEGAL.get((r.get("category") or "").upper(), "21 CFR 803.50(a)")
+    if str(r.get("deadline_days")) == "5":
+        base += " · 803.53 (5-day)"
+    return base + (" · facts pending" if r.get("decision") == "NEEDS_INFO" else "")
+
+
+def short_time(iso):
+    """'14:52:05' today, '3 Oct, 14:52' otherwise."""
+    try:
+        t = dt.datetime.fromisoformat(iso)
+    except Exception:
+        return ""
+    return t.strftime("%H:%M:%S") if t.date() == dt.date.today() else t.strftime("%-d %b, %H:%M")
+
+
+def device_history(r, rows, days=90):
+    """Console-side memory: earlier complaints on the same device family within `days` of this one."""
+    fam, t = device_family(r.get("device")), ptime(r)
+    prior = [x for x in rows if x["id"] != r["id"] and device_family(x.get("device")) == fam
+             and (t is None or ((ptime(x) or t) <= t and (t - (ptime(x) or t)).days <= days))]
+    prior.sort(key=lambda x: x.get("time") or "", reverse=True)
+    counts = defaultdict(int)
+    for x in prior:
+        for i in issues_of(x):
+            counts[i] += 1
+    top = sorted(counts.items(), key=lambda kv: -kv[1])
+    return {"family": fam, "count": len(prior), "days": days, "top": top[:3],
+            "recent": [brief(x) for x in prior[:8]], "model_line": memory_text(r)}
+
+
+def detail(r, rows=None):
+    rows = rows if rows is not None else all_rows()
     cid, t = r["id"], r.get("time") or ""
     kind = status_kind(r.get("status"))
     act = last_action(cid, t)
     reportable = r.get("decision") in ("REPORTABLE", "NEEDS_INFO")
+    pdf_path = os.path.join(REPORTS, f"MDR_{cid}.pdf")
+    has_pdf = os.path.exists(pdf_path)
+    pdf_t = dt.datetime.fromtimestamp(os.path.getmtime(pdf_path)).isoformat(timespec="seconds") if has_pdf else ""
     rec = r.get("received") or ""
-    rec = f"{rec[:4]}-{rec[4:6]}-{rec[6:8]}" if re.fullmatch(r"\d{8}", rec) else rec
-    if kind == "appr":
-        final = ("done", "Approved", r["status"])
-    elif kind == "info":
-        final = ("info", "Info requested", r["status"])
-    elif reportable:
-        final = ("todo", "Awaiting review", "Approve the draft or request more information")
-    else:
-        final = ("done", "Logged for audit", "Not reportable: reason kept in the audit trail")
-    when = fmt_time(act["time"]) if act and kind != "pend" else ""
+    rec_d = dt.date(int(rec[:4]), int(rec[4:6]), int(rec[6:8])) if re.fullmatch(r"\d{8}", rec) else None
+    b = score_breakdown(r)
     alert = alert_state(cid)
-    timeline = [
-        ("done", "Received", f"Vigil intake {fmt_time(t)}" + (f" · original FDA receipt {rec}" if rec else ""), ""),
-        ("done", "Scored", f"{r.get('priority')} priority · score {r.get('score')} · distress {r.get('distress')}", ""),
-        ("done", "AI classified", f"{(r.get('decision') or '').replace('_', ' ')} · {r.get('category')} · "
-                                  f"{r.get('confidence')}% confidence · local model", ""),
-        ("done" if alert == "sent" else "info", "Alert sent" if alert == "sent" else "Alert queued",
-         "Telegram alert" + (" + draft Form 3500A" if reportable else "") if alert == "sent"
-         else "Telegram unreachable · parked in outbox.txt", ""),
-        (final[0], final[1], final[2], when),
+    act_t = act["time"] if act and kind != "pend" else ""
+
+    # timeline: (state, title, detail, time) with state done | current | future | skip | warn
+    steps = [
+        ["done", "Received", "Original FDA receipt " + rec_d.strftime("%-d %b %Y") if rec_d else "Complaint taken in", t],
+        ["done", "Priority scored", f"{r.get('priority')} · score {r.get('score')} · distress {r.get('distress')}/5", t],
+        ["done", "AI classified", f"{(r.get('decision') or '').replace('_', ' ')} · {r.get('category')} · {r.get('confidence')}% confidence", t],
+        ["done" if alert == "sent" else "warn", "Telegram alert sent" if alert == "sent" else "Telegram alert queued",
+         "Card with Approve / Request info buttons" if alert == "sent" else "Telegram unreachable · parked in outbox.txt", t],
     ]
+    if reportable:
+        steps.append(["done", "Form 3500A drafted", f"MDR_{cid}.pdf", pdf_t] if has_pdf
+                     else ["current", "Form 3500A drafting", "Local model is filling the form", ""])
+    else:
+        steps.append(["skip", "Form 3500A", "Not required: complaint is not reportable", ""])
+    if kind == "appr":
+        steps.append(["done", "Approved", r["status"].replace("APPROVED by ", "by "), act_t])
+    elif kind == "info":
+        steps.append(["current", "Info requested", r["status"].replace("INFO REQUESTED by ", "by ") + " · awaiting reporter", act_t])
+    elif reportable:
+        steps.append(["current" if has_pdf else "future", "Human decision", "Approve the draft or request info", ""])
+    else:
+        steps.append(["done", "Logged for audit", "Reason kept in the audit trail", t])
+    for st in steps:
+        st[3] = short_time(st[3]) if st[3] else ""
+
     missing = [m.strip() for m in (r.get("missing") or "").split(";") if m.strip()]
     questions = follow_up_questions(cid)
     if not questions and missing and reportable:
         questions = [f"Can you provide the {re.sub(r'\s*\(.*?\)', '', m).strip().rstrip('.').lower()}?" for m in missing[:5]]
-    return {**r, "status_kind": kind, "days_left": days_left(r), "reportable": reportable, "timeline": timeline,
-            "missing_list": missing, "questions": questions, "memory_text": memory_text(r), "breakdown": score_breakdown(r),
-            "pdf": os.path.exists(os.path.join(REPORTS, f"MDR_{cid}.pdf")), "processed": fmt_time(t), "received_iso": rec,
-            "full_text": ((source_complaint(cid) or {}).get("event_description") or r.get("text") or "")}
+    src = source_complaint(cid) or {}
+    try:
+        conf = max(0, min(100, int(float(r.get("confidence") or 0))))
+    except ValueError:
+        conf = 0
+    return {**r, "status_kind": kind, "days_left": days_left(r), "reportable": reportable, "open": is_open(r),
+            "timeline": steps, "missing_list": missing, "questions": questions, "breakdown": b, "conf": conf,
+            "legal": legal_basis(r), "pdf": has_pdf, "processed": fmt_time(t), "received_d": rec_d,
+            "act": act if kind != "pend" else None, "act_time": fmt_time(act_t) if act_t else "",
+            "history": device_history(r, rows), "family": device_family(r.get("device")),
+            "full_text": src.get("event_description") or r.get("text") or "",
+            "narrative": src.get("manufacturer_narrative") or "", "src": src,
+            "due_label": dt.date.fromisoformat(r["due_date"]).strftime("%-d %b %Y") if r.get("due_date") else ""}
 
 
 @app.route("/complaint/<cid>")
 def complaint(cid):
-    r = latest_by_id(read_rows()).get(cid)
+    rows = all_rows()
+    r = next((x for x in rows if x["id"] == cid), None)
     if not r:
         return render_template("missing.html", page="", cid=cid, title="Complaint not found"), 404
-    return render_template("complaint.html", page="", r=detail(r), title=f"Complaint #{cid}")
+    return render_template("complaint.html", page="complaints", r=detail(r, rows), title=f"Complaint #{cid}")
 
 
 @app.route("/api/complaint/<cid>")
 def api_complaint(cid):
-    r = latest_by_id(read_rows()).get(cid)
+    """Live parts of the detail page, rendered server-side (one template for first paint and updates)."""
+    rows = all_rows()
+    r = next((x for x in rows if x["id"] == cid), None)
     if not r:
         abort(404)
-    d = detail(r)
-    return jsonify({k: d[k] for k in ("status", "status_kind", "pdf", "questions")} | {"timeline": d["timeline"]})
+    d = detail(r, rows)
+    frag = {k: render_template(f"_detail_{k}.html", r=d) for k in ("review", "timeline", "pdf", "status_pill", "cd")}
+    frag["hstatus"] = frag.pop("status_pill")
+    return jsonify(frag | {"status": d.get("status"), "status_kind": d["status_kind"], "pdf": d["pdf"]})
 
 
 @app.post("/api/complaint/<cid>/action")
 def api_action(cid):
     data = request.get_json(silent=True) or request.form
     kind, name = data.get("kind"), " ".join((data.get("name") or "").split())[:60]
-    if kind not in ("approve", "info"):
+    if kind not in ("approve", "info", "undo"):
         return jsonify(error="unknown action"), 400
     if not name:
         return jsonify(error="Enter your name first."), 400
-    if kind == "approve":
+    if kind == "undo":  # back to the review queue (only from an approval or info request)
+        status, guard = "PENDING_REVIEW", lambda s: s.startswith(("APPROVED", "INFO REQUESTED"))
+    elif kind == "approve":
         status, guard = f"APPROVED by {name}", lambda s: not s.startswith("APPROVED")
     else:  # same rule as vigil.py / the OpenClaw skill: a request for info never overrides an approval
         status, guard = f"INFO REQUESTED by {name}", lambda s: not s.startswith("APPROVED")
@@ -690,7 +762,7 @@ def api_action(cid):
     if changed is None:
         return jsonify(error="Complaint not found."), 404
     if not changed:
-        return jsonify(error="Already approved; nothing changed."), 409
+        return jsonify(error="Nothing to undo." if kind == "undo" else "Already approved; nothing changed."), 409
     record_action(cid, kind, name)
     return jsonify(ok=True, status=status)
 

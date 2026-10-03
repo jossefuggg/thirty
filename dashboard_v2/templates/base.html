@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ title or 'Vigil' }} · Vigil Console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230EA5A4'/%3E%3Cpath d='M5 16h5l3-8 6 16 3-8h5' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
 /* ================================================================ design system */
 :root {
@@ -55,7 +56,7 @@ img { display: block; max-width: 100%; }
 /* ================================================================ shell */
 .app { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); min-height: 100vh; }
 .sidebar { position: sticky; top: 0; height: 100vh; background: var(--sidebar); color: #CBD5E1; display: flex; flex-direction: column; padding: var(--s3) var(--s2); }
-.logo { display: flex; align-items: center; gap: 12px; padding: 0 var(--s1) var(--s3); }
+.logo { display: flex; align-items: center; gap: 12px; padding: 4px var(--s1) var(--s3); min-height: 64px; flex: none; }
 .logo-mark { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), #0B8584); display: grid; place-items: center; color: #fff; box-shadow: 0 4px 12px rgba(14,165,164,.35); flex: none; }
 .logo-mark .i { width: 22px; height: 22px; stroke-width: 2.25; }
 .logo b { display: block; color: #fff; font-size: var(--fs-20); letter-spacing: .24em; font-weight: 800; line-height: 1.1; }
@@ -75,9 +76,10 @@ img { display: block; max-width: 100%; }
 .sys-row .lbl { font-size: var(--fs-12); color: #8FA3BF; }
 .sys-row .val { grid-column: 2; font-size: 13px; color: #E2E8F0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sys-row .val small { color: #8FA3BF; font-weight: 500; font-size: 12px; }
-.led { width: 8px; height: 8px; border-radius: 50%; background: #475569; }
+.led { width: 8px; height: 8px; border-radius: 50%; background: #F59E0B; box-shadow: 0 0 0 3px rgba(245,158,11,.18); }
 .led.ok { background: #22C55E; box-shadow: 0 0 0 3px rgba(34,197,94,.18); }
 .led.bad { background: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,.18); }
+.led.warn { background: #F59E0B; box-shadow: 0 0 0 3px rgba(245,158,11,.18); }
 .cloud0 { margin-top: 4px; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--r-btn); background: rgba(14,165,164,.12); color: #5EEAD4; font-weight: 700; font-size: 13px; border: 1px solid rgba(14,165,164,.25); }
 .cloud0 .i { width: 16px; height: 16px; }
 
@@ -102,7 +104,8 @@ img { display: block; max-width: 100%; }
 .results .none { padding: 16px; color: var(--muted); text-align: center; }
 .live { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid var(--border); background: var(--surface);
   font-weight: 750; font-size: var(--fs-12); letter-spacing: .12em; color: var(--muted); transition: all var(--t) var(--ease); }
-.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.live.off { color: var(--critical); border-color: var(--critical-100); } .live.off i { background: var(--critical); }
 .live.on { color: var(--accent-600); border-color: var(--accent-100); background: var(--accent-50); }
 .live.on i { background: var(--accent); animation: ping 1.2s var(--ease) infinite; }
 .now { text-align: right; line-height: 1.2; white-space: nowrap; min-width: 112px; }
@@ -121,16 +124,18 @@ img { display: block; max-width: 100%; }
 
 .pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: var(--r-pill); font-size: var(--fs-12); font-weight: 700; letter-spacing: .03em; white-space: nowrap; line-height: 1; }
 .pill .i { width: 14px; height: 14px; stroke-width: 2.25; }
+/* pills are always filled; fills use the darker shade of each status color so white text stays >= 4.5:1 */
 .p-URGENT { background: var(--critical); color: #fff; }
-.p-HIGH { background: var(--high); color: #fff; }
+.p-HIGH { background: #C2410C; color: #fff; }
 .p-NORMAL { background: var(--normal); color: #fff; }
-.d-REPORTABLE { background: var(--critical-50); color: var(--critical); box-shadow: inset 0 0 0 1px var(--critical-100); }
-.d-NEEDS_INFO { background: var(--info-50); color: #B45309; box-shadow: inset 0 0 0 1px var(--info-100); }
-.d-NOT_REPORTABLE { background: var(--ok-50); color: #15803D; box-shadow: inset 0 0 0 1px var(--ok-100); }
-.s-pend { background: var(--hover); color: var(--text-2); box-shadow: inset 0 0 0 1px var(--border); }
-.s-appr { background: var(--ok-50); color: #15803D; box-shadow: inset 0 0 0 1px var(--ok-100); }
-.s-info { background: var(--info-50); color: #B45309; box-shadow: inset 0 0 0 1px var(--info-100); }
-.s-log { background: var(--hover); color: var(--muted); }
+.d-REPORTABLE { background: #B91C1C; color: #fff; }
+.d-NEEDS_INFO { background: #B45309; color: #fff; }
+.d-NOT_REPORTABLE { background: #15803D; color: #fff; }
+.s-pend { background: #475569; color: #fff; }
+.s-appr { background: #15803D; color: #fff; }
+.s-info { background: #B45309; color: #fff; }
+.s-log { background: #64748B; color: #fff; }
+.pill.cat { background: var(--sidebar); color: #fff; }
 
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; font-size: var(--fs-12); font-weight: 650; color: var(--text-2); background: var(--hover); white-space: nowrap; }
 .chip .i { width: 14px; height: 14px; }
@@ -194,6 +199,19 @@ img { display: block; max-width: 100%; }
 @keyframes pulse { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
+
+/* print: keep colors, drop navigation chrome */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff; height: auto; }
+  *, *::before, *::after { -webkit-print-color-adjust: exact; print-color-adjust: exact; animation: none !important; transition: none !important; }
+  .sidebar, .search, .live, .now, .drawer, .scrim, .modal, .toasts, .no-print { display: none !important; }
+  .app { display: block; } .main { display: block; }
+  .topbar { position: static; height: auto; padding: 0 0 12px; border-bottom: 2px solid var(--sidebar); background: none; backdrop-filter: none; margin-bottom: 16px; }
+  .topbar::before { content: "VIGIL · Medical Device Complaint Intelligence"; font-weight: 800; letter-spacing: .12em; font-size: 11px; color: var(--accent-600); margin-right: 16px; }
+  .content { padding: 0; }
+  .card { box-shadow: none; border: 1px solid var(--border); break-inside: avoid; }
 }
 
 /* legacy page helpers (only for pages not yet rebuilt) */
@@ -339,11 +357,12 @@ V.askName = function (title) {
   return new Promise(function (resolve) {
     $("modal-t").textContent = title || "Who is reviewing?"; $("modal-name").value = saved;
     $("modal").classList.add("show"); setTimeout(function () { $("modal-name").focus(); $("modal-name").select(); }, 60);
-    function done(v) { $("modal").classList.remove("show"); $("modal-ok").onclick = $("modal-cancel").onclick = $("modal-name").onkeydown = null; resolve(v); }
+    function done(v) { $("modal").classList.remove("show"); $("modal-ok").onclick = $("modal-cancel").onclick = $("modal").onkeydown = null; resolve(v); }
     $("modal-ok").onclick = function () { var v = $("modal-name").value.trim(); if (!v) { $("modal-name").focus(); return; }
       try { localStorage.setItem("vigil-reviewer", v); } catch (e) {} done(v); };
     $("modal-cancel").onclick = function () { done(null); };
-    $("modal-name").onkeydown = function (e) { if (e.key === "Enter") $("modal-ok").onclick(); if (e.key === "Escape") { e.stopPropagation(); done(null); } };
+    $("modal").onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); $("modal-ok").onclick(); } if (e.key === "Escape") { e.stopPropagation(); done(null); } };
+    $("modal-name").focus();  // focus at once so Enter/Esc work even before the open animation ends
   });
 };
 /* approve / request info -> decisions.csv (under vigil.py's lock) */
@@ -438,17 +457,17 @@ if (/^#c=/.test(location.hash)) V.openDrawer(decodeURIComponent(location.hash.sl
     $("clock-t").textContent = d.toLocaleTimeString("en-GB");
     $("clock-d").textContent = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); }
   tick(); setInterval(tick, 1000);
-  function set(id, ok, html) { $(id).className = "led " + (ok === undefined ? "" : ok ? "ok" : "bad"); $(id + "-v").innerHTML = html; }
+  function set(id, ok, html) { $(id).className = "led " + (ok === undefined ? "warn" : ok === "warn" ? "warn" : ok ? "ok" : "bad"); $(id + "-v").innerHTML = html; }
   function poll() {
     fetch("/api/health", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (h) {
       var m = h.model || {}, short = (m.name || "").replace(/-A\d+B.*$/i, "");
       set("sy-model", m.name || m.ok === false ? m.ok : undefined, m.ok ? esc(short) + " · GB10 <small>" + m.ms + " ms</small>" : esc(m.label || "Checking…"));
       var t = h.telegram || {}; set("sy-tg", /checking/i.test(t.label || "") ? undefined : t.ok,
         t.ok ? "Online <small>" + esc((t.label || "").replace(/^reachable · /, "")) + "</small>" : /checking/i.test(t.label || "") ? "Checking…" : "Offline <small>alerts queue</small>");
-      var s = h.sync || {}; set("sy-sync", /checking/i.test(s.label || "") ? undefined : s.ok, s.ok ? "Running" : /checking/i.test(s.label || "") ? "Checking…" : "Stopped");
+      var s = h.sync || {}; set("sy-sync", /checking/i.test(s.label || "") ? undefined : s.ok || "warn", s.ok ? "Running" : /checking/i.test(s.label || "") ? "Checking…" : "Stopped");
       var fresh = (h.log_changed && (h.now - h.log_changed) < 10) || Date.now() < V.liveUntil;
-      $("live").classList.toggle("on", !!fresh); $("live").title = fresh ? "New data in the last 10 s" : "Watching for new complaints";
-    }).catch(function () { set("sy-model", false, "Console offline"); $("live").classList.remove("on"); });
+      $("live").classList.remove("off"); $("live").classList.toggle("on", !!fresh); $("live").title = fresh ? "New data in the last 10 s" : "Connected · watching for new complaints";
+    }).catch(function () { set("sy-model", false, "Console offline"); $("live").classList.remove("on"); $("live").classList.add("off"); });
   }
   poll(); setInterval(poll, 3000);
 })();

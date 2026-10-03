@@ -1,0 +1,10 @@
+{% if r.due_date and r.open %}
+        <div class="cd {{ 'over' if r.days_left < 0 else 'red' if r.days_left <= 7 else 'orange' if r.days_left <= 14 else 'green' }}" id="cd" data-due="{{ r.due_date }}">
+          <div class="n"></div>
+          <div class="d">due {{ r.due_label }} · {{ r.deadline_days }}-day report</div>
+        </div>
+        {% elif r.due_date %}
+        <div class="cd green"><div class="n" style="font-size:var(--fs-28)">{{ icon('check') }} Approved</div><div class="d">was due {{ r.due_label }} · {{ r.deadline_days }}-day report</div></div>
+        {% else %}
+        <div class="cd na"><div class="n" style="font-size:var(--fs-28)">No deadline</div><div class="d">No FDA report required</div></div>
+        {% endif %}

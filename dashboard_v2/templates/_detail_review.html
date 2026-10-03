@@ -1,0 +1,23 @@
+<div class="card-h"><h2>{{ icon('user') }}Review</h2>
+  <span class="aside">{% if r.status_kind == 'appr' %}<span class="pill s-appr">{{ icon('check') }}Approved</span>
+    {% elif r.status_kind == 'info' %}<span class="pill s-info">{{ icon('help') }}Info requested</span>
+    {% elif r.reportable %}<span class="pill s-pend">Pending review</span>{% else %}<span class="pill s-log">Logged</span>{% endif %}</span></div>
+<div class="rv-b">
+  {% if r.status_kind == 'appr' %}
+    <div class="banner ok">{{ icon('shield') }}<div><b>{{ r.status.replace('APPROVED by ', 'Approved by ') }}</b>
+      <span>{{ r.act_time or 'Time not recorded (approved via Telegram)' }}</span></div>
+      <button class="undo" data-undo>Undo</button></div>
+  {% elif r.status_kind == 'info' %}
+    <div class="banner info">{{ icon('help') }}<div><b>{{ r.status.replace('INFO REQUESTED by ', 'Info requested by ') }}</b>
+      <span>{{ r.act_time or 'Waiting for the reporter' }}</span></div>
+      <button class="undo" data-undo>Undo</button></div>
+    <div class="rv-acts"><button class="btn btn-primary btn-lg" data-act="approve">{{ icon('check') }}Approve report</button></div>
+  {% elif r.reportable %}
+    <div class="rv-acts">
+      <button class="btn btn-primary btn-lg" data-act="approve">{{ icon('check') }}Approve</button>
+      <button class="btn btn-outline btn-lg" data-act="info">{{ icon('help') }}Request info</button>
+    </div>
+  {% else %}
+    <div class="banner muted">{{ icon('file') }}<div><b>No FDA report required</b><span>Logged with its reason for the audit trail.</span></div></div>
+  {% endif %}
+</div>
