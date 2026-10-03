@@ -14,11 +14,12 @@ Usage:
   python3 vigil.py replay --csv demo_set.csv --delay 5  # curated MAUDE-format CSV, in file order
   python3 vigil.py replay --csv demo_set.csv --limit 3 --step  # presenter mode: Enter for the next complaint
   python3 vigil.py sync                      # pull 'approve ID' from the OpenClaw sandbox skill (skill/vigil)
+  python3 vigil.py import-history            # build history.csv (long-term memory) from hackathon_data, no model
   python3 vigil.py reset                     # clean slate: decisions.csv, reports/, outbox.txt, sandbox copies, group session
   python3 vigil.py listen                    # standalone Telegram commands (only if OpenClaw is NOT running)
 """
 import argparse, contextlib, csv, datetime as dt, fcntl, json, os, re, shutil, subprocess, sys, tempfile, time
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 
 import requests
 
@@ -135,6 +136,79 @@ def duplicate_of(c):
     return None
 
 
+# ---------------------------------------------------------------- device family + failure mode (no model)
+# Grouping key for memory, spike alerts and the console: brand/common name -> product family.
+FAMILIES = [("DREAMSTATION", r"DREAM\s?STATION"), ("SYSTEM ONE", r"SYSTEM\s?ONE"), ("REMSTAR", r"REMSTAR"),
+            ("TRILOGY", r"TRILOGY"), ("MINIMED", r"MINIMED|\bMMT-|\b[67][5-9]0G\b"), ("HEARTWARE", r"HEARTWARE|\bHVAD\b"),
+            ("HEARTMATE", r"HEARTMATE"), ("DEXCOM", r"DEXCOM"), ("IMPELLA", r"IMPELLA"), ("OMNIPOD", r"OMNIPOD"),
+            ("T:SLIM", r"T:SLIM|TANDEM"), ("LIFEVEST", r"LIFEVEST"), ("ALARIS", r"ALARIS")]
+MAKER_WORDS = {"PHILIPS", "RESPIRONICS", "PHILIPS-RESPIRONICS", "MEDTRONIC", "THORATEC"}
+
+
+def device_family(device, generic=""):
+    t = f"{device or ''} {generic or ''}".upper()
+    for fam, pat in FAMILIES:
+        if re.search(pat, t):
+            return fam
+    words = [w for w in re.split(r"[^A-Z0-9:+.-]+", (device or generic or "").upper()) if w and w not in MAKER_WORDS]
+    return words[0] if words else "UNKNOWN"
+
+
+# Fixed failure-mode list, most severe first: FDA product_problems terms decide; free-text keywords are the
+# fallback (most MAUDE rows only say "Adverse Event Without Identified Device or Use Problem").
+FAILURE_MODES = [
+    ("electrical/shock/fire", ["Electrical /Electronic Property Problem", "Circuit Failure", "Overheating of Device",
+                               "Fire", "Smoking", "Sparking", "Burn of Device or Device Component", "Melted",
+                               "Short Circuit", "Arcing"],
+     r"\b(?:fire|smoke|smoking|spark\w*|electric(?:al)? shock|shocked|overheat\w*|melt\w*|burn(?:t|ed|ing)? (?:smell|odor))"),
+    ("material degradation/particles", ["Degraded", "Particulates", "Material Integrity Problem",
+                                        "Material Fragmentation", "Material Disintegration"],
+     r"\b(?:foam|particle\w*|particulate\w*|black dust|debris|degrad\w*|disintegrat\w*)"),
+    ("alarm failure", ["Device Alarm System", "No Audible Alarm", "Alarm Not Visible", "Failure to Alarm",
+                       "Inaudible or Unclear Audible Prompt/Feedback"],
+     r"\balarm\w* (?:did not|didn't|failed|not audible|never)|\bno alarm|\bwithout (?:an )?alarm"),
+    ("power/shutdown", ["Battery Problem", "Power Problem", "Complete Loss of Power", "Failure to Charge",
+                        "Charging Problem", "Premature Discharge of Battery", "Failure to Power Up",
+                        "Unexpected Shutdown", "Pumping Stopped", "Premature End-of-Life Indicator",
+                        "Intermittent Loss of Power", "Loss of Power"],
+     r"\b(?:batter\w*|power\w*|shut ?down|shut off|shuts off|turned off|stopped working|won't turn on)"),
+    ("pressure/airflow", ["Pumping Problem", "Obstruction of Flow", "Increase in Suction", "Infusion or Flow Problem",
+                          "Insufficient Flow or Under Infusion", "Restricted Flow rate", "Excess Flow or Over-Infusion",
+                          "Increase in Pressure", "Decrease in Pressure", "Gas/Air Leak", "Failure to Pump",
+                          "Low Pressure", "High Pressure"],
+     r"\b(?:low pressure|high pressure|pressure (?:drop|loss|too)|air ?flow|suction|occlu\w*|obstruct\w*|under.?infus\w*|over.?infus\w*)"),
+    ("contamination", ["Contamination", "Contamination /Decontamination Problem",
+                       "Device Contamination with Chemical or Other Material", "Microbial Contamination of Device"],
+     r"\b(?:contaminat\w*|water ingress|mold|mould|dirt\w*)"),
+    ("software", ["Application Program Problem", "Computer Software Problem", "Data Problem",
+                  "Date/Time-Related Software Problem", "Unintended Application Program Shut Down",
+                  "Wireless Communication Problem", "Communication or Transmission Problem",
+                  "Device Difficult to Program or Calibrate", "Incorrect, Inadequate or Imprecise Result or Readings",
+                  "Failure to Recalibrate", "Low Readings", "High Readings", "Incorrect Measurement",
+                  "No Display/Image", "Display or Visual Feedback Problem", "Erratic or Intermittent Display"],
+     r"\b(?:software|firmware|error code|app\b|reading\w*|display|bluetooth|sensor error)"),
+    ("mechanical", ["Break", "Fracture", "Crack", "Material Twisted/Bent", "Material Split, Cut or Torn",
+                    "Material Deformation", "Material Rupture", "Mechanical Problem", "Connection Problem",
+                    "Disconnection", "Detachment of Device or Device Component", "Loose or Intermittent Connection",
+                    "Key or Button Unresponsive/not Working", "Fluid/Blood Leak", "Leak/Splash", "Device Fell",
+                    "Device Dislodged or Dislocated", "Migration", "Noise, Audible", "Vibration"],
+     r"\b(?:broke\w*|break\w*|crack\w*|fractur\w*|disconnect\w*|leak\w*|loose|detach\w*|noise|noisy)"),
+]
+_FM_TERMS = [(m, {t.lower() for t in terms}, re.compile(rx, re.I)) for m, terms, rx in FAILURE_MODES]
+
+
+def failure_mode(product_problems="", text=""):
+    probs = {p.strip().lower() for p in (product_problems or "").split(";") if p.strip()}
+    for mode, terms, _ in _FM_TERMS:
+        if probs & terms:
+            return mode
+    t = re.sub(r"(?i)(continuous |bi-?level )?positive airway pressure", " ", text or "")  # device name, not a problem
+    for mode, _, rx in _FM_TERMS:
+        if rx.search(t):
+            return mode
+    return "other"
+
+
 _by_device = defaultdict(list)
 def spike(c):
     """Alert when a device gets >=5 complaints in 30 days and >=3x its previous 30-day count."""
@@ -142,7 +216,7 @@ def spike(c):
         d = dt.datetime.strptime(c["received"], "%Y%m%d").date()
     except Exception:
         return None
-    key = (c["device"] or "unknown").split()[0].upper()
+    key = device_family(c.get("device"), c.get("generic_name"))
     hist = _by_device[key]
     hist.append(d)
     last30 = [x for x in hist if (d - x).days < 30]
@@ -476,7 +550,7 @@ def make_mdr(c, row):
 # ---------------------------------------------------------------- log
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
           "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text",
-          "product_code", "memory"]
+          "product_code", "memory", "failure_mode"]
 
 # replay (append) and sync (read-modify-write) run as separate processes: every access to decisions.csv
 # holds an exclusive flock on decisions.csv.lock. Re-entrant within a process, so write_log() can run
@@ -580,32 +654,98 @@ def pull_approvals():
     return new
 
 # ---------------------------------------------------------------- long-term memory
-PROBLEM_WORDS = ["foam", "particle", "black dust", "debris", "shock", "shutdown", "shut off", "fire", "smoke",
-                 "burn", "overheat", "alarm", "pressure", "water", "leak", "noise", "cough", "headache",
-                 "breathing", "cancer", "death", "suffocat", "injury"]
+# history.csv = past FDA MAUDE reports (built once by `import-history`, no model) + decisions.csv = live complaints.
+HISTORY = os.path.join(HERE, "history.csv")
+HISTORY_SOURCES = ["philips_cpap_reports_2019_2021.csv", "medtronic_heartware_hvad_reports.csv",
+                   "medtronic_minimed_insulin_pumps_reports.csv", "industry_sample_2024_2025.csv",
+                   "mixed_test_reports_2025.csv"]
+HISTORY_FIELDS = ["id", "date_received", "device", "device_family", "product_code", "manufacturer", "event_type",
+                  "product_problems", "failure_mode", "text"]
+_history = {"mtime": None, "by_family": {}}
 
 
-def device_memory(c, days=90):
-    """Prior complaints on the same device (first word of the device name, or product code) logged in the last
-    `days` days. Returns (prompt summary, card line) or ("", "") when there are none."""
-    key = (c.get("device") or "").split()[0].upper() if (c.get("device") or "").split() else ""
-    code = (c.get("product_code") or "").upper()
-    since = (dt.datetime.now() - dt.timedelta(days=days)).isoformat()
-    prior = [r for r in read_log() if r["id"] != c["id"] and (r.get("time") or "") >= since and
-             ((key and (r.get("device") or "").split()[:1] == [key]) or
-              (code and (r.get("product_code") or "").upper() == code))]
-    if not prior:
+def load_history():
+    """{device_family: [rows]} from history.csv, cached until the file changes."""
+    if not os.path.exists(HISTORY):
+        return {}
+    m = os.path.getmtime(HISTORY)
+    if _history["mtime"] != m:
+        by = defaultdict(list)
+        for r in csv.DictReader(open(HISTORY, encoding="utf-8")):
+            by[r["device_family"]].append(r)
+        _history.update(mtime=m, by_family=dict(by))
+    return _history["by_family"]
+
+
+def _iso(yyyymmdd):
+    return f"{yyyymmdd[:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:8]}" if re.fullmatch(r"\d{8}", yyyymmdd or "") else ""
+
+
+LIVE_EVENT = {"DEATH": "Death", "SERIOUS_INJURY": "Injury", "MALFUNCTION": "Malfunction"}  # as MAUDE event_type
+
+
+def device_memory(c):
+    """Prior complaints on the same device family: FDA history + complaints Vigil already processed.
+    Returns (prompt summary, card line) or ("", "") when there are none."""
+    fam = device_family(c.get("device"), c.get("generic_name"))
+    hist = [r for r in load_history().get(fam, []) if r["id"] != c["id"]]
+    live = [r for r in read_log() if r["id"] != c["id"] and device_family(r.get("device")) == fam]
+    if not (hist or live):
         return "", ""
-    words = {w: sum(w in (r.get("text") or "").lower() for r in prior) for w in PROBLEM_WORDS}
-    top = [w for w, n in sorted(words.items(), key=lambda x: -x[1]) if n][:3]
-    rep_n = sum(r.get("decision") == "REPORTABLE" for r in prior)
-    recent = [r["id"] for r in sorted(prior, key=lambda r: r.get("time") or "", reverse=True)[:2]]
-    summary = (f"{len(prior)} prior complaints on {key or code} in the last {days} days, {rep_n} REPORTABLE.\n"
-               f"Most common problem words: {', '.join(f'{w} ({words[w]})' for w in top) or 'none'}.\n"
-               f"Most recent: {', '.join('#' + i for i in recent)}.")
-    card = f"🧠 Memory: {len(prior)} prior complaint{'s' * (len(prior) != 1)} on {key or code} in {days} days" + \
-           (f" (top issue: {top[0]})" if top else "")
+    # (date, id, failure mode, event) per prior complaint; live ones count from when Vigil processed them
+    prior = [(r["date_received"], r["id"], r["failure_mode"], r["event_type"]) for r in hist] + \
+            [((r.get("time") or "")[:10], r["id"], r.get("failure_mode") or failure_mode("", r.get("text")),
+              LIVE_EVENT.get(r.get("category") or "", "")) for r in live]
+    modes = Counter(m for _, _, m, _ in prior if m and m != "other") or Counter(m for _, _, m, _ in prior)
+    top = [m for m, _ in modes.most_common(3)]
+    events = Counter(e for _, _, _, e in prior if e)
+    recent = sorted(prior, reverse=True)[:2]
+    last = recent[0][0]
+    try:
+        d = dt.date.fromisoformat(last); last_txt = f"{d.day} {d:%b %Y}"
+    except Exception:
+        last_txt = last or "unknown"
+    n = len(prior)
+    summary = (f"{n} prior complaints on {fam} ({len(hist)} in FDA history, {len(live)} processed by Vigil). "
+               f"Events: {', '.join(f'{e} {k}' for e, k in events.most_common(4)) or 'unknown'}.\n"
+               f"Top failure modes: {', '.join(f'{m} ({modes[m]})' for m in top) or 'unknown'}.\n"
+               f"Most recent: {', '.join(f'#{i} ({d})' for d, i, _, _ in recent)}.")
+    card = f"🧠 Memory: {n} prior complaint{'s' * (n != 1)} on {fam} (top issue: {top[0] if top else 'unknown'}, last: {last_txt})"
     return summary, card
+
+
+def cmd_import_history(_):
+    """Build history.csv from hackathon_data MAUDE exports. Pure code, no model calls; demo_set ids excluded."""
+    csv.field_size_limit(sys.maxsize)  # some MAUDE narratives exceed the default 128 KB field limit
+    demo = {r["mdr_report_key"] for r in csv.DictReader(open(os.path.join(HERE, "demo_set.csv"), encoding="utf-8"))}
+    seen, out, skipped = set(), [], 0
+    for name in HISTORY_SOURCES:
+        path = os.path.join(DATA, name)
+        if not os.path.exists(path):
+            print("missing:", path); continue
+        n0 = len(out)
+        for r in csv.DictReader(open(path, encoding="utf-8")):
+            rid = r["mdr_report_key"]
+            if rid in demo or rid in seen:
+                skipped += 1; continue
+            seen.add(rid)
+            text = (r["event_description"] or r["manufacturer_narrative"] or "").strip()
+            out.append(dict(id=rid, date_received=_iso(r["date_received"]), device=r["brand_name"] or r["generic_name"] or "",
+                            device_family=device_family(r["brand_name"], r["generic_name"]),
+                            product_code=r["product_code"] or "", manufacturer=r["manufacturer"] or "",
+                            event_type=r["event_type"] or "", product_problems=r["product_problems"] or "",
+                            failure_mode=failure_mode(r["product_problems"], f"{text} {r['manufacturer_narrative'] or ''}"),
+                            text=" ".join(text.split())[:300]))
+        print(f"{name}: {len(out) - n0} reports")
+    tmp = HISTORY + ".tmp"
+    with open(tmp, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=HISTORY_FIELDS)
+        w.writeheader(); w.writerows(out)
+    os.replace(tmp, HISTORY)
+    print(f"wrote {HISTORY}: {len(out)} reports ({skipped} skipped: demo_set ids or duplicates)")
+    fams, modes = Counter(r["device_family"] for r in out), Counter(r["failure_mode"] for r in out)
+    print("\nTop device families:"); [print(f"  {k:24} {v}") for k, v in fams.most_common(15)]
+    print("\nFailure modes:"); [print(f"  {k:32} {v}") for k, v in modes.most_common()]
 
 
 # ---------------------------------------------------------------- pipeline
@@ -641,7 +781,9 @@ def process(c, demo_today=None):
                device=c["device"], priority=level, score=score, distress=dist, decision=res.get("decision"),
                category=res.get("category"), reason=res.get("reason"), deadline_days=days or "", due_date=due,
                confidence=res.get("confidence"), missing="; ".join(miss + list(res.get("missing_info") or [])),
-               duplicate_of=dup or "", product_code=c.get("product_code") or "", memory=memory_line, status="PENDING_REVIEW" if res.get("decision") != "NOT_REPORTABLE" else "LOGGED",
+               duplicate_of=dup or "", product_code=c.get("product_code") or "", memory=memory_line,
+               failure_mode=failure_mode(c.get("product_problems"), f"{c['text']} {c.get('manufacturer_narrative') or ''}"),
+               status="PENDING_REVIEW" if res.get("decision") != "NOT_REPORTABLE" else "LOGGED",
                text=c["text"][:500])
     log(row)
     row["awareness"] = base.isoformat()  # not logged; used for 3500A G4
@@ -694,7 +836,7 @@ def load_csv(path, limit=None, sort=False):
                         manufacturer=r["manufacturer"] or "", event_date=r["date_of_event"] or "",
                         received=r["date_received"] or "", event_type=r["event_type"] or "",
                         outcomes=r["patient_outcomes"] or "", generic_name=r.get("generic_name") or "",
-                        product_code=r.get("product_code") or "",
+                        product_code=r.get("product_code") or "", product_problems=r.get("product_problems") or "",
                         manufacturer_narrative=(r.get("manufacturer_narrative") or "").strip()))
     return out[:limit] if limit else out
 
@@ -820,5 +962,6 @@ if __name__ == "__main__":
     sp.add_argument("--interval", type=float, default=10)
     sp.add_argument("--once", action="store_true")
     sub.add_parser("reset")
+    sub.add_parser("import-history")
     a = p.parse_args()
-    {"test": cmd_test, "replay": cmd_replay, "listen": cmd_listen, "sync": cmd_sync, "reset": cmd_reset}[a.cmd](a)
+    {"test": cmd_test, "replay": cmd_replay, "listen": cmd_listen, "sync": cmd_sync, "reset": cmd_reset, "import-history": cmd_import_history}[a.cmd](a)
