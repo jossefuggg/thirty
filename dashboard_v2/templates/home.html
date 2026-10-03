@@ -31,6 +31,7 @@
   .fi .r2 { margin-top: 8px; font-weight: 700; color: var(--navy); font-size: 17px; }
   .fi .r2 .mono { font-weight: 600; color: var(--muted); font-size: 15px; margin-right: 6px; }
   .fi .r3 { margin-top: 4px; color: #3A4657; font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .fi .r4 { margin-top: 6px; color: var(--muted); font-size: 14px; }
   .fi .cat { font-size: 13px; font-weight: 600; color: var(--muted); }
   .fi.enter { animation: slideIn .7s cubic-bezier(.2,.8,.2,1); }
   @keyframes slideIn {
@@ -110,7 +111,8 @@
       '<span class="pill d-' + esc(r.decision) + '">' + esc((r.decision || "").replace(/_/g, " ")) + "</span>" + cat + statusPill(r) +
       '<span class="ago" data-t="' + esc(r.time) + '">' + ago(r.time) + "</span></div>" +
       '<div class="r2"><span class="mono">#' + esc(r.id) + "</span>" + esc(r.device || "Device not specified") + "</div>" +
-      '<div class="r3">' + esc(r.reason) + "</div>";
+      '<div class="r3">' + esc(r.reason) + "</div>" +
+      (r.memory ? '<div class="r4"><span aria-hidden="true">🧠</span> ' + esc(r.memory) + "</div>" : "");
   }
   function dueEnd(r) { return new Date(r.due_date + "T23:59:59").getTime(); }
   function urg(ms) { return ms <= 7 * DAY ? "red" : ms <= 14 * DAY ? "orange" : "green"; }

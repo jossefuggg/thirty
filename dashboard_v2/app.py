@@ -24,13 +24,30 @@ ACTIONS = os.environ.get("VIGIL_CONSOLE_ACTIONS", os.path.join(HERE, "actions.cs
 VENV_BIN = os.path.expanduser(os.environ.get("VIGIL_VENV_BIN", "~/hackathon/venv/bin"))
 LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "http://localhost:8000/v1")
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
-          "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text"]
+          "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text",
+          "product_code", "memory"]  # same order as vigil.FIELDS; older files stop after "text"
 
 app = Flask(__name__)
 import logging; logging.getLogger("werkzeug").setLevel(logging.WARNING)  # polling would flood console.log
 
 # ---------------------------------------------------------------- decisions.csv
 _cache = {"rows": [], "mtime": None}
+
+def parse_log(f):
+    """(fieldnames, rows) for any decisions.csv format: old (no product_code/memory), new, or an old header with
+    newer rows appended (their extra values land under DictReader's None key and are mapped onto the FIELDS
+    that follow the header). Missing values become "", so templates never see None."""
+    reader = csv.DictReader(f)
+    fields, rows = list(reader.fieldnames or FIELDS), []
+    for r in reader:
+        extra = r.pop(None, None) or []
+        if extra and fields == FIELDS[:len(fields)]:
+            for k, v in zip(FIELDS[len(fields):], extra):
+                r[k] = v
+        rows.append({k: ("" if v is None else v) for k, v in r.items()})
+    if any(k not in fields for r in rows for k in r):  # upgraded rows: write back with the full current header
+        fields = fields + [k for k in FIELDS if k not in fields]
+    return fields, rows
 
 def read_rows():
     """Rows of decisions.csv. vigil.py holds the lock for up to a minute (sandbox upload inside log()), so we
@@ -48,7 +65,7 @@ def read_rows():
             locked = False
         try:
             with open(LOG, newline="", encoding="utf-8") as f:
-                rows = list(csv.DictReader(f))
+                rows = parse_log(f)[1]
         except Exception:
             return _cache["rows"]
         if not locked and len(rows) < len(_cache["rows"]):
@@ -72,8 +89,7 @@ def set_status(cid, status, guard):
                     raise TimeoutError("decisions.csv is busy, try again")
                 time.sleep(0.2)
         with open(LOG, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            fields, rows = reader.fieldnames or FIELDS, list(reader)
+            fields, rows = parse_log(f)
         hit = [r for r in rows if r["id"] == cid]
         if not hit:
             return None
@@ -285,10 +301,15 @@ def is_open(r):
     return bool(r.get("due_date")) and r.get("decision") != "NOT_REPORTABLE" and status_kind(r.get("status")) != "appr"
 
 
+def memory_text(r):
+    """Long-term memory line without vigil.py's "🧠 Memory:" prefix (the UI adds the icon). "" for old rows."""
+    return re.sub(r"^\s*(?:🧠\s*)?(?:memory\s*:\s*)?", "", r.get("memory") or "", flags=re.I).strip()
+
+
 def brief(r):
     return {k: r.get(k, "") for k in ("time", "id", "device", "priority", "score", "decision", "category", "reason",
-                                       "due_date", "deadline_days", "confidence", "status")} | {
-        "status_kind": status_kind(r.get("status")), "days_left": days_left(r)}
+                                       "due_date", "deadline_days", "confidence", "status", "product_code")} | {
+        "status_kind": status_kind(r.get("status")), "days_left": days_left(r), "memory": memory_text(r)}
 
 
 @app.route("/api/state")
@@ -439,7 +460,7 @@ def detail(r):
     if not questions and missing and reportable:
         questions = [f"Can you provide the {re.sub(r'\s*\(.*?\)', '', m).strip().rstrip('.').lower()}?" for m in missing[:5]]
     return {**r, "status_kind": kind, "days_left": days_left(r), "reportable": reportable, "timeline": timeline,
-            "missing_list": missing, "questions": questions, "breakdown": score_breakdown(r),
+            "missing_list": missing, "questions": questions, "memory_text": memory_text(r), "breakdown": score_breakdown(r),
             "pdf": os.path.exists(os.path.join(REPORTS, f"MDR_{cid}.pdf")), "processed": fmt_time(t), "received_iso": rec,
             "full_text": ((source_complaint(cid) or {}).get("event_description") or r.get("text") or "")}
 
