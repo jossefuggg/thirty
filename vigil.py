@@ -13,7 +13,7 @@ Usage:
   python3 vigil.py replay --file demo_complaints.txt  # one illustrative complaint per line
   python3 vigil.py replay --csv demo_set.csv --delay 5  # curated MAUDE-format CSV, in file order
   python3 vigil.py sync                      # pull 'approve ID' from the OpenClaw sandbox skill (skill/vigil)
-  python3 vigil.py reset                     # clean slate: decisions.csv, reports/, outbox.txt, sandbox copies
+  python3 vigil.py reset                     # clean slate: decisions.csv, reports/, outbox.txt, sandbox copies, group session
   python3 vigil.py listen                    # standalone Telegram commands (only if OpenClaw is NOT running)
 """
 import argparse, contextlib, csv, datetime as dt, fcntl, json, os, re, shutil, subprocess, sys, tempfile, time
@@ -517,6 +517,7 @@ def write_log(rows):
 # Host decisions.csv stays the source of truth: push after every write, pull approvals with `vigil.py sync`.
 SANDBOX = os.environ.get("VIGIL_SANDBOX", "my-assistant")
 SANDBOX_DIR = "/sandbox/vigil"
+TG_SESSION = os.environ.get("VIGIL_TG_SESSION", "agent:main:telegram:group:-5193984181")  # OpenClaw group chat
 
 def _nemoclaw(*args):
     try:
@@ -735,6 +736,11 @@ def cmd_reset(_):
     ok = r is not None and r.returncode == 0
     print(f"sandbox '{SANDBOX}': " + ("cleared decisions.csv, approvals.csv, info_requests.csv" if ok else
           f"FAILED to clear ({(r.stderr or r.stdout)[-200:] if r else 'nemoclaw unavailable'})"))
+    # Fresh OpenClaw conversation for the Telegram group, so the agent forgets earlier rehearsal turns.
+    r = _nemoclaw("sessions", "reset", TG_SESSION, "--reason", "reset")
+    ok = r is not None and r.returncode == 0
+    print(f"OpenClaw session {TG_SESSION}: " + ("reset" if ok else
+          f"FAILED to reset ({(r.stderr or r.stdout)[-200:] if r else 'nemoclaw unavailable'})"))
 
 
 def cmd_listen(_):
