@@ -120,6 +120,98 @@ def push_to_sandbox():
     except Exception as e:
         print("sandbox push skipped:", e, flush=True)
 
+# ---------------------------------------------------------------- demo controls (vigil.py in a subprocess)
+DEMO_COMMANDS = {
+    # sg docker: nemoclaw (sandbox push / clear) needs the docker group. python3 resolves to the venv (fpdf2 etc.).
+    "replay": 'sg docker -c "python3 vigil.py replay --csv demo_set.csv --delay 8"',
+    "reset": 'sg docker -c "python3 vigil.py reset"',
+}
+PROCESSED_LINE = re.compile(r"^\S+ (URGENT|HIGH|NORMAL) (REPORTABLE|NEEDS_INFO|NOT_REPORTABLE|None)\b")  # cmd_replay's per-complaint line
+
+
+class DemoRunner:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.proc, self.kind, self.cmd = None, None, None
+        self.lines, self.seq = [], 0
+        self.started = self.ended = None
+        self.rc, self.stopped, self.processed = None, False, 0
+
+    @property
+    def running(self):
+        return self.proc is not None and self.proc.poll() is None
+
+    def _emit(self, text, tag=""):
+        with self.lock:
+            self.seq += 1
+            self.lines.append((self.seq, tag, text))
+            del self.lines[:-4000]
+
+    def start(self, kind):
+        with self.lock:
+            if self.running:
+                return f"A {self.kind} is already running. Stop it first."
+            self.lines, self.kind, self.cmd = [], kind, DEMO_COMMANDS[kind]
+            self.started, self.ended, self.rc, self.stopped, self.processed = time.time(), None, None, False, 0
+        env = {**os.environ, "PATH": f"{VENV_BIN}:{os.environ.get('PATH', '')}", "PYTHONUNBUFFERED": "1"}
+        self._emit(f"$ {self.cmd}", "cmd")
+        self.proc = subprocess.Popen(self.cmd, shell=True, cwd=VIGIL_DIR, env=env, stdout=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True, bufsize=1,
+                                     start_new_session=True)  # own process group, so Stop kills sg -> sh -> python
+        threading.Thread(target=self._pump, args=(self.proc,), daemon=True).start()
+        return None
+
+    def _pump(self, proc):
+        for line in proc.stdout:
+            line = line.rstrip("\n")
+            if PROCESSED_LINE.match(line):
+                self.processed += 1
+            self._emit(line, "warn" if re.search(r"WARNING|failed|FAILED|Traceback|Error", line) else "")
+        rc = proc.wait()
+        self.rc, self.ended = rc, time.time()
+        if self.stopped:
+            self._emit("■ stopped from the console", "warn")
+        else:
+            self._emit(f"■ {self.kind} finished (exit code {rc})", "ok" if rc == 0 else "warn")
+
+    def stop(self):
+        if not self.running:
+            return "Nothing is running."
+        self.stopped = True
+        pgid = self.proc.pid  # start_new_session: the group id is the shell's pid
+        for sig, wait in ((signal.SIGTERM, 4), (signal.SIGKILL, 2)):
+            try:
+                os.killpg(pgid, sig)
+            except ProcessLookupError:
+                return None
+            end = time.time() + wait
+            while time.time() < end:  # wait for every process in the group (sg -> sh -> python), not just the shell
+                try:
+                    os.killpg(pgid, 0)
+                except ProcessLookupError:
+                    return None
+                time.sleep(0.1)
+        return None
+
+    def public(self, since=0):
+        with self.lock:
+            lines = [l for l in self.lines if l[0] > since]
+        return {"running": self.running, "kind": self.kind, "cmd": self.cmd, "started": self.started, "ended": self.ended,
+                "rc": self.rc, "stopped": self.stopped, "processed": self.processed, "total": demo_total(),
+                "lines": lines, "next": self.seq}
+
+
+DEMO = DemoRunner()
+
+
+def demo_total():
+    """Complaints a replay of demo_set.csv will process (rows with a description, like vigil.load_csv)."""
+    try:
+        with open(DEMO_CSV, newline="", encoding="utf-8") as f:
+            return sum(1 for r in csv.DictReader(f) if (r.get("event_description") or r.get("manufacturer_narrative") or "").strip())
+    except Exception:
+        return 0
+
 # ---------------------------------------------------------------- system health (refreshed in the background)
 HEALTH = {"model": {"ok": False, "label": "checking…"}, "telegram": {"ok": False, "label": "checking…"},
           "sync": {"ok": False, "label": "checking…"}, "checked": None}
@@ -393,9 +485,31 @@ def api_action(cid):
     return jsonify(ok=True, status=status)
 
 
+@app.route("/demo")
+def demo():
+    return render_template("demo.html", page="demo", commands=DEMO_COMMANDS)
+
+
+@app.route("/api/demo")
+def api_demo():
+    return jsonify(DEMO.public(int(request.args.get("since") or 0)))
+
+
+@app.post("/api/demo/<action>")
+def api_demo_action(action):
+    if action in DEMO_COMMANDS:
+        err = DEMO.start(action)
+    elif action == "stop":
+        err = DEMO.stop()
+    else:
+        abort(404)
+    return (jsonify(error=err), 409) if err else jsonify(ok=True)
+
+
 @app.route("/api/health")
 def api_health():
-    return jsonify({**HEALTH, "demo": DEMO.public() if "DEMO" in globals() else None})
+    d = DEMO.public(since=10**12)
+    return jsonify({**HEALTH, "demo": {k: d[k] for k in ("running", "kind", "processed", "total")}})
 
 
 @app.route("/reports/<cid>.pdf")
@@ -408,7 +522,14 @@ def chart():
     return send_from_directory(VIGIL_DIR, "philips_chart.png", max_age=0)
 
 
+def _shutdown(*_):
+    if DEMO.running:
+        DEMO.stop()  # the replay runs in its own process group; do not leave it orphaned
+    sys.exit(0)
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, _shutdown)
     threading.Thread(target=health_loop, daemon=True).start()
     print(f"Vigil Console v2 on http://localhost:5001  (data: {VIGIL_DIR})", flush=True)
     app.run(host="127.0.0.1", port=int(os.environ.get("VIGIL_CONSOLE_PORT", 5001)), debug=False, threaded=True)

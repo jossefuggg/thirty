@@ -115,10 +115,10 @@
         set("h-model", h.model); set("h-tg", h.telegram); set("h-sync", h.sync);
         var d = h.demo, show = d && d.running;
         $("h-demo").style.display = show ? "" : "none";
-        if (show) $("h-demo-l").textContent = d.kind === "reset" ? "Reset running" : "Demo replay running";
+        if (show) $("h-demo-l").textContent = d.kind === "reset" ? "Reset running" : "Demo replay running · " + d.processed + "/" + d.total;
       }).catch(function () { $("h-model-l").textContent = "console offline"; });
     }
-    poll(); setInterval(poll, 5000);
+    poll(); setInterval(poll, 3000);
   })();
 </script>
 {% block scripts %}{% endblock %}
