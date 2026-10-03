@@ -2,3 +2,7 @@ console.log
 console.pid
 actions.csv
 __pycache__/
+settings.json
+settings.json.tmp
+intake.json
+intake.json.tmp

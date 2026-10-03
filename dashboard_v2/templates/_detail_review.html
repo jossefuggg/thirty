@@ -5,13 +5,13 @@
 <div class="rv-b">
   {% if r.status_kind == 'appr' %}
     <div class="banner ok">{{ icon('shield') }}<div><b>{{ r.status.replace('APPROVED by ', 'Approved by ') }}</b>
-      <span>{{ r.act_time or 'Approved via Telegram · time not recorded' }}</span></div>
+      <span>{{ r.act_time or 'Time not recorded (approved via Telegram)' }}</span></div>
       <button class="undo" data-undo>Undo</button></div>
   {% elif r.status_kind == 'info' %}
     <div class="banner info">{{ icon('help') }}<div><b>{{ r.status.replace('INFO REQUESTED by ', 'Info requested by ') }}</b>
-      <span>{{ r.act_time or 'Awaiting reporter' }}</span></div>
+      <span>{{ r.act_time or 'Waiting for the reporter' }}</span></div>
       <button class="undo" data-undo>Undo</button></div>
-    <div class="rv-acts"><button class="btn btn-primary btn-lg" data-act="approve">{{ icon('check') }}Approve</button></div>
+    <div class="rv-acts"><button class="btn btn-primary btn-lg" data-act="approve">{{ icon('check') }}Approve report</button></div>
   {% elif r.reportable %}
     <div class="rv-acts">
       <button class="btn btn-primary btn-lg" data-act="approve">{{ icon('check') }}Approve</button>

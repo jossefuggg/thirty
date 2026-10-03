@@ -3,21 +3,20 @@
 {% block head %}
 <style>
   .tr-page { --hist: #2a78d6; --live: #0EA5A4; --sev-1: #9DC1EE; --sev-2: #2a78d6; --sev-3: #173F78; --grid: #EEF2F6; }
-  .tr { display: grid; gap: 14px; }
+  .tr { display: grid; gap: var(--s3); }
   .filters { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .filters .k { font-size: var(--fs-12); font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 8px; }
-  .fchip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; white-space: nowrap; border-radius: var(--r-btn); background: var(--surface); box-shadow: inset 0 0 0 1px var(--border);
+  .fchip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; white-space: nowrap; border-radius: var(--r-pill); background: var(--surface); box-shadow: inset 0 0 0 1px var(--border);
     font-weight: 650; font-size: var(--fs-14); color: var(--text-2); transition: background var(--t-fast), box-shadow var(--t-fast); }
   .fchip:hover { box-shadow: inset 0 0 0 1px var(--border-2); background: var(--hover); }
   .fchip em { font-style: normal; font-size: var(--fs-12); color: var(--muted); font-variant-numeric: tabular-nums; }
-  .fchip.on { background: var(--sidebar); color: #fff; box-shadow: none; }
-  .fchip { font-size: var(--fs-13) !important; } .fchip.on em { color: #94A3B8; }
+  .fchip.on { background: var(--sidebar); color: #fff; box-shadow: none; } .fchip.on em { color: #94A3B8; }
   .fchip .lv { display: inline-flex; align-items: center; gap: 4px; color: var(--accent-600); font-weight: 750; } .fchip.on .lv { color: #5EEAD4; }
   .fchip .lv i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
   .cb { padding: var(--s3); }
   .stats { display: flex; gap: var(--s4); margin-left: auto; }
-  .stat b { display: block; font-size: var(--fs-16); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.01em; text-transform: none; }
+  .stat b { display: block; font-size: var(--fs-20); font-weight: 760; font-variant-numeric: tabular-nums; letter-spacing: -.01em; text-transform: none; }
   .stat span { font-size: var(--fs-12); color: var(--muted); font-weight: 600; letter-spacing: 0; text-transform: none; }
   .legend { display: flex; gap: 16px; align-items: center; font-size: 13px; color: var(--text-2); flex-wrap: wrap; }
   .legend span { display: inline-flex; align-items: center; gap: 8px; }
@@ -53,9 +52,9 @@
   details.tbl th:first-child, details.tbl td:first-child { text-align: left; } details.tbl th { color: var(--muted); font-weight: 700; font-size: 12px; }
   .philips { display: grid; grid-template-columns: minmax(0, 760px) minmax(0, 1fr); gap: var(--s3); align-items: center; }
   .philips img { width: 100%; border-radius: var(--r-btn); border: 1px solid var(--border); }
-  .philips figcaption { max-width: 520px; } .philips figcaption b { display: block; font-size: var(--fs-16); font-weight: 750; line-height: 1.3; margin-bottom: 8px; }
-  .philips figcaption p { color: var(--muted); font-size: var(--fs-13); line-height: 1.6; }
-  .nohist { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-radius: var(--r-btn); background: #fff; box-shadow: inset 3px 0 0 var(--info), inset 0 0 0 1px var(--border); color: var(--text-2); font-size: 13px; }
+  .philips figcaption { max-width: 560px; } .philips figcaption b { display: block; font-size: var(--fs-28); font-weight: 750; line-height: 1.3; margin-bottom: 8px; }
+  .philips figcaption p { color: var(--muted); font-size: var(--fs-16); line-height: 1.6; }
+  .nohist { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: var(--r-btn); background: var(--info-50); color: #92400E; font-weight: 600; }
   .nohist .i { color: var(--info); }
 </style>
 {% endblock %}
@@ -66,7 +65,7 @@
   <div id="nohist"></div>
 
   <section class="card">
-    <div class="card-h" style="height:48px"><h2>{{ icon('trend') }}<span id="t1">Complaints per month</span></h2>
+    <div class="card-h"><h2>{{ icon('trend') }}<span id="t1">Complaints per month</span></h2>
       <div class="stats" id="stats"></div></div>
     <div class="cb">
       <div class="legend" style="margin-bottom:16px">
@@ -95,11 +94,11 @@
 
   {% if chart %}
   <section class="card">
-    <div class="card-h"><h2>{{ icon('file') }}Reference: Philips CPAP recall</h2></div>
+    <div class="card-h"><h2>{{ icon('file') }}Why memory matters</h2></div>
     <figure class="cb philips">
       <img src="/chart.png" alt="Public FDA reports for Philips CPAP devices by month, flat until the June 2021 recall">
       <figcaption><b>Public FDA reports, Philips CPAP: flat until the 2021 recall</b>
-        <p>Foam-degradation reports were present in MAUDE before the recall. Vigil compares each new complaint with this history by device family and failure mode, so a recurring pattern is flagged when it starts rather than after the spike.</p></figcaption>
+        <p>The foam-degradation signal was in MAUDE long before the recall. Vigil compares every new complaint against this history, by device family and failure mode, so a recurring pattern is flagged on day one instead of after the spike.</p></figcaption>
     </figure>
   </section>
   {% endif %}
@@ -126,7 +125,7 @@
   function drawMonths() {
     var box = $("c-month"), W = box.clientWidth, H = 300, L = 48, R = 8, T = 28, B = 28, rows = data.months;
     var old = box.querySelector("svg"); if (old) old.remove();
-    if (!rows.length) { box.insertAdjacentHTML("afterbegin", '<div class="empty">No complaints for this device family.</div>"); return; }
+    if (!rows.length) { box.insertAdjacentHTML("afterbegin", '<div class="empty"><div class="art">' + ICONS.trend + "</div><b>No complaints for this family</b></div>"); return; }
     var max = nice(Math.max.apply(null, rows.map(function (r) { return r.history + r.live; }))), step = (W - L - R) / rows.length, bw = Math.max(2, step - 2);
     var y = function (v) { return T + (H - T - B) * (1 - v / max); }, s = "";
     for (var g = 0; g <= 4; g++) { var v = max * g / 4, yy = y(v).toFixed(1);
@@ -161,7 +160,7 @@
     $("ev-legend").innerHTML = SEV.slice().reverse().map(function (k) { return '<span style="--c:' + k[1] + '"><i></i>' + k[0] + (k[0] === "Malfunction" ? "s" : k[0] === "Injury" ? "ies" : "s").replace(/^ies$/, "ies") + " <b>" + num(tot[k[0]]) + "</b></span>"; }).join("").replace("Injuryies", "Injuries");
     $("ev-table").innerHTML = "<table><thead><tr><th>Quarter</th><th>Deaths</th><th>Injuries</th><th>Malfunctions</th></tr></thead><tbody>" +
       rows.filter(function (r) { return r.Death + r.Injury + r.Malfunction; }).map(function (r) { return "<tr><td>" + r.q + "</td><td>" + r.Death + "</td><td>" + r.Injury + "</td><td>" + r.Malfunction + "</td></tr>"; }).join("") + "</tbody></table>";
-    if (!rows.length) { box.insertAdjacentHTML("afterbegin", '<div class="empty">No events recorded.</div>"); return; }
+    if (!rows.length) { box.insertAdjacentHTML("afterbegin", '<div class="empty"><div class="art">' + ICONS.activity + "</div><b>No events recorded</b></div>"); return; }
     var max = nice(Math.max.apply(null, rows.map(function (r) { return r.Death + r.Injury + r.Malfunction; }))), step = (W - L - R) / rows.length, bw = Math.max(3, step - 2);
     var y = function (v) { return T + (H - T - B) * (1 - v / max); }, s = "";
     for (var g = 0; g <= 4; g++) { var v = max * g / 4, yy = y(v).toFixed(1);
@@ -190,7 +189,7 @@
       return '<div class="mo' + (r.mode === "other" ? " other" : "") + '"><span class="nm" title="' + esc(r.mode) + '">' + esc(r.mode.replace("/", " / ")) + "</span>" +
         '<span class="bars">' + (r.history ? '<i class="h" style="width:' + wh.toFixed(2) + '%"></i>' : "") + (r.live ? '<i class="l" style="width:max(6px,' + wl.toFixed(2) + '%)"></i>' : "") + "</span>" +
         '<span class="n">' + num(r.history + r.live) + (r.live ? "<em>" + r.live + " live</em>" : "") + "</span></div>";
-    }).join("") : '<div class="empty">No failure modes recorded.</div>";
+    }).join("") : '<div class="empty"><div class="art">' + ICONS.list + "</div><b>No failure modes yet</b></div>";
   }
 
   function render() {
@@ -203,7 +202,7 @@
     var peak = data.months.reduce(function (a, r) { return r.history + r.live > a.n ? { n: r.history + r.live, m: r.m } : a; }, { n: 0, m: "" });
     $("stats").innerHTML = '<div class="stat"><b>' + num(h) + "</b><span>FDA history</span></div>" + '<div class="stat"><b style="color:var(--accent-600)">' + num(l) + "</b><span>Live (Vigil)</span></div>" +
       (peak.m ? '<div class="stat"><b>' + mlabel(peak.m) + "</b><span>Peak month · " + num(peak.n) + "</span></div>" : "");
-    $("nohist").innerHTML = data.has_history ? "" : '<div class="nohist">' + ICONS.alert + "FDA history not loaded. Showing live complaints only. Build it with <span class=\"mono\">python3 vigil.py import-history</span>.</div>";
+    $("nohist").innerHTML = data.has_history ? "" : '<div class="nohist">' + ICONS.alert + "history.csv not found: showing live complaints only. Build it with <span class=\"mono\">python3 vigil.py import-history</span>.</div>";
     drawMonths(); drawModes(); drawEvents();
   }
   function load(f, push) {

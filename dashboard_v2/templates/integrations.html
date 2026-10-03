@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block actions %}<a class="btn btn-ghost" href="/intake">{{ icon('download') }}Intake inbox</a>{% endblock %}
+{% block head %}
+<style>
+  .ig { display: grid; gap: 14px; }
+  .sec-h { font-size: var(--fs-11); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 6px 0 -4px; }
+  .top { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .stack { display: grid; gap: 14px; }
+  .ic-h { display: flex; align-items: center; gap: 10px; padding: 12px var(--s3); border-bottom: 1px solid var(--border); }
+  .ic-h .lg { width: 28px; height: 28px; border-radius: 4px; display: grid; place-items: center; background: var(--sidebar); color: #fff; font-size: 11px; font-weight: 800; flex: none; }
+  .ic-h .lg .i { width: 15px; height: 15px; }
+  .ic-h b { font-size: var(--fs-14); font-weight: 600; display: block; } .ic-h small { font-size: var(--fs-12); color: var(--muted); }
+  .ic-h .pill { margin-left: auto; }
+  .ic-b { padding: 12px var(--s3) 14px; display: grid; gap: 12px; }
+  .kv { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px 12px; align-items: center; font-size: var(--fs-13); }
+  .kv > span { color: var(--muted); font-size: var(--fs-12); }
+  .copyrow { display: flex; gap: 6px; min-width: 0; }
+  .copyrow code, .copyrow input { flex: 1; min-width: 0; height: 28px; display: flex; align-items: center; padding: 0 8px; border: 1px solid var(--border-2); border-radius: var(--r-btn); background: var(--zebra);
+    font: 12px var(--mono); color: var(--text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; outline: none; }
+  pre.curl { margin: 0; padding: 10px 12px; background: #0B1F3A; color: #D5DEEA; border-radius: var(--r-btn); font: 12px/1.55 var(--mono); overflow-x: auto; white-space: pre; position: relative; }
+  pre.curl .k { color: #5EEAD4; } pre.curl .s { color: #FDE68A; }
+  .curl-wrap { position: relative; } .curl-wrap .btn { position: absolute; top: 6px; right: 6px; }
+  .stats { display: flex; gap: 20px; font-size: var(--fs-12); color: var(--muted); } .stats b { color: var(--text); font-size: var(--fs-14); font-weight: 600; font-variant-numeric: tabular-nums; display: block; }
+  .drop { border: 1px dashed var(--border-2); border-radius: var(--r-card); padding: 18px; display: grid; gap: 6px; justify-items: start; background: var(--zebra); transition: border-color var(--t-fast), background var(--t-fast); cursor: pointer; }
+  .drop.over { border-color: var(--accent); background: var(--accent-50); }
+  .drop b { font-size: var(--fs-13); font-weight: 600; } .drop span { font-size: var(--fs-12); color: var(--muted); }
+  .result { font-size: var(--fs-12); color: var(--text-2); } .result.err { color: var(--f-urgent); }
+  .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .fgrid .field label, .cfg .field label { font-size: 11px; }
+  .fgrid .input, .cfg .input { height: 30px; font-size: 13px; }
+  .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+  .conns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .conn { padding: 12px 14px; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 4px 10px; align-items: center; }
+  .conn .lg { grid-row: 1 / 3; width: 28px; height: 28px; border-radius: 4px; display: grid; place-items: center; background: var(--hover); color: var(--text-2); font-size: 11px; font-weight: 800; box-shadow: inset 0 0 0 1px var(--border); }
+  .conn b { font-size: var(--fs-13); font-weight: 600; } .conn small { font-size: var(--fs-12); color: var(--muted); }
+  .conn .foot { grid-column: 1 / 3; display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .conn .foot .btn { margin-left: auto; }
+  .p-avail { background: #fff !important; color: var(--muted) !important; box-shadow: inset 0 0 0 1px var(--border-2); }
+  .p-conf { background: var(--f-needs); }
+  .map td { padding: 6px 12px; } .map .input { height: 28px; font-size: 13px; } .map td.arrow { color: var(--faint); width: 30px; text-align: center; }
+  .map select.input { padding: 0 6px; }
+  .note { font-size: var(--fs-12); color: var(--muted); }
+  .cfg { width: 480px; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="ig">
+  <div class="sec-h">Connected sources</div>
+  <div class="top">
+    <!-- REST API / Webhook -->
+    <section class="card">
+      <div class="ic-h"><span class="lg">{{ icon('zap') }}</span><div><b>REST API / Webhook</b><small>Push complaints from any system as JSON</small></div>
+        <span class="pill s-appr">Connected</span></div>
+      <div class="ic-b">
+        <div class="kv">
+          <span>Endpoint</span><div class="copyrow"><code id="ep">POST {{ endpoint }}</code><button class="btn btn-sm btn-ghost" data-copy="{{ endpoint }}">{{ icon('copy') }}Copy</button></div>
+          <span>API key</span><div class="copyrow"><input id="key" type="password" value="{{ st.api_key }}" readonly aria-label="API key">
+            <button class="btn btn-sm btn-ghost" id="key-show">Show</button><button class="btn btn-sm btn-ghost" id="key-copy">{{ icon('copy') }}Copy</button>
+            <button class="btn btn-sm btn-ghost" id="key-rot" title="Generate a new key; the old one stops working">{{ icon('reset') }}Rotate</button></div>
+          <span>Auth header</span><code style="font:12px var(--mono);color:var(--text-2)">X-API-Key: &lt;key&gt; &nbsp;or&nbsp; Authorization: Bearer &lt;key&gt;</code>
+        </div>
+        <div class="curl-wrap"><pre class="curl" id="curl"></pre><button class="btn btn-sm btn-ghost" id="curl-copy">{{ icon('copy') }}Copy</button></div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div class="stats"><div><b id="rest-n">{{ status.rest.count }}</b>Received</div><div><b id="rest-last">–</b>Last received</div></div>
+          <span class="result" id="test-res" style="margin-left:auto"></span>
+          <button class="btn btn-primary" id="test">{{ icon('send') }}Send test complaint</button>
+        </div>
+        <p class="note">Accepts one object or a list. Fields: id, text (required), device, event_date, received, event_type, outcomes, manufacturer, product_code, reporter. Other field names are translated by the mapping below. Responds 202 with the queued items.</p>
+      </div>
+    </section>
+
+    <div class="stack">
+      <!-- File upload -->
+      <section class="card" id="upload">
+        <div class="ic-h"><span class="lg">{{ icon('upload') }}</span><div><b>CSV / Excel upload</b><small>Batch import into the intake queue</small></div>
+          <span class="pill s-appr">Connected</span></div>
+        <div class="ic-b">
+          <label class="drop" id="drop"><input type="file" id="file" accept=".csv,.xlsx,.xls,.xlsm" hidden>
+            <b>Drop a .csv or .xlsx file, or click to choose</b>
+            <span>Header row required. Columns are mapped with the field mapping below; FDA MAUDE exports work as-is.</span></label>
+          <div style="display:flex;align-items:center;gap:16px"><div class="stats"><div><b id="csv-n">{{ status.csv.count }}</b>Rows received</div><div><b id="csv-last">–</b>Last upload</div></div>
+            <span class="result" id="up-res" style="margin-left:auto"></span></div>
+        </div>
+      </section>
+
+      <!-- Email IMAP -->
+      <section class="card">
+        <div class="ic-h"><span class="lg">{{ icon('mail') }}</span><div><b>Email inbox (IMAP)</b><small>Complaints sent to a shared mailbox</small></div>
+          <span class="pill {{ 's-appr' if status.imap_connected else 'p-avail' }}" id="imap-pill">{{ 'Connected' if status.imap_connected else 'Not configured' }}</span></div>
+        <form class="ic-b" id="imap" autocomplete="off">
+          <div class="fgrid">
+            <div class="field"><label>IMAP host</label><input class="input" name="host" value="{{ status.imap.host or '' }}" placeholder="imap.acme-medical.com"></div>
+            <div class="field"><label>Port</label><input class="input" name="port" value="{{ status.imap.port or '993' }}"></div>
+            <div class="field"><label>Username</label><input class="input" name="user" value="{{ status.imap.user or '' }}" placeholder="complaints@acme-medical.com"></div>
+            <div class="field"><label>Password</label><input class="input" name="password" type="password" placeholder="{{ 'Stored · leave blank to keep' if status.imap_has_password else '' }}"></div>
+            <div class="field"><label>Folder</label><input class="input" name="folder" value="{{ status.imap.folder or 'INBOX' }}"></div>
+            <div class="field"><label>Security</label><label class="chk" style="height:30px"><input type="checkbox" name="ssl" {{ 'checked' if status.imap.ssl != 'off' }}> SSL / TLS</label></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center"><span class="result" id="imap-res"></span>
+            <button type="button" class="btn btn-ghost" id="imap-off" style="margin-left:auto">Disconnect</button><button class="btn btn-primary">Save</button></div>
+        </form>
+      </section>
+    </div>
+  </div>
+
+  <div class="sec-h">Available connectors</div>
+  <div class="conns">
+    {% for key, name, kind, fields in CONNECTORS %}
+    <section class="card conn">
+      <span class="lg">{{ name[:2]|upper }}</span><b>{{ name }}</b><small>{{ kind }}</small>
+      <div class="foot"><span class="pill {{ 'p-conf' if status.connectors[key] else 'p-avail' }}" id="cp-{{ key }}">{{ 'Configured · not connected' if status.connectors[key] else 'Available' }}</span>
+        <button class="btn btn-sm btn-ghost" data-cfg="{{ key }}">Configure</button></div>
+    </section>
+    {% endfor %}
+  </div>
+
+  <div class="sec-h">Field mapping</div>
+  <section class="card">
+    <div class="card-h"><h2>Source field → Vigil field</h2><span class="aside">Applied to file uploads and REST payloads. Fields already named like Vigil fields pass through.</span></div>
+    <table class="tbl map"><thead><tr><th style="width:40%">Source field</th><th></th><th>Vigil field</th><th></th></tr></thead><tbody id="map"></tbody></table>
+    <div style="display:flex;gap:8px;padding:10px var(--s3)"><button class="btn btn-ghost btn-sm" id="map-add">Add row</button><button class="btn btn-ghost btn-sm" id="map-reset">Reset to defaults</button>
+      <span class="result" id="map-res" style="margin-left:auto;align-self:center"></span><button class="btn btn-primary btn-sm" id="map-save">Save mapping</button></div>
+  </section>
+</div>
+
+<div class="modal" id="cfg"><div class="modal-c cfg" role="dialog" aria-modal="true">
+  <h3 id="cfg-t">Configure</h3>
+  <p>Credentials are stored on this appliance in settings.json. This build does not open a connection to the service; the connector stays “not connected”.</p>
+  <form id="cfg-f" class="fgrid" style="grid-template-columns:1fr" autocomplete="off"></form>
+  <div class="acts"><button class="btn btn-ghost" id="cfg-clear" style="margin-right:auto">Clear</button><button class="btn btn-ghost" id="cfg-cancel">Cancel</button><button class="btn btn-primary" id="cfg-save">Save</button></div>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var EP = {{ endpoint|tojson }}, SAMPLE = {{ sample|tojson }}, CONN = {{ CONNECTORS|tojson }}, CFG = {{ st.connectors|tojson }};
+  var FIELDS = {{ VIGIL_FIELDS|tojson }}, MAP = {{ st.mapping|tojson }};
+  var DEFAULT_MAP = [["mdr_report_key","id"],["event_description","text"],["brand_name","device"],["date_received","received"],["date_of_event","event_date"],["event_type","event_type"],["patient_outcomes","outcomes"],["manufacturer","manufacturer"],["product_code","product_code"],["product_problems","product_problems"],["description","text"],["subject","device"],["case_number","id"],["contact_name","reporter"]];
+  function copy(t, what) { (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { V.toast(what + " copied"); }, function () {
+    var a = document.createElement("textarea"); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand("copy"); V.toast(what + " copied"); } catch (e) {} a.remove(); }); }
+  function when(t) { if (!t) return "Never"; var d = new Date(t); return d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); }
+
+  /* REST */
+  function curlText(key, mask) {
+    return "curl -X POST " + EP + " \\\n  -H 'Content-Type: application/json' \\\n  -H 'X-API-Key: " + (mask ? key.slice(0, 8) + "••••••••••••••••" : key) + "' \\\n  -d '" + SAMPLE.replace(/'/g, "'\\''") + "'";
+  }
+  function drawCurl() { var k = $("key").value; $("curl").innerHTML = esc(curlText(k, $("key").type === "password")).replace(/(curl|-X|-H|-d)/g, '<span class="k">$1</span>').replace(/(POST)/, '<span class="s">$1</span>'); }
+  drawCurl();
+  document.querySelectorAll("[data-copy]").forEach(function (b) { b.onclick = function () { copy(b.dataset.copy, "Endpoint"); }; });
+  $("key-show").onclick = function () { var k = $("key"); k.type = k.type === "password" ? "text" : "password"; this.textContent = k.type === "password" ? "Show" : "Hide"; drawCurl(); };
+  $("key-copy").onclick = function () { copy($("key").value, "API key"); };
+  $("curl-copy").onclick = function () { copy(curlText($("key").value, false), "curl command"); };
+  $("key-rot").onclick = function () {
+    if (!confirm("Rotate the API key? Systems using the current key will be rejected until they are updated.")) return;
+    fetch("/api/settings/api-key/rotate", { method: "POST" }).then(function (r) { return r.json(); }).then(function (j) { $("key").value = j.api_key; drawCurl(); V.toast("API key rotated"); });
+  };
+  $("test").onclick = function () {
+    var b = this; b.disabled = true; $("test-res").className = "result"; $("test-res").textContent = "Queuing…";
+    fetch("/api/integrations/rest/test", { method: "POST" }).then(function (r) { return r.json(); }).then(function (j) {
+      var it = j.items[0]; $("test-res").innerHTML = 'Queued <a class="lnk" href="/intake" style="color:var(--accent-600);font-weight:600">#' + esc(it.id) + "</a> · processing on the local model";
+      status();
+    }).finally(function () { b.disabled = false; });
+  };
+
+  /* file upload */
+  function upload(file) {
+    if (!file) return;
+    var fd = new FormData(); fd.append("file", file); fd.append("reporter", V.reviewer());
+    $("up-res").className = "result"; $("up-res").innerHTML = '<span class="spin"></span> Uploading ' + esc(file.name);
+    fetch("/api/intake/upload", { method: "POST", body: fd }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (x) {
+      if (!x.ok) { $("up-res").className = "result err"; $("up-res").textContent = x.j.error; return; }
+      $("up-res").innerHTML = esc(x.j.file) + ": " + x.j.queued + " queued · " + x.j.duplicates + " duplicate · " + x.j.rejected + ' rejected · <a href="/intake" style="color:var(--accent-600);font-weight:600">View inbox</a>';
+      status();
+    }).catch(function () { $("up-res").className = "result err"; $("up-res").textContent = "Upload failed"; });
+  }
+  var drop = $("drop");
+  ["dragenter", "dragover"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); }); });
+  ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); }); });
+  drop.addEventListener("drop", function (e) { upload(e.dataTransfer.files[0]); });
+  $("file").onchange = function () { upload(this.files[0]); this.value = ""; };
+
+  /* IMAP */
+  function saveImap(body) {
+    return fetch("/api/settings/imap", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function (r) { return r.json(); }).then(function (j) {
+      $("imap-pill").className = "pill " + (j.connected ? "s-appr" : "p-avail"); $("imap-pill").textContent = j.connected ? "Connected" : "Not configured";
+      $("imap-res").textContent = j.connected ? "Settings saved." : "Disconnected."; });
+  }
+  $("imap").onsubmit = function (e) { e.preventDefault(); var f = new FormData(this), o = {}; f.forEach(function (v, k) { o[k] = v; }); o.ssl = this.ssl.checked ? "on" : "off";
+    if (!o.host || !o.user) { $("imap-res").textContent = "Host and username are required."; return; } saveImap(o); };
+  $("imap-off").onclick = function () { saveImap({ disconnect: true }); };
+
+  /* connectors */
+  var cur = null;
+  document.querySelectorAll("[data-cfg]").forEach(function (b) { b.onclick = function () {
+    cur = CONN.filter(function (c) { return c[0] === b.dataset.cfg; })[0]; var vals = CFG[cur[0]] || {};
+    $("cfg-t").textContent = "Configure " + cur[1];
+    $("cfg-f").innerHTML = cur[3].map(function (f) { var secret = /secret|password|token|key/i.test(f);
+      return '<div class="field"><label>' + esc(f) + '</label><input class="input" name="' + esc(f) + '" type="' + (secret ? "password" : "text") + '" value="' + esc(vals[f] || "") + '"></div>'; }).join("");
+    $("cfg").classList.add("show"); var first = $("cfg-f").querySelector("input"); if (first) first.focus(); }; });
+  function closeCfg() { $("cfg").classList.remove("show"); }
+  function saveCfg(clear) {
+    var o = {}; $("cfg-f").querySelectorAll("input").forEach(function (i) { o[i.name] = i.value; });
+    fetch("/api/settings/connector/" + cur[0], { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(clear ? { clear: true } : { config: o }) })
+      .then(function (r) { return r.json(); }).then(function (j) { CFG[cur[0]] = clear ? {} : o; var p = $("cp-" + cur[0]);
+        p.className = "pill " + (j.configured ? "p-conf" : "p-avail"); p.textContent = j.configured ? "Configured · not connected" : "Available";
+        V.toast(cur[1] + (j.configured ? " settings saved" : " settings cleared")); closeCfg(); });
+  }
+  $("cfg-save").onclick = function () { saveCfg(false); }; $("cfg-clear").onclick = function () { saveCfg(true); }; $("cfg-cancel").onclick = closeCfg;
+  $("cfg").addEventListener("click", function (e) { if (e.target === $("cfg")) closeCfg(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("cfg").classList.contains("show")) { e.stopPropagation(); closeCfg(); } }, true);
+
+  /* field mapping */
+  function drawMap() {
+    $("map").innerHTML = MAP.map(function (m, i) {
+      return '<tr><td><input class="input mono" data-i="' + i + '" data-k="source" value="' + esc(m.source) + '" placeholder="source column or JSON key"></td><td class="arrow">→</td>' +
+        '<td><select class="input" data-i="' + i + '" data-k="target">' + FIELDS.map(function (f) { return '<option value="' + f[0] + '"' + (f[0] === m.target ? " selected" : "") + ">" + esc(f[1]) + " (" + f[0] + ")</option>"; }).join("") + "</select></td>" +
+        '<td style="width:40px"><button class="x-btn" data-del="' + i + '" aria-label="Remove">' + ICONS.x + "</button></td></tr>";
+    }).join("");
+  }
+  $("map").addEventListener("input", function (e) { var t = e.target; if (t.dataset.i !== undefined) MAP[+t.dataset.i][t.dataset.k] = t.value; });
+  $("map").addEventListener("change", function (e) { var t = e.target; if (t.dataset.i !== undefined) MAP[+t.dataset.i][t.dataset.k] = t.value; });
+  $("map").addEventListener("click", function (e) { var b = e.target.closest("[data-del]"); if (b) { MAP.splice(+b.dataset.del, 1); drawMap(); } });
+  $("map-add").onclick = function () { MAP.push({ source: "", target: "text" }); drawMap(); $("map").querySelector("tr:last-child input").focus(); };
+  $("map-reset").onclick = function () { MAP = DEFAULT_MAP.map(function (m) { return { source: m[0], target: m[1] }; }); drawMap(); $("map-res").textContent = "Defaults restored. Save to apply."; };
+  $("map-save").onclick = function () {
+    fetch("/api/settings/mapping", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mapping: MAP }) })
+      .then(function (r) { return r.json(); }).then(function (j) { MAP = j.mapping; drawMap(); $("map-res").textContent = "Saved · " + MAP.length + " mappings"; });
+  };
+  drawMap();
+
+  function status() {
+    fetch("/api/integrations/status", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (s) {
+      $("rest-n").textContent = s.rest.count; $("rest-last").textContent = when(s.rest.last);
+      $("csv-n").textContent = s.csv.count; $("csv-last").textContent = when(s.csv.last);
+    });
+  }
+  status(); setInterval(status, 5000);
+  if (location.hash === "#upload") $("upload").scrollIntoView();
+})();
+</script>
+{% endblock %}

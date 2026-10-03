@@ -6,7 +6,7 @@ Everything is local: no CDNs, no external fonts.
 
 Run in the background:  ~/hackathon/vigil/dashboard_v2/start_console.sh   ->  http://localhost:5001
 """
-import csv, datetime as dt, fcntl, io, os, re, shutil, signal, subprocess, sys, tempfile, threading, time
+import copy, csv, datetime as dt, fcntl, io, json, os, re, secrets, shutil, signal, subprocess, sys, tempfile, threading, time, uuid
 from collections import defaultdict
 
 import requests
@@ -232,6 +232,220 @@ def demo_total():
     except Exception:
         return 0
 
+# ---------------------------------------------------------------- settings.json (console configuration)
+SETTINGS = os.environ.get("VIGIL_CONSOLE_SETTINGS", os.path.join(HERE, "settings.json"))
+INTAKE = os.environ.get("VIGIL_CONSOLE_INTAKE", os.path.join(HERE, "intake.json"))
+VIGIL_FIELDS = [("id", "Complaint ID"), ("text", "Complaint text"), ("device", "Device / brand"), ("received", "Date received"),
+                ("event_date", "Event date"), ("event_type", "Event type"), ("outcomes", "Patient outcome"),
+                ("manufacturer", "Manufacturer"), ("product_code", "Product code"), ("product_problems", "Product problems"),
+                ("reporter", "Reporter")]
+DEFAULT_MAPPING = [  # source field -> Vigil field; FDA MAUDE export columns and common helpdesk names
+    ("mdr_report_key", "id"), ("event_description", "text"), ("brand_name", "device"), ("date_received", "received"),
+    ("date_of_event", "event_date"), ("event_type", "event_type"), ("patient_outcomes", "outcomes"),
+    ("manufacturer", "manufacturer"), ("product_code", "product_code"), ("product_problems", "product_problems"),
+    ("description", "text"), ("subject", "device"), ("case_number", "id"), ("contact_name", "reporter")]
+CONNECTORS = [  # key, name, kind, fields of the config form
+    ("salesforce", "Salesforce Service Cloud", "Case management", ["Instance URL", "Client ID", "Client secret", "Case queue"]),
+    ("zendesk", "Zendesk", "Helpdesk", ["Subdomain", "Agent email", "API token", "View ID"]),
+    ("servicenow", "ServiceNow", "ITSM / CSM", ["Instance URL", "Username", "Password", "Table"]),
+    ("sap_qm", "SAP QM", "Quality notifications", ["Host", "Client", "User", "Password", "Notification type"]),
+    ("trackwise", "MasterControl / TrackWise", "QMS / CAPA", ["Base URL", "API user", "API key", "Complaint form"]),
+    ("slack", "Slack", "Alert routing", ["Bot token", "Channel"]),
+    ("teams", "Microsoft Teams", "Alert routing", ["Incoming webhook URL", "Channel name"]),
+]
+_settings_lock = threading.Lock()
+
+
+def load_settings():
+    with _settings_lock:
+        try:
+            with open(SETTINGS, encoding="utf-8") as f:
+                st = json.load(f)
+        except (OSError, ValueError):
+            st = {}
+        changed = False
+        if not st.get("api_key"):
+            st["api_key"], changed = "vgl_" + secrets.token_hex(16), True
+        if "mapping" not in st:
+            st["mapping"], changed = [{"source": a, "target": b} for a, b in DEFAULT_MAPPING], True
+        st.setdefault("imap", {}); st.setdefault("connectors", {})
+        if changed:
+            _save_settings_unlocked(st)
+        return st
+
+
+def _save_settings_unlocked(st):
+    tmp = SETTINGS + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(st, f, indent=2)
+    os.chmod(tmp, 0o600)  # holds the API key and connector credentials
+    os.replace(tmp, SETTINGS)
+
+
+def save_settings(update):
+    st = load_settings()
+    with _settings_lock:
+        st.update(update)
+        _save_settings_unlocked(st)
+    return st
+
+# ---------------------------------------------------------------- intake queue (REST / CSV / e-mail -> vigil.process)
+_intake_lock = threading.Lock()
+_intake_wake = threading.Event()
+_intake_cache = {"mtime": None, "items": []}
+
+
+def intake_items():
+    try:
+        m = os.path.getmtime(INTAKE)
+    except OSError:
+        return []
+    if _intake_cache["mtime"] != m:
+        try:
+            with open(INTAKE, encoding="utf-8") as f:
+                _intake_cache.update(mtime=m, items=json.load(f))
+        except (OSError, ValueError):
+            pass
+    return _intake_cache["items"]
+
+
+def _write_intake(items):
+    tmp = INTAKE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(items, f, indent=1)
+    os.replace(tmp, INTAKE)
+    _intake_cache.update(mtime=os.path.getmtime(INTAKE), items=items)
+
+
+def _update_item(iid, **kw):
+    with _intake_lock:
+        items = copy.deepcopy(intake_items())
+        for it in items:
+            if it["iid"] == iid:
+                it.update(kw)
+        _write_intake(items)
+
+
+def source_of(cid):
+    """Where a complaint came from: the intake item that produced it, else the MAUDE demo replay."""
+    for it in reversed(intake_items()):
+        if it.get("cid") == cid and it.get("status") in ("processed", "processing", "queued"):
+            return it["source"]
+    return "replay"
+
+
+SOURCES = {"rest": ("REST API", "zap"), "csv": ("File upload", "upload"), "email": ("Email", "mail"),
+           "replay": ("MAUDE replay", "play"), "test": ("API test", "zap")}
+
+
+def _yyyymmdd(v):
+    v = str(v or "").strip()
+    if re.fullmatch(r"\d{8}", v):
+        return v
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d.%m.%Y", "%Y/%m/%d", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return dt.datetime.strptime(v[:19], fmt).strftime("%Y%m%d")
+        except ValueError:
+            pass
+    return ""
+
+
+def normalize(raw, mapping):
+    """Raw record (any field names) -> the complaint dict vigil.process() expects, via the field mapping.
+    Fields already named like Vigil fields pass through unchanged."""
+    norm = lambda k: re.sub(r"[\s\-/]+", "_", str(k).strip().lower())  # 'Case Number' == 'case_number'
+    m = {norm(x["source"]): x["target"] for x in mapping if x.get("source") and x.get("target")}
+    c = {}
+    for k, v in raw.items():
+        key = str(k).strip()
+        target = key if key in dict(VIGIL_FIELDS) else m.get(norm(key))
+        if target and v not in (None, "") and not c.get(target):
+            c[target] = str(v).strip()
+    c["received"] = _yyyymmdd(c.get("received")) or dt.date.today().strftime("%Y%m%d")
+    c["event_date"] = _yyyymmdd(c.get("event_date"))
+    for k in ("device", "event_type", "outcomes", "manufacturer", "product_code", "product_problems", "reporter"):
+        c.setdefault(k, "")
+    c.update(generic_name="", manufacturer_narrative="")
+    return c
+
+
+def enqueue(records, source, reporter=""):
+    """Queue raw records. Returns [{iid, id, status, error?}]. Duplicates (id already logged or queued) are kept as
+    'duplicate' items that point at the existing complaint; records without text are rejected."""
+    mapping = load_settings()["mapping"]
+    logged = {r["id"] for r in read_rows()}
+    out = []
+    with _intake_lock:
+        items = copy.deepcopy(intake_items())
+        active = {it["cid"] for it in items if it["status"] in ("queued", "processing", "processed")}
+        for raw in records:
+            c = normalize(raw, mapping)
+            now = dt.datetime.now()
+            if not c.get("text"):
+                out.append({"id": c.get("id", ""), "status": "rejected", "error": "missing complaint text"}); continue
+            if not c.get("id"):
+                c["id"] = f"{source[:3].upper()}-{now:%y%m%d%H%M%S}-{secrets.token_hex(2).upper()}"
+            c["id"] = re.sub(r"[^A-Za-z0-9_.-]", "-", c["id"])[:40]
+            status = "duplicate" if (c["id"] in logged or c["id"] in active) else "queued"
+            it = {"iid": uuid.uuid4().hex[:10], "source": source, "reporter": c.get("reporter") or reporter or "",
+                  "received": now.isoformat(timespec="seconds"), "status": status, "cid": c["id"],
+                  "device": c.get("device", ""), "excerpt": c["text"][:200], "complaint": c}
+            items.append(it); active.add(c["id"])
+            out.append({"iid": it["iid"], "id": c["id"], "status": status})
+        _write_intake(items[-2000:])
+    if any(o["status"] == "queued" for o in out):
+        start_intake_worker(); _intake_wake.set()
+    return out
+
+
+_process_lock = threading.Lock()
+_worker = {"thread": None, "current": None}
+
+
+def _intake_loop():
+    while True:
+        nxt = next((it for it in intake_items() if it["status"] == "queued"), None)
+        if not nxt:
+            _intake_wake.wait(5); _intake_wake.clear(); continue
+        _update_item(nxt["iid"], status="processing", started=dt.datetime.now().isoformat(timespec="seconds"))
+        _worker["current"] = nxt["iid"]
+        try:
+            with _process_lock:  # one complaint at a time through the local model
+                row = vigil().process(dict(nxt["complaint"]))
+            _update_item(nxt["iid"], status="processed", decision=row.get("decision"),
+                         finished=dt.datetime.now().isoformat(timespec="seconds"))
+        except Exception as e:
+            print("intake processing failed:", nxt["iid"], type(e).__name__, e, flush=True)
+            _update_item(nxt["iid"], status="error", error=f"{type(e).__name__}: {e}"[:300])
+        _worker["current"] = None
+
+
+def start_intake_worker(recover=False):
+    if recover:  # items that were mid-classification when the console stopped go back to the queue
+        with _intake_lock:
+            items = copy.deepcopy(intake_items())
+            if any(it["status"] == "processing" for it in items):
+                for it in items:
+                    if it["status"] == "processing":
+                        it["status"] = "queued"
+                _write_intake(items)
+    if not (_worker["thread"] and _worker["thread"].is_alive()):
+        _worker["thread"] = threading.Thread(target=_intake_loop, daemon=True)
+        _worker["thread"].start()
+
+
+def read_upload(f):
+    """Rows from an uploaded CSV / Excel file as dicts (header row = field names)."""
+    name = (f.filename or "").lower()
+    data = f.read()
+    if name.endswith((".xlsx", ".xlsm", ".xls")):
+        import pandas as pd
+        df = pd.read_excel(io.BytesIO(data), dtype=str).fillna("")
+        return df.to_dict("records")
+    text = data.decode("utf-8-sig", errors="replace")
+    csv.field_size_limit(sys.maxsize)
+    return list(csv.DictReader(io.StringIO(text)))
+
 # ---------------------------------------------------------------- system health (refreshed in the background)
 HEALTH = {"model": {"ok": False, "label": "checking…"}, "telegram": {"ok": False, "label": "checking…"},
           "sync": {"ok": False, "label": "checking…"}, "checked": None}
@@ -316,20 +530,25 @@ ICONS = {k: _svg(v) for k, v in {
     "zap": '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
     "stop": '<rect x="6" y="6" width="12" height="12" rx="2"/>',
     "reset": '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+    "plug": '<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0z"/><path d="M12 18v4"/>',
+    "upload": '<path d="M12 20V9M7 14l5-5 5 5M5 4h14"/>',
+    "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    "key": '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/>',
+    "copy": '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
     "bell": '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
     "book": '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
 }.items()}
 STEP_ICONS = {"done": ICONS["check"], "info": ICONS["help"], "todo": _svg('<circle cx="12" cy="12" r="3"/>')}
 
-NAV = [("home", "/", "Command Center", "grid"), ("complaints", "/complaints", "Complaints", "inbox"),
+NAV = [("home", "/", "Command Center", "grid"), ("intake", "/intake", "Intake inbox", "download"), ("complaints", "/complaints", "Complaints", "inbox"),
        ("clock", "/clock", "Compliance Clock", "clock"), ("trends", "/trends", "Trends", "trend"),
-       ("audit", "/audit", "Audit Log", "file"), ("demo", "/demo", "Demo Control", "play")]
+       ("audit", "/audit", "Audit Log", "file"), ("integrations", "/integrations", "Integrations", "plug"), ("demo", "/demo", "Demo Control", "play")]
 
 
 @app.context_processor
 def _globals():
     from markupsafe import Markup
-    return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": WORKSPACE,
+    return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": WORKSPACE, "SOURCES": SOURCES,
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 
@@ -428,7 +647,7 @@ def brief(r):
                                        "due_date", "deadline_days", "status", "product_code")} | {
         "confidence": conf, "status_kind": status_kind(r.get("status")), "days_left": days_left(r),
         "memory": memory_text(r), "mem": memory_parts(r), "excerpt": sentence_case(text[:260]),
-        "family": device_family(r.get("device")), "open": is_open(r)}
+        "family": device_family(r.get("device")), "open": is_open(r), "source": source_of(r["id"])}
 
 
 def approvals_at():
@@ -872,7 +1091,7 @@ def detail(r, rows=None):
             "timeline": steps, "missing_list": missing, "questions": questions, "breakdown": b, "conf": conf,
             "legal": legal_basis(r), "pdf": has_pdf, "processed": fmt_time(t), "received_d": rec_d,
             "act": act if kind != "pend" else None, "act_time": fmt_time(act_t) if act_t else "",
-            "history": device_history(r, rows), "family": device_family(r.get("device")),
+            "history": device_history(r, rows), "family": device_family(r.get("device")), "source": source_of(cid),
             "full_text": src.get("event_description") or r.get("text") or "",
             "narrative": src.get("manufacturer_narrative") or "", "src": src,
             "due_label": dt.date.fromisoformat(r["due_date"]).strftime("%-d %b %Y") if r.get("due_date") else ""}
@@ -947,6 +1166,128 @@ def api_demo_action(action):
     return (jsonify(error=err), 409) if err else jsonify(ok=True)
 
 
+# ---------------------------------------------------------------- integrations + intake inbox
+SAMPLE_COMPLAINT = {"text": "Customer reports the DreamStation Auto CPAP stopped delivering pressure overnight and black particles were found "
+                            "in the humidifier chamber. The patient woke up short of breath and visited urgent care the next morning.",
+                    "device": "DREAMSTATION AUTO CPAP", "event_type": "Injury", "reporter": "Integration test"}
+
+
+def api_key_ok():
+    key = request.headers.get("X-API-Key") or (request.headers.get("Authorization") or "").removeprefix("Bearer ").strip()
+    return bool(key) and secrets.compare_digest(key, load_settings()["api_key"])
+
+
+@app.post("/api/complaints")
+def api_complaints_in():
+    """Intake endpoint: JSON object or list {id?, text, device, event_date, received, event_type, outcomes, ...}."""
+    if not api_key_ok():
+        return jsonify(error="invalid or missing API key (X-API-Key header)"), 401
+    body = request.get_json(silent=True)
+    records = body if isinstance(body, list) else [body] if isinstance(body, dict) else None
+    if not records or not all(isinstance(x, dict) for x in records):
+        return jsonify(error="expected a JSON object or a list of objects"), 400
+    res = enqueue(records[:500], "rest")
+    return jsonify(accepted=sum(r["status"] == "queued" for r in res), items=res), 202
+
+
+@app.post("/api/integrations/rest/test")
+def api_rest_test():
+    return jsonify(items=enqueue([dict(SAMPLE_COMPLAINT, id=f"TEST-{dt.datetime.now():%m%d%H%M%S}")], "test", "Integration test"))
+
+
+@app.post("/api/intake/upload")
+def api_upload():
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(error="choose a .csv or .xlsx file"), 400
+    try:
+        rows = read_upload(f)
+    except Exception as e:
+        return jsonify(error=f"could not read {f.filename}: {type(e).__name__}"), 400
+    if not rows:
+        return jsonify(error="the file has no data rows"), 400
+    res = enqueue(rows[:1000], "csv", request.form.get("reporter") or "")
+    return jsonify(file=f.filename, rows=len(rows), queued=sum(r["status"] == "queued" for r in res),
+                   duplicates=sum(r["status"] == "duplicate" for r in res), rejected=sum(r["status"] == "rejected" for r in res))
+
+
+@app.route("/api/intake")
+def api_intake():
+    items = intake_items()
+    return jsonify(items=[{k: v for k, v in it.items() if k != "complaint"} for it in reversed(items[-500:])],
+                   counts={s: sum(it["status"] == s for it in items) for s in ("queued", "processing", "processed", "duplicate", "error")},
+                   working=_worker["current"])
+
+
+@app.route("/intake")
+def intake_page():
+    return render_template("intake.html", page="intake", title="Intake inbox", SOURCES=SOURCES)
+
+
+def integration_status():
+    st, items = load_settings(), intake_items()
+    def last(src):
+        its = [i for i in items if i["source"] in src]
+        return {"count": len(its), "last": its[-1]["received"] if its else ""}
+    imap = st.get("imap") or {}
+    return {"rest": last(("rest", "test")), "csv": last(("csv",)), "email": last(("email",)),
+            "imap_connected": bool(imap.get("host") and imap.get("user")), "imap": {k: v for k, v in imap.items() if k != "password"},
+            "imap_has_password": bool(imap.get("password")),
+            "connectors": {k: bool(st["connectors"].get(k)) for k, *_ in CONNECTORS}}
+
+
+@app.route("/integrations")
+def integrations_page():
+    st = load_settings()
+    return render_template("integrations.html", page="integrations", title="Integrations", st=st, status=integration_status(),
+                           CONNECTORS=CONNECTORS, VIGIL_FIELDS=VIGIL_FIELDS, endpoint=request.host_url.rstrip("/") + "/api/complaints",
+                           sample=json.dumps(dict(SAMPLE_COMPLAINT, id="CASE-10042", event_date="2026-09-28"), indent=2))
+
+
+@app.route("/api/integrations/status")
+def api_integrations_status():
+    return jsonify(integration_status())
+
+
+@app.post("/api/settings/imap")
+def api_settings_imap():
+    d = request.get_json(silent=True) or {}
+    cur = load_settings().get("imap") or {}
+    imap = {k: str(d.get(k) or "").strip() for k in ("host", "port", "user", "folder", "ssl")}
+    imap["password"] = str(d.get("password") or "") or cur.get("password", "")  # blank keeps the stored password
+    if d.get("disconnect"):
+        imap = {}
+    save_settings({"imap": imap})
+    return jsonify(ok=True, connected=bool(imap.get("host") and imap.get("user")))
+
+
+@app.post("/api/settings/connector/<key>")
+def api_settings_connector(key):
+    if key not in {k for k, *_ in CONNECTORS}:
+        abort(404)
+    d = request.get_json(silent=True) or {}
+    conns = load_settings()["connectors"]
+    conns[key] = {} if d.get("clear") else {k: str(v) for k, v in (d.get("config") or {}).items() if str(v).strip()}
+    save_settings({"connectors": conns})
+    return jsonify(ok=True, configured=bool(conns[key]))
+
+
+@app.post("/api/settings/mapping")
+def api_settings_mapping():
+    rows = (request.get_json(silent=True) or {}).get("mapping") or []
+    valid = dict(VIGIL_FIELDS)
+    mapping = [{"source": str(r.get("source", "")).strip(), "target": r.get("target")} for r in rows
+               if str(r.get("source", "")).strip() and r.get("target") in valid]
+    save_settings({"mapping": mapping})
+    return jsonify(ok=True, mapping=mapping)
+
+
+@app.post("/api/settings/api-key/rotate")
+def api_rotate_key():
+    st = save_settings({"api_key": "vgl_" + secrets.token_hex(16)})
+    return jsonify(api_key=st["api_key"])
+
+
 @app.route("/api/health")
 def api_health():
     d = DEMO.public(since=10**12)
@@ -977,5 +1318,6 @@ def _shutdown(*_):
 if __name__ == "__main__":
     signal.signal(signal.SIGTERM, _shutdown)
     threading.Thread(target=health_loop, daemon=True).start()
+    start_intake_worker(recover=True)  # resume anything left queued or interrupted
     print(f"Vigil Console v2 on http://localhost:5001  (data: {VIGIL_DIR})", flush=True)
     app.run(host="127.0.0.1", port=int(os.environ.get("VIGIL_CONSOLE_PORT", 5001)), debug=False, threaded=True)
