@@ -28,6 +28,9 @@ FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "
           "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text",
           "product_code", "memory", "failure_mode"]  # same order as vigil.FIELDS; older files stop earlier
 
+VERSION = "1.0.0"
+WORKSPACE = {"org": "Acme Medical", "unit": "Quality", "env": "ON-PREM · GB10 · PRODUCTION"}
+
 app = Flask(__name__)
 import logging; logging.getLogger("werkzeug").setLevel(logging.WARNING)  # polling would flood console.log
 
@@ -247,13 +250,24 @@ def _check_model():
         return {"ok": False, "label": f"offline ({type(e).__name__})"}
 
 
+_tg_fails = {"n": 0, "last_ok": None}
+
 def _check_telegram():
+    """Reachability of api.telegram.org, debounced: one slow or failed probe must not flip the badge.
+    Reported offline only after 3 consecutive failures."""
+    now = dt.datetime.now().strftime("%H:%M:%S")
     try:
         t0 = time.perf_counter()
         requests.get("https://api.telegram.org", timeout=4, allow_redirects=False)
-        return {"ok": True, "label": f"reachable · {(time.perf_counter() - t0) * 1000:.0f} ms"}
+        _tg_fails.update(n=0, last_ok=now)
+        return {"ok": True, "label": f"reachable · {(time.perf_counter() - t0) * 1000:.0f} ms", "checked": now, "fails": 0}
     except Exception:
-        return {"ok": False, "label": "unreachable (alerts queue in outbox)"}
+        _tg_fails["n"] += 1
+        prev = HEALTH.get("telegram") or {}
+        if _tg_fails["n"] < 3 and prev.get("ok"):
+            return {**prev, "checked": now, "fails": _tg_fails["n"]}  # keep showing Online
+        return {"ok": False, "label": "unreachable (alerts queue in outbox)", "checked": now, "fails": _tg_fails["n"],
+                "last_ok": _tg_fails["last_ok"]}
 
 
 def _check_sync():
@@ -302,6 +316,8 @@ ICONS = {k: _svg(v) for k, v in {
     "zap": '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
     "stop": '<rect x="6" y="6" width="12" height="12" rx="2"/>',
     "reset": '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+    "bell": '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+    "book": '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
 }.items()}
 STEP_ICONS = {"done": ICONS["check"], "info": ICONS["help"], "todo": _svg('<circle cx="12" cy="12" r="3"/>')}
 
@@ -313,7 +329,7 @@ NAV = [("home", "/", "Command Center", "grid"), ("complaints", "/complaints", "C
 @app.context_processor
 def _globals():
     from markupsafe import Markup
-    return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV,
+    return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": WORKSPACE,
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 
@@ -621,6 +637,26 @@ def api_trends():
         modes=sorted(({"mode": k, "history": v[0], "live": v[1]} for k, v in modes.items()), key=lambda x: -(x["history"] + x["live"])),
         quarters=[{"q": k, "Death": quarters[k]["Death"], "Injury": quarters[k]["Injury"], "Malfunction": quarters[k]["Malfunction"]} for k in qkeys],
         recall={"month": RECALL[0], "label": RECALL[1]})
+
+
+@app.route("/api/notifications")
+def api_notifications():
+    """Bell feed: newest classifications, pattern alerts and overdue reports (the client tracks what was seen)."""
+    rows = all_rows()
+    ev = []
+    for r in sorted(rows, key=lambda r: r.get("time") or "", reverse=True)[:12]:
+        ev.append({"t": r.get("time") or "", "kind": "classified", "id": r["id"],
+                   "title": f"#{r['id']} classified {(r.get('decision') or '').replace('_', ' ')}",
+                   "sub": f"{r.get('device') or 'Unknown device'} · {r.get('priority')}"})
+    for a in pattern_alerts(rows):
+        ev.append({"t": a.get("latest") or "", "kind": "pattern", "id": a["ids"][0],
+                   "title": f"Pattern: {a['family']} · {a['issue']}", "sub": f"{a['historical']:,} historical + {a['live']} {a['live_label']}"})
+    for r in rows:
+        if is_open(r) and (days_left(r) or 0) < 0:
+            ev.append({"t": r.get("time") or "", "kind": "overdue", "id": r["id"], "title": f"#{r['id']} is overdue",
+                       "sub": f"Due {r.get('due_date')} · {r.get('deadline_days')}-day report"})
+    ev.sort(key=lambda e: e["t"], reverse=True)
+    return jsonify(events=ev[:15])
 
 
 @app.route("/api/search")
