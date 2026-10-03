@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Vigil skill helper (runs inside the OpenShell sandbox). Reads decisions.csv, appends approvals.csv / info_requests.csv."""
-import argparse, csv, datetime as dt, json, os, re, sys, time, urllib.request
+import argparse, csv, datetime as dt, fcntl, json, os, re, sys, time, urllib.error, urllib.request
 from collections import Counter
 
 DIR = os.environ.get("VIGIL_DIR", "/sandbox/vigil")
 DECISIONS = os.path.join(DIR, "decisions.csv")
 APPROVALS = os.path.join(DIR, "approvals.csv")
 INFO_REQUESTS = os.path.join(DIR, "info_requests.csv")
+NAMES = os.path.join(DIR, "names.json")  # {"names": {session: first name}, "pending": {session: {...}}}
+# OpenClaw's session log: real Telegram messages carry __openclaw.senderName (the model does not see it).
+SESSIONS = os.environ.get("VIGIL_SESSIONS", "/sandbox/.openclaw/agents/main/sessions")
+NOT_NAMES = {"hello", "hi", "hey", "yes", "no", "ok", "okay", "thanks", "thank", "you", "sure", "please", "vigil",
+             "bot", "help", "what", "who", "why", "how", "cancel", "stop", "status", "due", "approve", "need", "info"}
+GENERIC_NAMES = {"", "someone", "user", "webchat", "unknown", "sender", "anonymous", "me", "none", "null"}
 # Local model through the OpenShell managed inference route (direct host:8000 is denied by sandbox policy).
 LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "https://inference.local/v1")
 
@@ -80,11 +86,95 @@ def _by_id(path):
 
 
 def _append(path, cid, by):
-    new = not os.path.exists(path)
     with open(path, "a", newline="", encoding="utf-8") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)  # two button taps at once must not interleave rows
         w = csv.writer(f)
-        if new: w.writerow(["time", "id", "by"])
+        if f.tell() == 0: w.writerow(["time", "id", "by"])
         w.writerow([dt.datetime.now().isoformat(timespec="seconds"), cid, by])
+
+
+# ---------------------------------------------------------------- who is acting (sender name)
+def _first(name):
+    return (name or "").strip().split()[0] if (name or "").strip() else ""
+
+
+def _session_store():
+    try:
+        with open(os.path.join(SESSIONS, "sessions.json"), encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _current_message(cid=None, window=900):
+    """(session id, sender first name) for the newest chat message in the last `window` s that mentions `cid`
+    (any message when cid is None). The name is "" if OpenClaw recorded no sender (e.g. a CLI test)."""
+    best = None
+    for s in _session_store().values():
+        path = s.get("sessionFile") or ""
+        try:
+            with open(path, encoding="utf-8") as f:
+                lines = f.readlines()[-300:]
+        except Exception:
+            continue
+        for line in reversed(lines):
+            try:
+                m = json.loads(line).get("message") or {}
+            except Exception:
+                continue
+            if m.get("role") != "user":
+                continue
+            ts = (m.get("timestamp") or 0) / 1000
+            if time.time() - ts > window:
+                break
+            text = m.get("content") if isinstance(m.get("content"), str) else json.dumps(m.get("content"))
+            if cid and cid not in (text or ""):
+                continue
+            meta = m.get("__openclaw") or {}
+            name = _first(meta.get("senderName") or meta.get("senderUsername"))
+            if best is None or ts > best[0]:
+                best = (ts, s.get("sessionId") or path, name)
+            break
+    if best:
+        return best[1], best[2]
+    newest = max(_session_store().values(), key=lambda s: s.get("updatedAt") or 0, default={})
+    return newest.get("sessionId") or "default", ""
+
+
+def _names():
+    try:
+        with open(NAMES, encoding="utf-8") as f:
+            d = json.load(f)
+        return {"names": d.get("names") or {}, "pending": d.get("pending") or {}}
+    except Exception:
+        return {"names": {}, "pending": {}}
+
+
+def _save_names(d):
+    tmp = NAMES + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(d, f)
+    os.replace(tmp, NAMES)
+
+
+def actor(by, cid, action):
+    """First name to log: Telegram sender metadata, else a real --by, else the name given earlier in this
+    session. If none, ask once ('Who should I log this under?') and keep the action pending until answered."""
+    session, meta_name = _current_message(cid)
+    d = _names()
+    name = meta_name or ("" if _first(by).lower() in GENERIC_NAMES else _first(by)) or d["names"].get(session, "")
+    if name:
+        if d["names"].get(session) != name:
+            d["names"][session] = name
+            _save_names(d)
+        return name
+    d["pending"][session] = {"action": action, "id": cid, "time": time.time()}
+    _save_names(d)
+    reply("Who should I log this under? Reply with your first name.")
+
+
+def _who(status):
+    return status.split(" by ", 1)[1].strip() if " by " in (status or "") else "someone"
 
 
 def _clean_id(raw):
@@ -144,19 +234,27 @@ def cmd_approve(a):
     if not r:
         reply(f"Unknown complaint #{cid}. Nothing approved.")
     if r["status"].startswith("APPROVED"):
-        print(f"#{cid} is already {r['status']}.")
-        return
-    _append(APPROVALS, cid, a.by or "someone")
-    print(f"✅ #{cid} approved by {a.by or 'someone'}. Logged. ({r['decision']}, {r['device'][:30]}, due {r['due_date'] or 'n/a'})")
+        reply(f"#{cid} is already approved by {_who(r['status'])} — no change.")
+    by = actor(a.by, cid, "approve")  # an INFO REQUESTED complaint can still be approved once the answers are in
+    _append(APPROVALS, cid, by)
+    print(f"✅ #{cid} approved by {by}. Logged. ({r['decision']}, {r['device'][:30]}, due {r['due_date'] or 'n/a'})")
 
 
 def _llm(prompt, max_tokens=700):
-    def get(url, body=None):
+    """Bounded so need-info always answers inside the exec window (yieldMs 180 s): <= ~100 s here, then the
+    rule-based questions. One retry on a quick connection error (inference route warming up)."""
+    def get(url, body=None, timeout=15):
         req = urllib.request.Request(url, data=json.dumps(body).encode() if body else None,
                                      headers={"Content-Type": "application/json"})
-        return json.load(urllib.request.urlopen(req, timeout=90))
+        for attempt in (1, 2):
+            try:
+                return json.load(urllib.request.urlopen(req, timeout=timeout))
+            except urllib.error.URLError as e:
+                if attempt == 2 or "timed out" in str(e.reason):
+                    raise
+                time.sleep(2)
     model = get(f"{LLM_BASE}/models")["data"][0]["id"]
-    out = get(f"{LLM_BASE}/chat/completions", {
+    out = get(f"{LLM_BASE}/chat/completions", timeout=75, body={
         "model": model, "temperature": 0.2, "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": prompt}],
         "chat_template_kwargs": {"enable_thinking": False}})
@@ -194,9 +292,10 @@ def cmd_need_info(a):
     if not r:
         reply(f"Unknown complaint #{cid}. Nothing changed.")
     if r["status"].startswith("APPROVED"):
-        print(f"#{cid} is already {r['status']}. Nothing changed.")
-        return
-    by = a.by or "someone"
+        reply(f"#{cid} is already approved by {_who(r['status'])} — no change.")
+    if r["status"].startswith("INFO REQUESTED"):
+        reply(f"#{cid} already has info requested by {_who(r['status'])} — no change.")
+    by = actor(a.by, cid, "need-info")
     _append(INFO_REQUESTS, cid, by)  # record first: the request stands even if the model is slow or down
     items = [m.strip() for m in (r.get("missing") or "").split(";") if m.strip()]
     qs, msg = _questions_for(r, items)
@@ -227,6 +326,19 @@ def cmd_msg(a):
         return cmd_due(argparse.Namespace(days=days))
     if re.search(r"\b(status|how many|summary)\b", t):
         return cmd_status(None)
+    session, _ = _current_message()
+    d = _names()
+    pend = d["pending"].get(session)
+    words = re.sub(r"^(?:(?:it|this|that) (?:is|s)|its|i am|i m|im|my name is|name is|log (?:it|this) under|under|as)\s+",
+                   "", t.strip()).split()
+    if (pend and time.time() - pend.get("time", 0) < 900 and 1 <= len(words) <= 2
+            and all(w.isalpha() and w not in NOT_NAMES for w in words)):
+        name = words[0].capitalize()
+        d["names"][session] = name
+        d["pending"].pop(session, None)
+        _save_names(d)
+        cmd = cmd_approve if pend["action"] == "approve" else cmd_need_info
+        return cmd(argparse.Namespace(id=pend["id"], by=name))
     print("Vigil commands: status · due · approve <id> · need info <id>")
 
 
