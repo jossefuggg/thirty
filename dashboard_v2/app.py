@@ -540,7 +540,9 @@ def score_breakdown(r):
         flags, weights = v.RED_FLAGS, v.EVENT_WEIGHT
     except Exception:
         flags, weights = {}, {}
-    kws = sorted(((k.strip(), w) for k, w in flags.items() if k in text), key=lambda x: -x[1])
+    raw = src.get("event_description") or src.get("manufacturer_narrative") or r.get("text") or ""
+    hits = v.red_flag_hits(raw) if flags else []  # same whole-word matcher as vigil.priority()
+    kws = sorted(hits, key=lambda x: -x[1])
     kw = sum(w for _, w in kws)
     distress = int(r.get("distress") or 0) * 2
     total = int(r.get("score") or 0)

@@ -58,13 +58,26 @@ LLM_MODEL = os.environ.get("VIGIL_LLM_MODEL", "")  # auto-detected if empty
 RED_FLAGS = {
     "death": 10, "died": 10, "expired": 10, "fatal": 10, "deceased": 10,
     "cardiac arrest": 9, "unconscious": 8, "resuscitat": 8, "icu": 7, "hospital": 6,
-    "emergency": 6, "er ": 5, "surgery": 6, "burn": 6, "fire": 7, "smoke": 6, "explod": 7,
+    "emergency": 6, "ER": 5, "surgery": 6, "burn": 6, "fire": 7, "smoke": 6, "explod": 7,
     "choking": 7, "could not breathe": 8, "couldn't breathe": 8, "shortness of breath": 6,
     "bleeding": 6, "injur": 5, "overdose": 7, "shock": 6,
     "foam": 4, "particle": 4, "black dust": 4, "debris": 3, "headache": 2, "cough": 2,
     "stopped working": 3, "alarm": 2, "failure": 3, "malfunction": 3,
 }
 EVENT_WEIGHT = {"Death": 10, "Injury": 6, "Malfunction": 2}
+
+# Whole-word matching (substrings gave fake points: 'er' inside 'every' / 'mother').
+# Stems match any word starting with them (resuscitated, injury, exploded, particles, hospitalized);
+# other keywords allow plain inflections (deaths, burns, coughing). "ER" is case-sensitive (ER, ER visit).
+_STEMS = {"resuscitat", "injur", "explod", "particle", "hospital"}
+_FLAG_RE = {k: re.compile(r"\bER\b") if k == "ER" else
+            re.compile(r"\b" + re.escape(k) + (r"\w*" if k in _STEMS else r"(?:s|es|ed|ing)?") + r"\b", re.I)
+            for k in RED_FLAGS}
+
+
+def red_flag_hits(text):
+    """[(keyword, weight)] for each red flag present in the text, as whole words."""
+    return [(k, w) for k, w in RED_FLAGS.items() if _FLAG_RE[k].search(text or "")]
 
 try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -90,8 +103,7 @@ def distress_score(text):
 
 
 def priority(c):
-    t = (c["text"] or "").lower()
-    score = sum(w for k, w in RED_FLAGS.items() if k in t)
+    score = sum(w for _, w in red_flag_hits(c["text"]))
     score += EVENT_WEIGHT.get(c.get("event_type") or "", 0)
     if "death" in (c.get("outcomes") or "").lower():
         score += 10
@@ -142,6 +154,7 @@ def spike(c):
 # ---------------------------------------------------------------- layer 2/3: local AI
 CLASSIFY = """You are Vigil, a medical device complaint analyst for a manufacturer's quality team.
 Apply FDA 21 CFR 803 (Medical Device Reporting).
+This is a MANUFACTURER report: cite 21 CFR 803.50 (manufacturer reporting) — never 803.30 (user facilities).
 A complaint is REPORTABLE if the information reasonably suggests the device:
 - may have caused or contributed to a DEATH, or
 - may have caused or contributed to a SERIOUS INJURY (life-threatening, permanent impairment, or needing medical/surgical intervention to prevent permanent damage), or
