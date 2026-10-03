@@ -607,18 +607,39 @@ SANDBOX = os.environ.get("VIGIL_SANDBOX", "my-assistant")
 SANDBOX_DIR = "/sandbox/vigil"
 TG_SESSION = os.environ.get("VIGIL_TG_SESSION", "agent:main:telegram:group:-5193984181")  # OpenClaw group chat
 
+# nemoclaw takes its own host lock (~/.nemoclaw-portable-host.lock) and gives up after 120 retries when replay,
+# sync, reset and the console call it at once. All our calls queue on one fcntl lock instead, so they run one at
+# a time; a failed upload is remembered in .push_pending and retried by the next sync cycle (never dropped).
+NEMOCLAW_LOCK = os.path.join(HERE, ".nemoclaw.lock")
+PUSH_PENDING = os.path.join(HERE, ".push_pending")
+NEMOCLAW_WAIT = 600  # seconds to wait for our turn
+
 def _nemoclaw(*args):
     try:
-        return subprocess.run(["nemoclaw", SANDBOX, *args], capture_output=True, text=True, timeout=60)
+        with open(NEMOCLAW_LOCK, "a") as lk:
+            end = time.time() + NEMOCLAW_WAIT
+            while True:
+                try:
+                    fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB); break
+                except BlockingIOError:
+                    if time.time() > end:
+                        raise TimeoutError(f"waited {NEMOCLAW_WAIT}s for {NEMOCLAW_LOCK}")
+                    time.sleep(0.2)
+            return subprocess.run(["nemoclaw", SANDBOX, *args], capture_output=True, text=True, timeout=120)
     except Exception as e:
         print("nemoclaw unavailable:", e)
         return None
 
 def push_log():
-    if SANDBOX and os.path.exists(LOG):
-        r = _nemoclaw("upload", LOG, SANDBOX_DIR + "/")
-        if r is not None and r.returncode:
-            print("Sandbox upload failed:", (r.stderr or r.stdout)[-200:])
+    if not (SANDBOX and os.path.exists(LOG)):
+        return
+    r = _nemoclaw("upload", LOG, SANDBOX_DIR + "/")
+    if r is not None and r.returncode == 0:
+        if os.path.exists(PUSH_PENDING): os.remove(PUSH_PENDING)
+        return
+    open(PUSH_PENDING, "w").write(dt.datetime.now().isoformat(timespec="seconds"))
+    err = (r.stderr or r.stdout)[-160:].strip() if r is not None else "nemoclaw unavailable"
+    print(f"Sandbox upload deferred (next sync cycle retries): {err}")
 
 def _pull(name):
     """Download a sandbox-side CSV (time,id,by) written by the vigil skill; [] if absent."""
@@ -885,6 +906,8 @@ def cmd_sync(a):
     push_log()
     print(f"Syncing with sandbox '{SANDBOX}' every {a.interval}s (approvals from the OpenClaw vigil skill) ...")
     while True:
+        if os.path.exists(PUSH_PENDING):  # an earlier upload failed: the whole file is re-sent, so one retry covers all
+            push_log()
         for x in pull_approvals():
             print(f"{x['time']} #{x['id']} {x['kind']} by {x['by']}")
         if a.once: break
