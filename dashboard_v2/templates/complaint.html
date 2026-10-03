@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}#{{ r.id }} · Vigil Console{% endblock %}
+{% block head %}
+<style>
+  .crumb { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+  .title { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .title h1 .mono { font-size: 26px; color: var(--muted); font-weight: 600; margin-right: 6px; }
+  .title .pill { font-size: 13.5px; padding: 5px 13px; }
+  .meta { color: var(--muted); margin: 6px 0 20px; font-size: 15px; }
+
+  /* timeline stepper */
+  .steps { display: grid; grid-template-columns: repeat(5, 1fr); }
+  .step { position: relative; padding-right: 16px; }
+  .step::after { content: ""; position: absolute; top: 17px; left: 44px; right: 8px; height: 3px; border-radius: 2px; background: var(--line); }
+  .step:last-child::after { display: none; }
+  .step.done::after { background: var(--teal); }
+  .step .ic { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2.5px dashed #C3CCD8; color: var(--faint); position: relative; z-index: 1; }
+  .step.done .ic { background: var(--teal); border: 0; color: #fff; }
+  .step.info .ic { background: var(--orange); border: 0; color: #fff; }
+  .step.todo .ic { border-color: var(--teal); color: var(--teal); animation: pulse 1.6s infinite; }
+  .step .ic svg { width: 18px; height: 18px; }
+  .step b { display: block; margin-top: 12px; color: var(--navy); font-size: 16px; }
+  .step .d { color: var(--muted); font-size: 13.5px; line-height: 1.45; margin-top: 3px; }
+  .step .w { color: var(--teal-ink); font-size: 13px; font-weight: 600; margin-top: 2px; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: 22px; align-items: start; margin-top: 22px; }
+  .stack { display: grid; gap: 22px; }
+  .text { font-size: 16px; line-height: 1.65; color: #253041; white-space: pre-wrap; max-height: 260px; overflow-y: auto; margin: 0; }
+  .reason { font-size: 17px; line-height: 1.55; color: var(--ink); margin: 0 0 18px; }
+  .kv { display: grid; grid-template-columns: 150px 1fr; gap: 10px 16px; font-size: 15px; align-items: center; }
+  .kv dt { color: var(--muted); font-weight: 600; } .kv dd { margin: 0; }
+  .conf { display: flex; align-items: center; gap: 12px; }
+  .bar { flex: 1; height: 10px; border-radius: 6px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 6px; background: var(--teal); }
+  .bar.low i { background: var(--orange); }
+
+  .score-top { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  .score-top .big { font-size: 46px; font-weight: 760; color: var(--navy); line-height: 1; font-variant-numeric: tabular-nums; }
+  .stackbar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--line); gap: 2px; }
+  .stackbar i { display: block; height: 100%; }
+  .parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0 12px; }
+  .parts div { border-left: 4px solid var(--c); padding-left: 10px; }
+  .parts b { font-size: 22px; color: var(--navy); font-variant-numeric: tabular-nums; } .parts span { display: block; font-size: 13px; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 13px; padding: 3px 10px; border-radius: 6px; background: #EEF2F8; color: var(--navy-2); font-weight: 600; }
+  .chip i { font-style: normal; color: var(--muted); font-weight: 500; margin-left: 4px; }
+
+  ul.list, ol.list { margin: 0; padding-left: 22px; font-size: 15.5px; } .list li { margin-bottom: 7px; } .list li::marker { color: var(--teal); font-weight: 700; }
+
+  .review { border: 2px solid var(--teal-soft); }
+  .review .now { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-size: 15px; color: var(--muted); }
+  .review .now .pill { font-size: 14px; padding: 5px 14px; }
+  .review form { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: end; }
+  .msg { margin-top: 12px; font-size: 14.5px; font-weight: 600; min-height: 1.4em; }
+  .msg.ok { color: var(--teal-ink); } .msg.err { color: var(--red); }
+  .pdf { width: 100%; height: calc(100vh - 210px); min-height: 760px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  .pdf-empty { height: 320px; display: grid; place-items: center; text-align: center; color: var(--muted); border: 2px dashed var(--line); border-radius: 12px; }
+  .due-chip { font-weight: 700; }
+  .due-chip.red { color: var(--red); } .due-chip.orange { color: var(--orange); } .due-chip.green { color: var(--green); }
+  @media (max-width: 1280px) { .layout { grid-template-columns: 1fr; } .steps { grid-template-columns: 1fr 1fr; gap: 18px; } .step::after { display: none; } }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="crumb"><a href="/">← Command center</a></div>
+<div class="title">
+  <h1><span class="mono">#{{ r.id }}</span>{{ r.device or "Device not specified" }}</h1>
+  <span class="pill p-{{ r.priority }}">{{ r.priority }}</span>
+  <span class="pill d-{{ r.decision }}">{{ (r.decision or '')|replace('_', ' ') }}</span>
+  {% if r.category and r.category != 'NONE' %}<span class="pill s-info">{{ r.category|replace('_', ' ') }}</span>{% endif %}
+</div>
+<p class="meta">Processed {{ r.processed }}{% if r.received_iso %} · original FDA receipt {{ r.received_iso }}{% endif %}{% if r.due_date %} ·
+  <span class="due-chip {{ 'red' if r.days_left is not none and r.days_left <= 7 else 'orange' if r.days_left is not none and r.days_left <= 14 else 'green' }}">
+  {{ r.deadline_days }}-day report due {{ r.due_date }}{% if r.days_left is not none %} ({% if r.days_left < 0 %}{{ -r.days_left }} days overdue{% else %}{{ r.days_left }} days left{% endif %}){% endif %}</span>{% endif %}
+  {% if r.duplicate_of %} · possible duplicate of <a class="mono" href="/complaint/{{ r.duplicate_of }}">#{{ r.duplicate_of }}</a>{% endif %}</p>
+
+<section class="card">
+  <div class="steps" id="steps">
+    {% for st, name, desc, when in r.timeline %}
+    <div class="step {{ st }}"><div class="ic">{{ ICON[st]|safe }}</div><b>{{ name }}</b><div class="d">{{ desc }}</div>{% if when %}<div class="w">{{ when }}</div>{% endif %}</div>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="layout">
+  <div class="stack">
+    <section class="card">
+      <div class="card-h"><h2>AI decision · local model</h2></div>
+      <p class="reason">{{ r.reason }}</p>
+      <dl class="kv">
+        <dt>Decision</dt><dd><span class="pill d-{{ r.decision }}">{{ (r.decision or '')|replace('_', ' ') }}</span>{% if r.category and r.category != 'NONE' %} <span class="muted">· {{ r.category|replace('_', ' ') }}</span>{% endif %}</dd>
+        <dt>Confidence</dt><dd><div class="conf"><div class="bar {{ 'low' if (r.confidence|int) < 70 }}"><i style="width:{{ r.confidence|int }}%"></i></div><b class="num">{{ r.confidence|int }}%</b></div></dd>
+        <dt>Deadline rule</dt><dd>{% if r.due_date %}{{ r.deadline_days }}-day MDR under 21 CFR 803{% else %}No FDA report required{% endif %}</dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>Priority score breakdown</h2></div>
+      {% set b = r.breakdown %}
+      <div class="score-top"><span class="big">{{ b.total }}</span><span class="pill p-{{ r.priority }}">{{ r.priority }}</span>
+        <span class="muted small" style="margin-left:auto">URGENT ≥ 15 · HIGH ≥ 8 · distress only raises priority</span></div>
+      {% set denom = [b.parts|map(attribute=1)|sum, 1]|max %}
+      <div class="stackbar">{% for name, val, col in b.parts %}{% if val %}<i style="width:{{ (val / denom * 100)|round(1) }}%;background:{{ col }}"></i>{% endif %}{% endfor %}</div>
+      <div class="parts">{% for name, val, col in b.parts %}<div style="--c:{{ col }}"><b>+{{ val }}</b><span>{{ name }}</span></div>{% endfor %}</div>
+      {% if b.keywords %}<div class="chips">{% for k, w in b.keywords %}<span class="chip">{{ k }}<i>+{{ w }}</i></span>{% endfor %}</div>{% endif %}
+      {% if b.event_type or b.outcomes %}<p class="small muted" style="margin:12px 0 0">Event type: <b>{{ b.event_type or 'n/a' }}</b> · Patient outcome: <b>{{ b.outcomes or 'n/a' }}</b> · Distress level {{ r.distress }}/5</p>{% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>Complaint text</h2></div>
+      <p class="text">{{ r.full_text }}</p>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>Missing information</h2></div>
+      {% if r.missing_list %}<ul class="list">{% for m in r.missing_list %}<li>{{ m }}</li>{% endfor %}</ul>
+      {% else %}<p class="muted" style="margin:0">Nothing flagged as missing.</p>{% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>Follow-up questions for the reporter</h2></div>
+      <div id="questions">
+      {% if r.questions %}<ol class="list">{% for q in r.questions %}<li>{{ q }}</li>{% endfor %}</ol>
+      {% else %}<p class="muted" style="margin:0">{{ 'Drafted with the Form 3500A…' if r.reportable else 'None needed: complaint is not reportable.' }}</p>{% endif %}
+      </div>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="card review">
+      <div class="card-h"><h2>Human review</h2></div>
+      <div class="now">Current status <span id="status" class="pill s-{{ r.status_kind }}">{{ (r.status or 'n/a')|replace('PENDING_REVIEW', 'PENDING REVIEW') }}</span></div>
+      {% if r.reportable %}
+      <form id="act" onsubmit="return false">
+        <div><label for="name">Reviewer name</label><input type="text" id="name" maxlength="60" placeholder="e.g. Dr. A. Rivera, Regulatory Affairs" autocomplete="name"></div>
+        <button class="btn btn-teal" type="button" data-kind="approve">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Approve</button>
+        <button class="btn btn-line" type="button" data-kind="info">Request info</button>
+      </form>
+      <div class="msg" id="msg"></div>
+      {% else %}
+      <p class="muted" style="margin:0">Not reportable. Logged with its reason for the audit trail; no FDA submission needed.</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>Draft FDA Form 3500A</h2>
+        <a id="pdf-open" class="small" href="/reports/{{ r.id }}.pdf" target="_blank" style="margin-left:auto;{{ '' if r.pdf else 'display:none' }}">Open in new tab ↗</a></div>
+      <div id="pdf-box">
+      {% if r.pdf %}<iframe class="pdf" src="/reports/{{ r.id }}.pdf#view=FitH" title="Form 3500A draft"></iframe>
+      {% elif r.reportable %}<div class="pdf-empty"><div><i class="dot run" style="display:inline-block"></i><br><br>Drafting the Form 3500A on the local model…<br><span class="small">It appears here automatically.</span></div></div>
+      {% else %}<div class="pdf-empty"><div>No MDR draft: the complaint was judged not reportable.</div></div>{% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var CID = {{ r.id|tojson }}, ICON = {{ ICON|tojson }}, hasPdf = {{ 'true' if r.pdf else 'false' }}, reportable = {{ 'true' if r.reportable else 'false' }};
+  var lastSig = "", nameEl = $("name");
+  try { if (nameEl) nameEl.value = localStorage.getItem("vigil-reviewer") || ""; } catch (e) {}
+
+  function render(d) {
+    var sig = JSON.stringify([d.status, d.timeline, d.pdf, d.questions]);
+    if (sig === lastSig) return; lastSig = sig;
+    var st = $("status"); st.className = "pill s-" + d.status_kind; st.textContent = (d.status || "n/a").replace("PENDING_REVIEW", "PENDING REVIEW");
+    $("steps").innerHTML = d.timeline.map(function (t) {
+      return '<div class="step ' + t[0] + '"><div class="ic">' + ICON[t[0]] + "</div><b>" + esc(t[1]) + '</b><div class="d">' + esc(t[2]) + "</div>" +
+        (t[3] ? '<div class="w">' + esc(t[3]) + "</div>" : "") + "</div>";
+    }).join("");
+    var approved = d.status_kind === "appr";
+    document.querySelectorAll("#act button").forEach(function (b) { b.disabled = approved; });
+    if (d.pdf && !hasPdf) {
+      hasPdf = true;
+      $("pdf-box").innerHTML = '<iframe class="pdf" src="/reports/' + encodeURIComponent(CID) + '.pdf#view=FitH" title="Form 3500A draft"></iframe>';
+      $("pdf-open").style.display = "";
+    }
+    if (d.questions.length) $("questions").innerHTML = '<ol class="list">' + d.questions.map(function (q) { return "<li>" + esc(q) + "</li>"; }).join("") + "</ol>";
+  }
+  function poll() { fetch("/api/complaint/" + encodeURIComponent(CID), { cache: "no-store" }).then(function (r) { return r.json(); }).then(render).catch(function () {}); }
+
+  document.querySelectorAll("#act button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var name = nameEl.value.trim(), msg = $("msg");
+      if (!name) { msg.className = "msg err"; msg.textContent = "Enter your name first."; nameEl.focus(); return; }
+      try { localStorage.setItem("vigil-reviewer", name); } catch (e) {}
+      document.querySelectorAll("#act button").forEach(function (b) { b.disabled = true; });
+      msg.className = "msg"; msg.textContent = "Saving to decisions.csv…";
+      fetch("/api/complaint/" + encodeURIComponent(CID) + "/action", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: btn.dataset.kind, name: name }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (x) {
+          msg.className = "msg " + (x.ok ? "ok" : "err");
+          msg.textContent = x.ok ? "Saved: " + x.j.status + ". Written to decisions.csv; sandbox sync started." : x.j.error;
+          lastSig = ""; poll();
+        })
+        .catch(function () { msg.className = "msg err"; msg.textContent = "Could not reach the console."; })
+        .finally(function () { setTimeout(poll, 300); });
+    });
+  });
+  if ({{ 'true' if r.status_kind == 'appr' else 'false' }}) document.querySelectorAll("#act button").forEach(function (b) { b.disabled = true; });
+  setInterval(poll, 3000);
+  window.addEventListener("load", function () { if (!location.hash) window.scrollTo(0, 0); });  // PDF iframe can steal scroll
+})();
+</script>
+{% endblock %}

@@ -160,9 +160,15 @@ def health_loop():
         time.sleep(10)
 
 # ---------------------------------------------------------------- pages / API
+STEP_ICONS = {
+    "done": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    "info": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg>',
+    "todo": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="3"/></svg>'}
+
+
 @app.context_processor
 def _globals():
-    return {"health": HEALTH}
+    return {"health": HEALTH, "ICON": STEP_ICONS}
 
 
 @app.route("/")
@@ -208,6 +214,183 @@ def api_state():
     feed = sorted(rows, key=lambda r: r.get("time") or "", reverse=True)[:40]
     clock = sorted(open_rows, key=lambda r: (r["due_date"], -int(r.get("score") or 0)))
     return jsonify(kpi=kpi, feed=[brief(r) for r in feed], clock=[brief(r) for r in clock])
+
+
+# ---------------------------------------------------------------- complaint detail
+_source_cache = {"mtime": None, "rows": {}}
+
+def source_complaint(cid):
+    """The original MAUDE row from demo_set.csv (full text, event type, outcomes), if this complaint came from it."""
+    try:
+        m = os.path.getmtime(DEMO_CSV)
+        if m != _source_cache["mtime"]:
+            with open(DEMO_CSV, newline="", encoding="utf-8") as f:
+                _source_cache.update(mtime=m, rows={r["mdr_report_key"]: r for r in csv.DictReader(f)})
+        return _source_cache["rows"].get(cid)
+    except Exception:
+        return None
+
+
+def score_breakdown(r):
+    """Re-derive vigil.priority(): red-flag keywords + event type/outcome + 2 x distress = score."""
+    src = source_complaint(r["id"]) or {}
+    text = (src.get("event_description") or src.get("manufacturer_narrative") or r.get("text") or "").lower()
+    try:
+        v = vigil()
+        flags, weights = v.RED_FLAGS, v.EVENT_WEIGHT
+    except Exception:
+        flags, weights = {}, {}
+    kws = sorted(((k.strip(), w) for k, w in flags.items() if k in text), key=lambda x: -x[1])
+    kw = sum(w for _, w in kws)
+    distress = int(r.get("distress") or 0) * 2
+    total = int(r.get("score") or 0)
+    event_type, outcomes = src.get("event_type") or "", src.get("patient_outcomes") or ""
+    if src:
+        event = weights.get(event_type, 0) + (10 if "death" in outcomes.lower() else 4 if outcomes else 0)
+    else:
+        event = max(0, total - kw - distress)  # source row unknown: whatever the keywords and distress don't explain
+    parts = [("Red-flag keywords", kw, "var(--navy)"), ("Event type & outcome", event, "var(--orange)"),
+             ("Distress (×2)", distress, "var(--teal)")]
+    return {"total": total, "keywords": kws, "parts": parts, "event_type": event_type, "outcomes": outcomes,
+            "level": r.get("priority")}
+
+
+_fq_cache = {}
+
+def follow_up_questions(cid):
+    """Section 10 of the drafted 3500A PDF (the model's follow-up questions). [] if no PDF / no pdftotext."""
+    path = os.path.join(REPORTS, f"MDR_{cid}.pdf")
+    if not os.path.exists(path):
+        return []
+    key = (path, os.path.getmtime(path))
+    if key not in _fq_cache:
+        try:
+            txt = subprocess.run(["pdftotext", "-raw", path, "-"], capture_output=True, text=True, timeout=10).stdout
+        except Exception:
+            txt = ""
+        qs, on = [], False
+        for line in txt.splitlines():
+            line = line.strip()
+            if re.match(r"\d+\.\s*Follow-up questions", line):
+                on = True; continue
+            if not on: continue
+            if not line or line.startswith(("Fields marked UNKNOWN", "VIGIL |", "Generated locally")): break
+            m = re.match(r"([1-9])\.\s+(.*)", line)
+            if m: qs.append(m.group(2))
+            elif qs: qs[-1] += " " + line  # wrapped question
+        _fq_cache[key] = qs
+    return _fq_cache[key]
+
+
+def last_action(cid, since):
+    """Latest console action (approve / info) for this complaint at or after its processing time."""
+    if not os.path.exists(ACTIONS):
+        return None
+    with open(ACTIONS, newline="", encoding="utf-8") as f:
+        hits = [a for a in csv.DictReader(f) if a["id"] == cid and a["time"] >= (since or "")]
+    return hits[-1] if hits else None
+
+
+def record_action(cid, kind, by):
+    new = not os.path.exists(ACTIONS)
+    with open(ACTIONS, "a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        if new: w.writerow(["time", "id", "kind", "by"])
+        w.writerow([dt.datetime.now().isoformat(timespec="seconds"), cid, kind, by])
+
+
+def alert_state(cid):
+    """'queued' if the Telegram alert for this complaint is parked in outbox.txt (Telegram unreachable)."""
+    try:
+        with open(OUTBOX, encoding="utf-8") as f:
+            return "queued" if f"#{cid}" in f.read() else "sent"
+    except FileNotFoundError:
+        return "sent"
+
+
+def fmt_time(iso):
+    try:
+        return dt.datetime.fromisoformat(iso).strftime("%d %b %Y, %H:%M:%S")
+    except Exception:
+        return iso or ""
+
+
+def detail(r):
+    cid, t = r["id"], r.get("time") or ""
+    kind = status_kind(r.get("status"))
+    act = last_action(cid, t)
+    reportable = r.get("decision") in ("REPORTABLE", "NEEDS_INFO")
+    rec = r.get("received") or ""
+    rec = f"{rec[:4]}-{rec[4:6]}-{rec[6:8]}" if re.fullmatch(r"\d{8}", rec) else rec
+    if kind == "appr":
+        final = ("done", "Approved", r["status"])
+    elif kind == "info":
+        final = ("info", "Info requested", r["status"])
+    elif reportable:
+        final = ("todo", "Awaiting review", "Approve the draft or request more information")
+    else:
+        final = ("done", "Logged for audit", "Not reportable: reason kept in the audit trail")
+    when = fmt_time(act["time"]) if act and kind != "pend" else ""
+    alert = alert_state(cid)
+    timeline = [
+        ("done", "Received", f"Vigil intake {fmt_time(t)}" + (f" · original FDA receipt {rec}" if rec else ""), ""),
+        ("done", "Scored", f"{r.get('priority')} priority · score {r.get('score')} · distress {r.get('distress')}", ""),
+        ("done", "AI classified", f"{(r.get('decision') or '').replace('_', ' ')} · {r.get('category')} · "
+                                  f"{r.get('confidence')}% confidence · local model", ""),
+        ("done" if alert == "sent" else "info", "Alert sent" if alert == "sent" else "Alert queued",
+         "Telegram alert" + (" + draft Form 3500A" if reportable else "") if alert == "sent"
+         else "Telegram unreachable · parked in outbox.txt", ""),
+        (final[0], final[1], final[2], when),
+    ]
+    missing = [m.strip() for m in (r.get("missing") or "").split(";") if m.strip()]
+    questions = follow_up_questions(cid)
+    if not questions and missing and reportable:
+        questions = [f"Can you provide the {re.sub(r'\s*\(.*?\)', '', m).strip().rstrip('.').lower()}?" for m in missing[:5]]
+    return {**r, "status_kind": kind, "days_left": days_left(r), "reportable": reportable, "timeline": timeline,
+            "missing_list": missing, "questions": questions, "breakdown": score_breakdown(r),
+            "pdf": os.path.exists(os.path.join(REPORTS, f"MDR_{cid}.pdf")), "processed": fmt_time(t), "received_iso": rec,
+            "full_text": ((source_complaint(cid) or {}).get("event_description") or r.get("text") or "")}
+
+
+@app.route("/complaint/<cid>")
+def complaint(cid):
+    r = latest_by_id(read_rows()).get(cid)
+    if not r:
+        return render_template("missing.html", page="", cid=cid), 404
+    return render_template("complaint.html", page="", r=detail(r))
+
+
+@app.route("/api/complaint/<cid>")
+def api_complaint(cid):
+    r = latest_by_id(read_rows()).get(cid)
+    if not r:
+        abort(404)
+    d = detail(r)
+    return jsonify({k: d[k] for k in ("status", "status_kind", "pdf", "questions")} | {"timeline": d["timeline"]})
+
+
+@app.post("/api/complaint/<cid>/action")
+def api_action(cid):
+    data = request.get_json(silent=True) or request.form
+    kind, name = data.get("kind"), " ".join((data.get("name") or "").split())[:60]
+    if kind not in ("approve", "info"):
+        return jsonify(error="unknown action"), 400
+    if not name:
+        return jsonify(error="Enter your name first."), 400
+    if kind == "approve":
+        status, guard = f"APPROVED by {name}", lambda s: not s.startswith("APPROVED")
+    else:  # same rule as vigil.py / the OpenClaw skill: a request for info never overrides an approval
+        status, guard = f"INFO REQUESTED by {name}", lambda s: not s.startswith("APPROVED")
+    try:
+        changed = set_status(cid, status, guard)
+    except TimeoutError as e:
+        return jsonify(error=str(e)), 503
+    if changed is None:
+        return jsonify(error="Complaint not found."), 404
+    if not changed:
+        return jsonify(error="Already approved; nothing changed."), 409
+    record_action(cid, kind, name)
+    return jsonify(ok=True, status=status)
 
 
 @app.route("/api/health")
