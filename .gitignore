@@ -1,0 +1,12 @@
+# secrets and big files - never commit
+secrets.env
+*.env
+model/
+wheels/
+hackathon_data/
+NemoClaw/
+__pycache__/
+*.pyc
+.DS_Store
+._*
+outbox.txt
