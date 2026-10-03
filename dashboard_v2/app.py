@@ -20,6 +20,7 @@ REPORTS = os.path.join(VIGIL_DIR, "reports")
 OUTBOX = os.path.join(VIGIL_DIR, "outbox.txt")
 DEMO_CSV = os.path.join(VIGIL_DIR, "demo_set.csv")
 CHART = os.path.join(VIGIL_DIR, "philips_chart.png")
+HISTORY = os.path.join(VIGIL_DIR, "history.csv")  # past FDA MAUDE reports (vigil.py import-history)
 ACTIONS = os.environ.get("VIGIL_CONSOLE_ACTIONS", os.path.join(HERE, "actions.csv"))  # who/when for console actions
 VENV_BIN = os.path.expanduser(os.environ.get("VIGIL_VENV_BIN", "~/hackathon/venv/bin"))
 LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "http://localhost:8000/v1")
@@ -321,9 +322,9 @@ def home():
     return render_template("home.html", page="home", title="Command Center")
 
 
-PLACEHOLDERS = {"complaints": "Complaints", "clock": "Compliance Clock", "trends": "Trends", "audit": "Audit Log"}
+PLACEHOLDERS = {"complaints": "Complaints", "clock": "Compliance Clock", "audit": "Audit Log"}
 
-@app.route("/<any(complaints, clock, trends, audit):name>")
+@app.route("/<any(complaints, clock, audit):name>")
 def placeholder(name):
     return render_template("placeholder.html", page=name, title=PLACEHOLDERS[name])
 
@@ -451,22 +452,86 @@ def kpis(rows):
     return out
 
 
-def pattern_alerts(rows, days=90, threshold=3):
+# ---------------------------------------------------------------- history.csv (FDA MAUDE long-term memory)
+_hist = {"mtime": None, "rows": []}
+
+def history_rows():
+    """[(date, family, failure_mode, event_type, id)] from history.csv, cached until the file changes.
+    Text is not kept: 24k narratives are not needed for counting."""
+    try:
+        m = os.path.getmtime(HISTORY)
+    except OSError:
+        _hist.update(mtime=None, rows=[])
+        return []
+    if _hist["mtime"] != m:
+        csv.field_size_limit(sys.maxsize)
+        out = []
+        with open(HISTORY, newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                try:
+                    d = dt.date.fromisoformat((r.get("date_received") or "")[:10])
+                except ValueError:
+                    continue
+                out.append((d, r.get("device_family") or "UNKNOWN", r.get("failure_mode") or "other",
+                            r.get("event_type") or "", r.get("id") or ""))
+        _hist.update(mtime=m, rows=out)
+    return _hist["rows"]
+
+
+def live_family(r):
+    """Same grouping as history.csv: vigil.device_family() when available (falls back to the console's)."""
+    fn = getattr(vigil(), "device_family", None)
+    try:
+        return fn(r.get("device")) if fn else device_family(r.get("device"))
+    except Exception:
+        return device_family(r.get("device"))
+
+
+def live_mode(r):
+    """failure_mode column when vigil.py wrote one, else vigil.failure_mode() on the complaint text."""
+    if r.get("failure_mode"):
+        return r["failure_mode"]
+    src = source_complaint(r["id"]) or {}
+    fn = getattr(vigil(), "failure_mode", None)
+    if not fn:  # older vigil.py: map the console's keyword issues onto vigil's failure-mode vocabulary
+        fallback = {"fire / smoke": "electrical/shock/fire", "shock": "electrical/shock/fire", "foam": "material degradation/particles",
+                    "particles": "material degradation/particles", "alarm": "alarm failure", "shutdown": "power/shutdown",
+                    "overheating": "electrical/shock/fire", "pressure": "pressure/airflow", "water / leak": "contamination"}
+        found = [fallback[i] for i in issues_of(r) if i in fallback]
+        order = ["electrical/shock/fire", "material degradation/particles", "alarm failure", "power/shutdown", "pressure/airflow", "contamination"]
+        return min(found, key=order.index) if found else "other"
+    try:
+        return fn(src.get("product_problems") or "", src.get("event_description") or r.get("text") or "")
+    except Exception:
+        return "other"
+
+
+def pattern_alerts(rows, days=90, min_live=2, threshold=3):
+    """Same device family + same failure mode, FDA history + live complaints. Fires when the mode recurs live
+    (>= min_live in the last `days`) and history + live >= threshold. 'other' is not a pattern."""
     since = dt.datetime.now() - dt.timedelta(days=days)
-    groups = defaultdict(lambda: defaultdict(list))
+    live = defaultdict(list)
     for r in rows:
         if (ptime(r) or dt.datetime.now()) >= since:
-            for issue in issues_of(r):
-                groups[device_family(r.get("device"))][issue].append(r)
+            mode = live_mode(r)
+            if mode != "other":
+                live[(live_family(r), mode)].append(r)
+    hist = defaultdict(int)
+    for d, fam, mode, _, _ in history_rows():
+        if (fam, mode) in live:
+            hist[(fam, mode)] += 1
+    today = dt.date.today()
     alerts = []
-    for fam, by_issue in groups.items():
-        issue, hits = max(by_issue.items(), key=lambda x: len(x[1]))
-        if len(hits) >= threshold:
+    for (fam, mode), hits in live.items():
+        n_hist = hist[(fam, mode)]
+        if len(hits) >= min_live and len(hits) + n_hist >= threshold:
             hits = sorted(hits, key=lambda r: r.get("time") or "", reverse=True)
-            alerts.append({"family": fam, "issue": issue, "count": len(hits), "days": days,
-                           "reportable": sum(r.get("decision") == "REPORTABLE" for r in hits),
+            all_today = all((ptime(r) or dt.datetime.now()).date() == today for r in hits)
+            alerts.append({"family": fam, "issue": mode, "count": len(hits) + n_hist, "historical": n_hist,
+                           "live": len(hits), "live_label": "today" if all_today else f"in {days} days",
+                           "days": days, "reportable": sum(r.get("decision") == "REPORTABLE" for r in hits),
                            "ids": [r["id"] for r in hits], "latest": hits[0].get("time")})
-    return sorted(alerts, key=lambda a: (-a["count"], a["family"]))
+    return sorted(alerts, key=lambda a: (-a["live"], -a["historical"], a["family"]))
 
 
 def pipeline(rows):
@@ -498,6 +563,64 @@ def api_state():
     return jsonify(kpi=kpis(rows), feed=[brief(r) for r in feed], queue=[brief(r) for r in queue],
                    alerts=pattern_alerts(rows), pipeline=pipeline(rows), clock=[brief(r) for r in clock],
                    demo={k: v for k, v in DEMO.public(since=10**12).items() if k in ("running", "kind", "processed", "total")})
+
+
+RECALL = ("2021-06", "Philips recall · 14 Jun 2021")
+
+
+@app.route("/trends")
+def trends():
+    return render_template("trends.html", page="trends", title="Trends", chart=os.path.exists(CHART))
+
+
+@app.route("/api/trends")
+def api_trends():
+    """Monthly complaints per device family, failure modes ranked, events per quarter: history.csv + decisions.csv."""
+    hist = history_rows()
+    live = [(ptime(r) or dt.datetime.now(), r) for r in all_rows()]
+    fam_tot = defaultdict(lambda: [0, 0])
+    for _, fam, _, _, _ in hist:
+        fam_tot[fam][0] += 1
+    for _, r in live:
+        fam_tot[live_family(r)][1] += 1
+    families = sorted(fam_tot.items(), key=lambda kv: -(kv[1][0] + kv[1][1]))
+    fam = request.args.get("family") or ("DREAMSTATION" if "DREAMSTATION" in fam_tot else (families[0][0] if families else ""))
+    pick = (lambda f: True) if fam == "ALL" else (lambda f: f == fam)
+
+    months, modes, quarters = defaultdict(lambda: [0, 0]), defaultdict(lambda: [0, 0]), defaultdict(lambda: defaultdict(int))
+    def ev(e):
+        e = (e or "").upper()
+        return "Death" if "DEATH" in e else "Injury" if "INJUR" in e else "Malfunction" if "MALFUNCTION" in e else ""
+    for d, f, mode, e, _ in hist:
+        if pick(f):
+            months[d.strftime("%Y-%m")][0] += 1; modes[mode][0] += 1
+            if ev(e): quarters[f"{d.year}-Q{(d.month - 1) // 3 + 1}"][ev(e)] += 1
+    for t, r in live:
+        if pick(live_family(r)):
+            months[t.strftime("%Y-%m")][1] += 1; modes[live_mode(r)][1] += 1
+            e = ev(r.get("category") or "") or ("Malfunction" if r.get("category") == "MALFUNCTION" else "")
+            if r.get("category") == "SERIOUS_INJURY": e = "Injury"
+            if e: quarters[f"{t.year}-Q{(t.month - 1) // 3 + 1}"][e] += 1
+
+    def month_range(keys):
+        if not keys: return []
+        y, m = map(int, min(keys).split("-")); y2, m2 = map(int, max(keys).split("-")); out = []
+        while (y, m) <= (y2, m2):
+            out.append(f"{y}-{m:02d}"); y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+        return out
+    mkeys = month_range(list(months))
+    qkeys = sorted(quarters)
+    if qkeys:
+        (y, q), (y2, q2) = [tuple(map(int, k.split("-Q"))) for k in (qkeys[0], qkeys[-1])]; qkeys = []
+        while (y, q) <= (y2, q2):
+            qkeys.append(f"{y}-Q{q}"); y, q = (y + 1, 1) if q == 4 else (y, q + 1)
+    return jsonify(
+        family=fam, has_history=bool(hist), history_rows=len(hist), live_rows=len(live),
+        families=[{"family": f, "history": h, "live": l} for f, (h, l) in families[:12]],
+        months=[{"m": k, "history": months[k][0], "live": months[k][1]} for k in mkeys],
+        modes=sorted(({"mode": k, "history": v[0], "live": v[1]} for k, v in modes.items()), key=lambda x: -(x["history"] + x["live"])),
+        quarters=[{"q": k, "Death": quarters[k]["Death"], "Injury": quarters[k]["Injury"], "Malfunction": quarters[k]["Malfunction"]} for k in qkeys],
+        recall={"month": RECALL[0], "label": RECALL[1]})
 
 
 @app.route("/api/search")

@@ -122,7 +122,7 @@
       </div>
       <div class="card panel">
         <div class="card-h"><h2>{{ icon('alert') }}Pattern alerts</h2><span class="count-badge" id="al-n">0</span>
-          <div class="aside">Same device · same issue · ≥ 3 in 90 days</div></div>
+          <div class="aside">Device family · failure mode · FDA history + live</div></div>
         <div class="panel-b" id="alerts"></div>
       </div>
     </div>
@@ -151,7 +151,7 @@
   var EMPTY = {
     feed: '<div class="empty" style="height:100%"><div class="art">' + ICONS.inbox + '</div><b>No complaints yet — start the demo replay</b><p>Complaints appear here the moment Vigil classifies them on the local model.</p><a class="btn btn-primary" href="/demo">' + ICONS.play + "Open Demo Control</a></div>",
     queue: '<div class="empty" style="height:100%;padding:16px"><div class="art" style="background:var(--ok-50);color:var(--ok)">' + ICONS.check + "</div><b>Nothing waiting for a decision</b><p>Reportable and needs-info complaints queue here for approval.</p></div>",
-    alerts: '<div class="empty" style="height:100%;padding:16px"><div class="art">' + ICONS.shield + "</div><b>No recurring patterns</b><p>Vigil flags a device when 3 or more complaints share the same issue.</p></div>"
+    alerts: '<div class="empty" style="height:100%;padding:16px"><div class="art">' + ICONS.shield + "</div><b>No recurring patterns</b><p>Vigil flags a device family when a failure mode recurs live and matches FDA history.</p></div>"
   };
 
   /* keyed DOM diff: reuse nodes (no flicker), animate new ones in, flash changed ones */
@@ -194,8 +194,10 @@
       '<button class="btn btn-sm btn-amber" data-q="info" data-id="' + esc(r.id) + '">' + ICONS.help + "Request info</button></span></div></div>";
   }
   function alertHTML(a) {
-    return '<span class="ai">' + ICONS.alert + "</span><b>" + esc(a.family) + " · " + a.count + " " + esc(a.issue) + " complaints in " + a.days + " days</b>" +
-      "<p>" + a.reportable + " reportable · consider CAPA / investigation</p>" +
+    var mode = String(a.issue).replace("/", " / ");
+    return '<span class="ai">' + ICONS.alert + "</span><b>" + esc(a.family) + " · " + esc(mode) + "</b>" +
+      "<p><strong>" + a.historical.toLocaleString("en-US") + " historical + " + a.live + " " + esc(a.live_label) + "</strong> · " +
+      a.reportable + " reportable · consider CAPA / investigation</p>" +
       '<div class="ids">' + a.ids.slice(0, 8).map(function (id) { return '<a href="/complaint/' + encodeURIComponent(id) + '" data-open="' + esc(id) + '">#' + esc(id) + "</a>"; }).join("") +
       (a.ids.length > 8 ? '<span style="font-size:12px;color:#7F1D1D;align-self:center">+' + (a.ids.length - 8) + " more</span>" : "") + "</div>";
   }

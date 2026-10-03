@@ -356,8 +356,10 @@ V.askName = function (title) {
   var saved = ""; try { saved = localStorage.getItem("vigil-reviewer") || ""; } catch (e) {}
   return new Promise(function (resolve) {
     $("modal-t").textContent = title || "Who is reviewing?"; $("modal-name").value = saved;
+    var sync = function () { $("modal-ok").disabled = !$("modal-name").value.trim(); };  // never log an empty / anonymous reviewer
+    $("modal-name").oninput = sync; sync();
     $("modal").classList.add("show"); setTimeout(function () { $("modal-name").focus(); $("modal-name").select(); }, 60);
-    function done(v) { $("modal").classList.remove("show"); $("modal-ok").onclick = $("modal-cancel").onclick = $("modal").onkeydown = null; resolve(v); }
+    function done(v) { $("modal").classList.remove("show"); $("modal-ok").onclick = $("modal-cancel").onclick = $("modal").onkeydown = $("modal-name").oninput = null; resolve(v); }
     $("modal-ok").onclick = function () { var v = $("modal-name").value.trim(); if (!v) { $("modal-name").focus(); return; }
       try { localStorage.setItem("vigil-reviewer", v); } catch (e) {} done(v); };
     $("modal-cancel").onclick = function () { done(null); };

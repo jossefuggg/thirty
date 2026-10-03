@@ -318,10 +318,11 @@
     var a = e.target.closest("[data-act]");
     if (a && a.closest("#f-review")) { e.stopPropagation(); a.disabled = true; V.act(CID, a.dataset.act).then(function () { a.disabled = false; refresh(); }); return; }
     var u = e.target.closest("[data-undo]");
-    if (u) { u.disabled = true;
-      fetch("/api/complaint/" + encodeURIComponent(CID) + "/action", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "undo", name: (function () { try { return localStorage.getItem("vigil-reviewer") || "console"; } catch (e) { return "console"; } })() }) })
-        .then(function (r) { return r.json(); }).then(function (j) { V.toast(j.ok ? "#" + CID + " is back in the review queue" : j.error, !j.ok); refresh(); }); return; }
+    if (u) { V.askName("Undo decision on #" + CID).then(function (name) {  // the undo is attributed in the audit trail too
+        if (!name) return;
+        fetch("/api/complaint/" + encodeURIComponent(CID) + "/action", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "undo", name: name }) })
+          .then(function (r) { return r.json(); }).then(function (j) { V.toast(j.ok ? "#" + CID + " is back in the review queue" : j.error, !j.ok); refresh(); }); }); return; }
     if (e.target.closest("[data-pdf]")) { $("lb-frame").src = "/reports/" + encodeURIComponent(CID) + ".pdf#view=FitH"; $("lb").classList.add("show"); return; }
     if (e.target.closest("[data-lb-close]") || e.target === $("lb")) { $("lb").classList.remove("show"); }
   }, true);
