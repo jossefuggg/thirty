@@ -787,6 +787,28 @@ def all_rows():
     return list(latest_by_id(read_rows()).values())
 
 
+_hx = {"mtime": 0, "data": None}
+
+def history_context():
+    """Compact FDA-history summary for the Command Center (cached per history.csv version)."""
+    hist = history_rows()
+    if not hist:
+        return {"rows": 0}
+    if _hx["mtime"] != _hist["mtime"]:
+        fam, modes, months = defaultdict(int), defaultdict(int), defaultdict(int)
+        for d, f, m, _, _ in hist:
+            fam[f] += 1; months[d.strftime("%Y-%m")] += 1
+            if f == "DREAMSTATION" and m != "other": modes[m] += 1
+        if not modes:
+            for _, _, m, _, _ in hist:
+                if m != "other": modes[m] += 1
+        keys = sorted(months)[-36:]
+        _hx.update(mtime=_hist["mtime"], data={"rows": len(hist), "dream": fam.get("DREAMSTATION", 0),
+                   "top_family": max(fam, key=fam.get), "top_mode": max(modes, key=modes.get).split("/")[0] if modes else "n/a",
+                   "spark": [months[k] for k in keys]})
+    return _hx["data"]
+
+
 @app.route("/api/state")
 def api_state():
     rows = all_rows()
@@ -795,7 +817,7 @@ def api_state():
                     and status_kind(r.get("status")) == "pend"),
                    key=lambda r: (PRIORITY_RANK.get(r.get("priority"), 3), r.get("due_date") or "9999", -int(r.get("score") or 0)))
     clock = sorted((r for r in rows if is_open(r)), key=lambda r: (r["due_date"], -int(r.get("score") or 0)))
-    return jsonify(kpi=kpis(rows), feed=[brief(r) for r in feed], queue=[brief(r) for r in queue],
+    return jsonify(history=history_context(), kpi=kpis(rows), feed=[brief(r) for r in feed], queue=[brief(r) for r in queue],
                    alerts=pattern_alerts(rows), pipeline=pipeline(rows), clock=[brief(r) for r in clock],
                    demo={k: v for k, v in DEMO.public(since=10**12).items() if k in ("running", "kind", "processed", "total")})
 
