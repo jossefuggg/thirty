@@ -12,9 +12,10 @@ Usage:
   python3 vigil.py replay --limit 20 --delay 5     # replay Philips complaints in date order
   python3 vigil.py replay --file demo_complaints.txt  # one illustrative complaint per line
   python3 vigil.py replay --csv demo_set.csv --delay 5  # curated MAUDE-format CSV, in file order
-  python3 vigil.py listen                    # Telegram commands: approve ID, /due, /status
+  python3 vigil.py sync                      # pull 'approve ID' from the OpenClaw sandbox skill (skill/vigil)
+  python3 vigil.py listen                    # standalone Telegram commands (only if OpenClaw is NOT running)
 """
-import argparse, csv, datetime as dt, json, os, re, sys, time
+import argparse, csv, datetime as dt, json, os, re, subprocess, sys, tempfile, time
 from collections import defaultdict, deque
 
 import requests
@@ -25,6 +26,11 @@ try:
     from fpdf.fonts import FontFace
 except Exception:
     FPDF = None
+    # fpdf2 lives in ~/hackathon/venv; a plain `python3 vigil.py` would silently skip every MDR PDF.
+    _venv_py = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "venv", "bin", "python")
+    if __name__ == "__main__" and os.path.exists(_venv_py) and not sys.prefix.startswith(os.path.dirname(os.path.dirname(_venv_py))):
+        os.execv(_venv_py, [_venv_py, *sys.argv])
+    print("WARNING: fpdf2 not installed - MDR PDFs will NOT be generated (pip install fpdf2 in ~/hackathon/venv)")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)  # ~/hackathon
@@ -150,18 +156,21 @@ Answer ONLY with JSON:
 
 DRAFT = """You are Vigil. Draft an FDA MDR (Form 3500A style) for human review. Be factual; never invent facts.
 In sections 1-4 write "UNKNOWN" for any fact not in the complaint.
+Only use company and device names that appear in the complaint data below. Never add or guess any other manufacturer, brand or model.
+Deadline rule (21 CFR 803): 5 work days only when urgent remedial action is needed to prevent substantial harm to the public; otherwise 30 calendar days. Use the deadline given below; do not recalculate it.
 Plain text only: no markdown, no asterisks, no bold.
 Complaint: {text}
 Device: {device}  Manufacturer: {manufacturer}  Event date: {event_date}
-Decision: {decision}  Category: {category}  Due: {due}
+Decision: {decision}  Category: {category}  Deadline: {deadline}  Due: {due}
 Missing information: {missing}
 Sections, short and plain:
 1. Patient outcome
 2. Event description
 3. Device information
 4. Report type and due date
-5. Follow-up questions for the customer: a numbered list of specific questions, one for each item in
-   "Missing information" plus any other gap in this complaint (e.g. exact event date, device serial number,
+5. Follow-up questions for the customer: a numbered list of AT MOST 5 specific questions, most important
+   first (what is needed to confirm reportability and the deadline comes first). Cover the items in
+   "Missing information" and other gaps in this complaint (e.g. exact event date, device serial number,
    what medical treatment was given, current patient condition, whether the device is available for return).
    Refer to the details of this complaint. Never write "UNKNOWN" or "follow up" on its own in this section."""
 
@@ -230,15 +239,30 @@ def _tg_call(method, timeout, path=None, **kw):
     return err
 
 
-def tg(text):
+def tg(text, reply_markup=None):
     if not (TG_TOKEN and TG_CHAT):
         print("[telegram off]\n" + text)
         return
-    for chunk in [text[i:i + 3900] for i in range(0, len(text), 3900)]:
-        err = _tg_call("sendMessage", 20, json={"chat_id": TG_CHAT, "text": chunk})
+    chunks = [text[i:i + 3900] for i in range(0, len(text), 3900)]
+    for n, chunk in enumerate(chunks):
+        body = {"chat_id": TG_CHAT, "text": chunk}
+        if reply_markup and n == len(chunks) - 1:  # buttons go under the last chunk
+            body["reply_markup"] = reply_markup
+        err = _tg_call("sendMessage", 20, json=body)
         if err:
             print(f"WARNING: Telegram sendMessage failed after {1 + TG_RETRIES} attempts ({err}); saved to {OUTBOX}")
             _outbox("sendMessage", chunk)
+
+
+def alert_buttons(cid, decision):
+    """Inline buttons that pre-fill the chat box (switch_inline_query_current_chat): OpenClaw owns bot updates,
+    so callback_data would never reach Vigil; the prefilled text goes to the OpenClaw vigil skill instead."""
+    def b(label, q): return {"text": label, "switch_inline_query_current_chat": q}
+    rows = []
+    if decision in ("REPORTABLE", "NEEDS_INFO"):
+        rows.append([b("✅ Approve", f"approve {cid}"), b("❓ Request info", f"need info {cid}")])
+    rows.append([b("📋 What's due", "what's due in the next 31 days?"), b("📊 Status", "status")])
+    return {"inline_keyboard": rows}
 
 
 def tg_doc(path, caption=""):
@@ -253,12 +277,19 @@ def tg_doc(path, caption=""):
 # ---------------------------------------------------------------- MDR PDF (FDA Form 3500A draft)
 MDR_FIELDS = """You are Vigil. Fill the FDA MedWatch Form 3500A (mandatory reporting) fields for this medical device complaint.
 STRICT RULE: never invent facts. Use only what the complaint states. Write "UNKNOWN" for anything not stated.
+Only use company and device names that appear in the complaint data below. Never add or guess any other manufacturer, brand or model.
+Deadline rule (21 CFR 803): 5 work days only when urgent remedial action is needed to prevent substantial harm to the public; otherwise 30 calendar days. Use the deadline given below; do not recalculate it.
 Dates as YYYY-MM-DD.
 
 Complaint: {text}
 Device: {device}   Common name: {generic_name}   Product code: {product_code}
 Manufacturer: {manufacturer}   Event date: {event_date}   Date received: {received}
-Vigil decision: {decision} ({category})   Missing information: {missing}
+Manufacturer narrative: {manufacturer_narrative}
+Vigil decision: {decision} ({category})   Deadline: {deadline}   Missing information: {missing}
+
+Extract D4 model, lot and serial numbers from the complaint AND the manufacturer narrative when present
+(e.g. "MODEL #CAX500T12" -> D4_model "CAX500T12"). FDA redaction codes such as (B)(4) or (B)(6) mean the value
+was redacted: write "REDACTED" for that field, never guess it.
 
 Answer ONLY with JSON, all values strings except where a list is shown:
 {{"A1_patient_identifier": "", "A2_age": "", "A3_sex": "", "A4_weight": "",
@@ -271,7 +302,7 @@ Answer ONLY with JSON, all values strings except where a list is shown:
  "H1_type_of_reportable_event": "DEATH|SERIOUS_INJURY|MALFUNCTION",
  "H3_device_evaluated": "YES|NO|UNKNOWN",
  "H10_manufacturer_narrative": "factual narrative, no speculation",
- "follow_up_questions": ["specific questions to close each gap, e.g. patient age, serial number, treatment given, device available for return"]}}"""
+ "follow_up_questions": ["at most 5 specific questions, most important first, to close the gaps, e.g. patient age, serial number, treatment given, device available for return"]}}"""
 
 B2_OPTIONS = ["Death", "Life-threatening", "Hospitalization (initial or prolonged)", "Disability or permanent damage",
               "Congenital anomaly/birth defect", "Required intervention to prevent permanent impairment/damage",
@@ -279,10 +310,15 @@ B2_OPTIONS = ["Death", "Life-threatening", "Hospitalization (initial or prolonge
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
 
 
+def deadline_text(days):
+    return "5 work days (urgent remedial action needed)" if str(days) == "5" else "30 calendar days"
+
+
 def mdr_fields(c, row):
     raw = llm(MDR_FIELDS.format(decision=row["decision"], category=row["category"],
-                                missing=row["missing"] or "none listed",
-                                **{"generic_name": "", "product_code": "", "manufacturer": "", **c}), 1500)
+                                deadline=deadline_text(row.get("deadline_days")), missing=row["missing"] or "none listed",
+                                **{"generic_name": "", "product_code": "", "manufacturer": "",
+                                   "manufacturer_narrative": "none", **c}), 1500)
     m = re.search(r"\{.*\}", raw, re.S)
     try:
         f = json.loads(m.group(0))
@@ -291,7 +327,29 @@ def mdr_fields(c, row):
     # Set by Vigil, not the model: today's date and the report type that matches the computed deadline.
     f["B4_date_of_report"] = dt.date.today().isoformat()
     f["G7_report_type"] = "5-day" if str(row.get("deadline_days")) == "5" else "30-day"
+    f["H3_device_evaluated"] = device_evaluated(c) or f.get("H3_device_evaluated") or "UNKNOWN"
+    # Replay treats each complaint as received today (the deadline clock starts at awareness).
+    orig = c.get("received") or ""
+    orig = f"{orig[:4]}-{orig[4:6]}-{orig[6:8]}" if re.fullmatch(r"\d{8}", orig) else (orig or "UNKNOWN")
+    f["G4_date_received_by_manufacturer"] = f"{row.get('awareness') or dt.date.today().isoformat()}"
+    f["G4_note"] = f"(original FDA receipt: {orig})"
     return f
+
+
+_NOT_EVAL = re.compile(r"not (?:yet )?(?:been )?(?:returned|evaluated|available for (?:evaluation|return))|"
+                       r"no device (?:was )?returned|unable to (?:evaluate|retrieve)|discarded|"
+                       r"(?:device|it) (?:was|has) not (?:yet )?(?:been )?(?:returned|received)", re.I)
+_EVAL = re.compile(r"returned to the manufacturer|was (?:returned|received) (?:for|and)|was evaluated|"
+                   r"investigation laborator|visually inspected|(?:tested|inspected|analy[sz]ed) the device|"
+                   r"device (?:was|were) (?:tested|inspected|analy[sz]ed)|event log was reviewed", re.I)
+
+
+def device_evaluated(c):
+    """H3 from the complaint + manufacturer narrative: 'NO' if not returned/evaluated, 'YES' if evaluated, else None."""
+    t = f"{c.get('text') or ''} {c.get('manufacturer_narrative') or ''}"
+    if _NOT_EVAL.search(t): return "NO"  # checked first: "has not yet returned to the manufacturer"
+    if _EVAL.search(t): return "YES"
+    return None
 
 
 def _v(f, k):
@@ -385,11 +443,11 @@ def render_mdr_pdf(c, row, f):
          f"Model: {_v(f, 'D4_model')}   Lot: {_v(f, 'D4_lot')}   Serial: {_v(f, 'D4_serial')}"),
     ])
     section("G. ALL MANUFACTURERS", [
-        ("4. Date received by manufacturer", _v(f, "G4_date_received_by_manufacturer")),
+        ("4. Date received by manufacturer", f"{_v(f, 'G4_date_received_by_manufacturer')}   {f.get('G4_note', '')}"),
         ("7. Type of report", _checks([f["G7_report_type"]], ["5-day", "30-day"])),
     ])
     h1 = _v(f, "H1_type_of_reportable_event").upper()
-    qs = f.get("follow_up_questions") or []
+    qs = (f.get("follow_up_questions") or [])[:5]
     section("H. DEVICE MANUFACTURERS ONLY", [
         ("1. Type of reportable event", _checks([o for o in ("Death", "Serious injury", "Malfunction")
                                                  if o.upper() == h1], ["Death", "Serious injury", "Malfunction"])),
@@ -423,6 +481,7 @@ def log(row):
         w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
         if new: w.writeheader()
         w.writerow(row)
+    push_log()
 
 def read_log():
     if not os.path.exists(LOG): return []
@@ -432,16 +491,66 @@ def write_log(rows):
     with open(LOG, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
         w.writeheader(); w.writerows(rows)
+    push_log()
+
+# ---------------------------------------------------------------- OpenClaw sandbox sync (vigil skill)
+# The sandbox gets a read-only copy of decisions.csv; the skill appends 'approve <id>' to approvals.csv there.
+# Host decisions.csv stays the source of truth: push after every write, pull approvals with `vigil.py sync`.
+SANDBOX = os.environ.get("VIGIL_SANDBOX", "my-assistant")
+SANDBOX_DIR = "/sandbox/vigil"
+
+def _nemoclaw(*args):
+    try:
+        return subprocess.run(["nemoclaw", SANDBOX, *args], capture_output=True, text=True, timeout=60)
+    except Exception as e:
+        print("nemoclaw unavailable:", e)
+        return None
+
+def push_log():
+    if SANDBOX and os.path.exists(LOG):
+        r = _nemoclaw("upload", LOG, SANDBOX_DIR + "/")
+        if r is not None and r.returncode:
+            print("Sandbox upload failed:", (r.stderr or r.stdout)[-200:])
+
+def pull_approvals():
+    """Apply approvals made in Telegram (via the OpenClaw vigil skill) to decisions.csv. Returns new approvals."""
+    with tempfile.TemporaryDirectory() as tmp:
+        r = _nemoclaw("download", SANDBOX_DIR + "/approvals.csv", tmp + "/")
+        path = os.path.join(tmp, "approvals.csv")
+        if r is None or r.returncode or not os.path.exists(path):
+            return []
+        approvals = list(csv.DictReader(open(path)))
+    rows, new = read_log(), []
+    for a in approvals:
+        for x in rows:
+            if x["id"] == a["id"] and not x["status"].startswith("APPROVED"):
+                x["status"] = f"APPROVED by {a['by']}"
+                new.append(a)
+    if new:
+        write_log(rows)
+    return new
 
 # ---------------------------------------------------------------- pipeline
+def add_deadline(start, days):
+    """21 CFR 803: 30 calendar days, but the 5-day report counts work days (Mon-Fri; federal holidays not modeled)."""
+    if int(days) != 5:
+        return start + dt.timedelta(days=int(days))
+    d, left = start, 5
+    while left:
+        d += dt.timedelta(days=1)
+        if d.weekday() < 5: left -= 1
+    return d
+
+
 def process(c, demo_today=None):
     score, level, dist = priority(c)
     dup = duplicate_of(c)
     miss = missing_fields(c)
     res = classify(c)  # EVERY complaint gets an AI check
     days = res.get("deadline_days") or (30 if res.get("decision") != "NOT_REPORTABLE" else None)
+    if days: days = 5 if str(days).strip() == "5" else 30  # 21 CFR 803: 5 only for urgent remedial action, else 30
     base = demo_today or dt.date.today()
-    due = (base + dt.timedelta(days=int(days))).isoformat() if days else ""
+    due = add_deadline(base, days).isoformat() if days else ""
     row = dict(time=dt.datetime.now().isoformat(timespec="seconds"), id=c["id"], received=c["received"],
                device=c["device"], priority=level, score=score, distress=dist, decision=res.get("decision"),
                category=res.get("category"), reason=res.get("reason"), deadline_days=days or "", due_date=due,
@@ -449,30 +558,34 @@ def process(c, demo_today=None):
                duplicate_of=dup or "", status="PENDING_REVIEW" if res.get("decision") != "NOT_REPORTABLE" else "LOGGED",
                text=c["text"][:500])
     log(row)
+    row["awareness"] = base.isoformat()  # not logged; used for 3500A G4
     icon = {"REPORTABLE": "🔴", "NEEDS_INFO": "🟠", "NOT_REPORTABLE": "🟢"}.get(row["decision"], "⚪")
     msg = (f"{icon} Complaint #{c['id']}  [{level} priority, score {score}]\n"
            f"Device: {c['device']}\n"
            f"Decision: {row['decision']} ({row['category']}), confidence {row['confidence']}%\n"
            f"Why: {row['reason']}\n")
-    if due: msg += f"Deadline: {days} days -> due {due}\n"
+    if due: msg += f"Deadline: {deadline_text(days)} -> due {due}\n"
     if row["missing"]: msg += f"Missing: {row['missing']}\n"
     if dup: msg += f"Possible duplicate of #{dup}\n"
     if row["decision"] != "NOT_REPORTABLE":
         draft = llm(DRAFT.format(decision=row["decision"], category=row["category"], due=due,
+                                 deadline=deadline_text(days),
                                  missing=row["missing"] or "none listed - check the complaint for gaps",
                                  **{"manufacturer": "", **c}), 700)
         draft = draft.replace("**", "")  # Telegram plain text shows markdown asterisks raw
         msg += f"\nDraft MDR (Form 3500A fields):\n{draft}\n\nReply: approve {c['id']}"
     else:
         msg += "Logged with reason for audit. Nothing is dropped."
-    tg(msg)
+    tg(msg, reply_markup=alert_buttons(c["id"], row["decision"]))
     if row["decision"] in ("REPORTABLE", "NEEDS_INFO"):
         try:
             pdf = make_mdr(c, row)
-            if pdf:
-                tg_doc(pdf, f"📄 Draft FDA Form 3500A for #{c['id']} (due {due or 'n/a'}). Review before submission.")
+            if not pdf:
+                raise RuntimeError("fpdf2 not installed")
+            tg_doc(pdf, f"📄 Draft FDA Form 3500A for #{c['id']} (due {due or 'n/a'}). Review before submission.")
         except Exception as e:
             print(f"MDR PDF failed for #{c['id']}: {e}")
+            tg(f"⚠️ MDR PDF for #{c['id']} could not be generated ({e}). Draft the Form 3500A manually.")
     alert = spike(c)
     if alert:
         tg(f"📈 TREND ALERT\n{alert}\nRecommend: open an investigation / CAPA and review all related complaints.")
@@ -498,7 +611,8 @@ def load_csv(path, limit=None, sort=False):
                         manufacturer=r["manufacturer"] or "", event_date=r["date_of_event"] or "",
                         received=r["date_received"] or "", event_type=r["event_type"] or "",
                         outcomes=r["patient_outcomes"] or "", generic_name=r.get("generic_name") or "",
-                        product_code=r.get("product_code") or ""))
+                        product_code=r.get("product_code") or "",
+                        manufacturer_narrative=(r.get("manufacturer_narrative") or "").strip()))
     return out[:limit] if limit else out
 
 
@@ -531,7 +645,18 @@ def cmd_replay(a):
     tg("⏹ Replay finished. Send /due for open deadlines.")
 
 
+def cmd_sync(a):
+    push_log()
+    print(f"Syncing with sandbox '{SANDBOX}' every {a.interval}s (approvals from the OpenClaw vigil skill) ...")
+    while True:
+        for x in pull_approvals():
+            print(f"{x['time']} #{x['id']} approved by {x['by']}")
+        if a.once: break
+        time.sleep(a.interval)
+
+
 def cmd_listen(_):
+    """Standalone fallback. Do not run while the OpenClaw sandbox owns the bot (Telegram allows one poller)."""
     offset = None
     print("Listening for approve ID, /due, /status ...")
     while True:
@@ -576,5 +701,8 @@ if __name__ == "__main__":
     rp.add_argument("--file")
     rp.add_argument("--csv", help="MAUDE-format CSV, e.g. demo_set.csv")
     sub.add_parser("listen")
+    sp = sub.add_parser("sync")
+    sp.add_argument("--interval", type=float, default=10)
+    sp.add_argument("--once", action="store_true")
     a = p.parse_args()
-    {"test": cmd_test, "replay": cmd_replay, "listen": cmd_listen}[a.cmd](a)
+    {"test": cmd_test, "replay": cmd_replay, "listen": cmd_listen, "sync": cmd_sync}[a.cmd](a)
