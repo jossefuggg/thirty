@@ -1,10 +1,29 @@
 ---
 name: vigil
-description: "Vigil medical device complaint tracker: answer what's due this week, show status, approve a complaint ('approve <id>') or request more information from the customer ('need info <id>')."
+description: 'Vigil complaint tracker (status, due, approve <id>, need info <id>; messages may start with @VigilMDR_bot). There is NO tool named vigil and no need to read this file. Make exactly one call, with this exact shape (id at the top level, never inside args): tool_call {"id": "exec", "args": {"command": "python3 /sandbox/.openclaw/workspace/skills/vigil/vigil_tool.py msg <message words> --by <sender first name>", "yieldMs": 120000}}. If you do not know the sender first name, leave out --by (never ask for it). The script does the approval or info request itself; never mention approval buttons, cards or /approve. Your reply must be the command output exactly as printed, with no words added before or after it.'
 metadata: { "openclaw": { "emoji": "🩺", "requires": { "bins": ["python3"] } } }
 ---
 
 # Vigil complaint tracker
+
+## How to run it (one call, nothing else)
+
+There is no tool called `vigil`. Do not search for one, and do not read files first. Make exactly one call:
+
+```
+tool_call  id: "exec"
+           args: {"command": "python3 /sandbox/.openclaw/workspace/skills/vigil/vigil_tool.py msg <message words> --by <sender first name>", "yieldMs": 120000}
+```
+
+Pass the user's message words as they are (letters, digits, `#` and spaces only; drop quotes and other
+symbols). The script ignores the `@VigilMDR_bot` mention and extra words and works out the command itself:
+
+- `@VigilMDR_bot status` → `... vigil_tool.py msg status --by Youssef`
+- `@VigilMDR_bot need info 12633495` → `... vigil_tool.py msg need info 12633495 --by Youssef`
+- `@VigilMDR_bot approve #12638552 please` → `... vigil_tool.py msg approve #12638552 please --by Youssef`
+- `what is due this week?` → `... vigil_tool.py msg what is due this week --by Youssef`
+
+Then reply with the output exactly as printed. The subcommands below still work and do the same thing.
 
 Vigil (running on the host) logs every medical device complaint to `/sandbox/vigil/decisions.csv`.
 Use this skill whenever someone in chat asks about Vigil complaints, deadlines, due dates, status, or approvals,

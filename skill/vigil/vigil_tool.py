@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Vigil skill helper (runs inside the OpenShell sandbox). Reads decisions.csv, appends approvals.csv / info_requests.csv."""
-import argparse, csv, datetime as dt, json, os, re, sys, urllib.request
+import argparse, csv, datetime as dt, json, os, re, sys, time, urllib.request
 from collections import Counter
 
 DIR = os.environ.get("VIGIL_DIR", "/sandbox/vigil")
@@ -36,10 +36,31 @@ QUESTIONS = {
 }
 
 
-def load():
+def reply(msg):
+    """End with a message for the chat. Exit 0: these are answers, not tool failures (a non-zero exit makes
+    OpenClaw post '⚠️ Exec failed' in the group)."""
+    print(msg)
+    sys.exit(0)
+
+
+def _read_decisions(tries=4, wait=0.5):
+    """decisions.csv is replaced by the host's sync upload; retry if it is caught missing or mid-write."""
+    for i in range(tries):
+        try:
+            with open(DECISIONS, encoding="utf-8") as f:
+                rows = list(csv.DictReader(f))
+            if all(r.get("id") for r in rows):
+                return rows
+        except (OSError, csv.Error, UnicodeDecodeError):
+            pass
+        time.sleep(wait)
     if not os.path.exists(DECISIONS):
-        sys.exit("No Vigil data yet (decisions.csv not synced to the sandbox).")
-    rows = list(csv.DictReader(open(DECISIONS, encoding="utf-8")))
+        reply("No complaints logged yet.")
+    reply("Vigil data is being updated right now. Please send the command again in a few seconds.")
+
+
+def load():
+    rows = _read_decisions()
     latest = {}
     for r in rows:  # a complaint may be logged more than once; keep the newest entry
         latest[r["id"]] = r
@@ -69,7 +90,7 @@ def _append(path, cid, by):
 def _clean_id(raw):
     cid = raw.strip().lstrip("#")
     if not re.fullmatch(r"[A-Za-z0-9_-]+", cid):
-        sys.exit(f"Invalid complaint ID: {raw}")
+        reply(f"Invalid complaint ID: {raw}")
     return cid
 
 
@@ -121,7 +142,7 @@ def cmd_approve(a):
     rows = load()
     r = rows.get(cid)
     if not r:
-        sys.exit(f"Unknown complaint #{cid}. Nothing approved.")
+        reply(f"Unknown complaint #{cid}. Nothing approved.")
     if r["status"].startswith("APPROVED"):
         print(f"#{cid} is already {r['status']}.")
         return
@@ -171,7 +192,7 @@ def cmd_need_info(a):
     cid = _clean_id(a.id)
     r = load().get(cid)
     if not r:
-        sys.exit(f"Unknown complaint #{cid}. Nothing changed.")
+        reply(f"Unknown complaint #{cid}. Nothing changed.")
     if r["status"].startswith("APPROVED"):
         print(f"#{cid} is already {r['status']}. Nothing changed.")
         return
@@ -187,11 +208,34 @@ def cmd_need_info(a):
     print(f"⏰ Clock still running: due {_nice(r['due_date'])}" if r["due_date"] else "⏰ No reporting deadline (not reportable).")
 
 
+def cmd_msg(a):
+    """The chat message as-is ('@VigilMDR_bot need info #123 please'): mention, slashes and extra words are
+    ignored; the intent and ID are parsed here, so the model only has to pass the text through."""
+    text = " ".join(a.words)
+    t = re.sub(r"@\w+", " ", text)                     # bot mention(s)
+    t = re.sub(r"[^\w#\s-]", " ", t).lower()           # quotes, slashes, punctuation
+    m = re.search(r"\bneed[\s_-]*info\b\s*#?\s*([A-Za-z0-9_-]+)", t)
+    if m:
+        return cmd_need_info(argparse.Namespace(id=m.group(1), by=a.by))
+    m = re.search(r"\bapprove\b\s*#?\s*([A-Za-z0-9_-]+)", t)
+    if m:
+        return cmd_approve(argparse.Namespace(id=m.group(1), by=a.by))
+    if re.search(r"\b(need[\s_-]*info|approve)\b", t):
+        reply("Which complaint? Send it with the ID, e.g. 'approve 12638552' or 'need info 12638552'.")
+    if re.search(r"\b(due|deadlines?|overdue)\b", t):
+        days = 1 if re.search(r"\btoday\b", t) else 30 if re.search(r"\bmonth\b", t) else 7
+        return cmd_due(argparse.Namespace(days=days))
+    if re.search(r"\b(status|how many|summary)\b", t):
+        return cmd_status(None)
+    print("Vigil commands: status · due · approve <id> · need info <id>")
+
+
 p = argparse.ArgumentParser()
 sub = p.add_subparsers(dest="cmd", required=True)
 d = sub.add_parser("due"); d.add_argument("--days", type=int, default=7)
 sub.add_parser("status")
 ap = sub.add_parser("approve"); ap.add_argument("id"); ap.add_argument("--by", default="")
 ni = sub.add_parser("need-info"); ni.add_argument("id"); ni.add_argument("--by", default="")
+ms = sub.add_parser("msg"); ms.add_argument("words", nargs="+"); ms.add_argument("--by", default="")
 a = p.parse_args()
-{"due": cmd_due, "status": cmd_status, "approve": cmd_approve, "need-info": cmd_need_info}[a.cmd](a)
+{"due": cmd_due, "status": cmd_status, "approve": cmd_approve, "need-info": cmd_need_info, "msg": cmd_msg}[a.cmd](a)
