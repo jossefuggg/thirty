@@ -13,9 +13,10 @@ Usage:
   python3 vigil.py replay --file demo_complaints.txt  # one illustrative complaint per line
   python3 vigil.py replay --csv demo_set.csv --delay 5  # curated MAUDE-format CSV, in file order
   python3 vigil.py sync                      # pull 'approve ID' from the OpenClaw sandbox skill (skill/vigil)
+  python3 vigil.py reset                     # clean slate: decisions.csv, reports/, outbox.txt, sandbox copies
   python3 vigil.py listen                    # standalone Telegram commands (only if OpenClaw is NOT running)
 """
-import argparse, csv, datetime as dt, json, os, re, subprocess, sys, tempfile, time
+import argparse, contextlib, csv, datetime as dt, fcntl, json, os, re, shutil, subprocess, sys, tempfile, time
 from collections import defaultdict, deque
 
 import requests
@@ -146,6 +147,9 @@ A complaint is REPORTABLE if the information reasonably suggests the device:
 - MALFUNCTIONED and the malfunction would be likely to cause death or serious injury if it recurred.
 Deadlines: 30 calendar days from awareness; 5 work days if remedial action is needed to prevent substantial harm to the public.
 When unsure, lean toward REPORTABLE or NEEDS_INFO and say what is missing. Never discard a complaint.
+Each "missing_info" item must be 2-4 words (e.g. "patient age", "lot number", "autopsy findings").
+The examples only show the length: list the gaps that are actually missing from THIS complaint, and do not
+list anything the complaint already states.
 
 Complaint: {text}
 Device: {device}   Event date: {event_date}   Received: {received}
@@ -153,26 +157,6 @@ Device: {device}   Event date: {event_date}   Received: {received}
 Answer ONLY with JSON:
 {{"decision": "REPORTABLE|NOT_REPORTABLE|NEEDS_INFO", "category": "DEATH|SERIOUS_INJURY|MALFUNCTION|NONE",
  "reason": "one sentence citing the rule", "deadline_days": 30 or 5 or null, "missing_info": [], "confidence": 0-100}}"""
-
-DRAFT = """You are Vigil. Draft an FDA MDR (Form 3500A style) for human review. Be factual; never invent facts.
-In sections 1-4 write "UNKNOWN" for any fact not in the complaint.
-Only use company and device names that appear in the complaint data below. Never add or guess any other manufacturer, brand or model.
-Deadline rule (21 CFR 803): 5 work days only when urgent remedial action is needed to prevent substantial harm to the public; otherwise 30 calendar days. Use the deadline given below; do not recalculate it.
-Plain text only: no markdown, no asterisks, no bold.
-Complaint: {text}
-Device: {device}  Manufacturer: {manufacturer}  Event date: {event_date}
-Decision: {decision}  Category: {category}  Deadline: {deadline}  Due: {due}
-Missing information: {missing}
-Sections, short and plain:
-1. Patient outcome
-2. Event description
-3. Device information
-4. Report type and due date
-5. Follow-up questions for the customer: a numbered list of AT MOST 5 specific questions, most important
-   first (what is needed to confirm reportability and the deadline comes first). Cover the items in
-   "Missing information" and other gaps in this complaint (e.g. exact event date, device serial number,
-   what medical treatment was given, current patient condition, whether the device is available for return).
-   Refer to the details of this complaint. Never write "UNKNOWN" or "follow up" on its own in this section."""
 
 
 def model_name():
@@ -475,23 +459,46 @@ def make_mdr(c, row):
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
           "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text"]
 
+# replay (append) and sync (read-modify-write) run as separate processes: every access to decisions.csv
+# holds an exclusive flock on decisions.csv.lock. Re-entrant within a process, so write_log() can run
+# inside a caller's `with log_lock():` read-modify-write block.
+_lock_depth, _lock_fd = 0, None
+
+@contextlib.contextmanager
+def log_lock():
+    global _lock_depth, _lock_fd
+    if _lock_depth == 0:
+        _lock_fd = open(LOG + ".lock", "w")
+        fcntl.flock(_lock_fd, fcntl.LOCK_EX)
+    _lock_depth += 1
+    try:
+        yield
+    finally:
+        _lock_depth -= 1
+        if _lock_depth == 0:
+            fcntl.flock(_lock_fd, fcntl.LOCK_UN)
+            _lock_fd.close()
+
 def log(row):
-    new = not os.path.exists(LOG)
-    with open(LOG, "a", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
-        if new: w.writeheader()
-        w.writerow(row)
-    push_log()
+    with log_lock():
+        new = not os.path.exists(LOG)
+        with open(LOG, "a", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
+            if new: w.writeheader()
+            w.writerow(row)
+        push_log()
 
 def read_log():
-    if not os.path.exists(LOG): return []
-    return list(csv.DictReader(open(LOG)))
+    with log_lock():
+        if not os.path.exists(LOG): return []
+        return list(csv.DictReader(open(LOG)))
 
 def write_log(rows):
-    with open(LOG, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
-        w.writeheader(); w.writerows(rows)
-    push_log()
+    with log_lock():
+        with open(LOG, "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
+            w.writeheader(); w.writerows(rows)
+        push_log()
 
 # ---------------------------------------------------------------- OpenClaw sandbox sync (vigil skill)
 # The sandbox gets a read-only copy of decisions.csv; the skill appends 'approve <id>' to approvals.csv there.
@@ -512,22 +519,35 @@ def push_log():
         if r is not None and r.returncode:
             print("Sandbox upload failed:", (r.stderr or r.stdout)[-200:])
 
-def pull_approvals():
-    """Apply approvals made in Telegram (via the OpenClaw vigil skill) to decisions.csv. Returns new approvals."""
+def _pull(name):
+    """Download a sandbox-side CSV (time,id,by) written by the vigil skill; [] if absent."""
     with tempfile.TemporaryDirectory() as tmp:
-        r = _nemoclaw("download", SANDBOX_DIR + "/approvals.csv", tmp + "/")
-        path = os.path.join(tmp, "approvals.csv")
+        r = _nemoclaw("download", f"{SANDBOX_DIR}/{name}", tmp + "/")
+        path = os.path.join(tmp, name)
         if r is None or r.returncode or not os.path.exists(path):
             return []
-        approvals = list(csv.DictReader(open(path)))
-    rows, new = read_log(), []
-    for a in approvals:
-        for x in rows:
-            if x["id"] == a["id"] and not x["status"].startswith("APPROVED"):
-                x["status"] = f"APPROVED by {a['by']}"
-                new.append(a)
-    if new:
-        write_log(rows)
+        return list(csv.DictReader(open(path)))
+
+def pull_approvals():
+    """Apply 'approve <id>' and 'need info <id>' made in Telegram (OpenClaw vigil skill) to decisions.csv.
+    Returns the newly applied entries, each with a 'kind' of APPROVED or INFO REQUESTED."""
+    approvals, requests_ = _pull("approvals.csv"), _pull("info_requests.csv")
+    if not (approvals or requests_):
+        return []
+    with log_lock():  # read-modify-write: replay must not append in between
+        rows, new = read_log(), []
+        for a in approvals:
+            for x in rows:
+                if x["id"] == a["id"] and not x["status"].startswith("APPROVED"):
+                    x["status"] = f"APPROVED by {a['by']}"
+                    new.append({**a, "kind": "APPROVED"})
+        for q in requests_:  # same rule as the skill: INFO REQUESTED never overrides an approval
+            for x in rows:
+                if x["id"] == q["id"] and x["status"] == "PENDING_REVIEW":
+                    x["status"] = f"INFO REQUESTED by {q['by']}"
+                    new.append({**q, "kind": "INFO REQUESTED"})
+        if new:
+            write_log(rows)
     return new
 
 # ---------------------------------------------------------------- pipeline
@@ -540,6 +560,13 @@ def add_deadline(start, days):
         d += dt.timedelta(days=1)
         if d.weekday() < 5: left -= 1
     return d
+
+
+def short_words(text, n):
+    """First sentence, capped at n words (Telegram card stays compact)."""
+    t = re.split(r"(?<=[.;])\s", (text or "").strip(), 1)[0].rstrip(".;")
+    w = t.split()
+    return " ".join(w[:n]) + ("…" if len(w) > n else "")
 
 
 def process(c, demo_today=None):
@@ -559,23 +586,19 @@ def process(c, demo_today=None):
                text=c["text"][:500])
     log(row)
     row["awareness"] = base.isoformat()  # not logged; used for 3500A G4
-    icon = {"REPORTABLE": "🔴", "NEEDS_INFO": "🟠", "NOT_REPORTABLE": "🟢"}.get(row["decision"], "⚪")
-    msg = (f"{icon} Complaint #{c['id']}  [{level} priority, score {score}]\n"
-           f"Device: {c['device']}\n"
-           f"Decision: {row['decision']} ({row['category']}), confidence {row['confidence']}%\n"
-           f"Why: {row['reason']}\n")
-    if due: msg += f"Deadline: {deadline_text(days)} -> due {due}\n"
-    if row["missing"]: msg += f"Missing: {row['missing']}\n"
-    if dup: msg += f"Possible duplicate of #{dup}\n"
-    if row["decision"] != "NOT_REPORTABLE":
-        draft = llm(DRAFT.format(decision=row["decision"], category=row["category"], due=due,
-                                 deadline=deadline_text(days),
-                                 missing=row["missing"] or "none listed - check the complaint for gaps",
-                                 **{"manufacturer": "", **c}), 700)
-        draft = draft.replace("**", "")  # Telegram plain text shows markdown asterisks raw
-        msg += f"\nDraft MDR (Form 3500A fields):\n{draft}\n\nReply: approve {c['id']}"
-    else:
-        msg += "Logged with reason for audit. Nothing is dropped."
+    icon = {"URGENT": "🔴", "HIGH": "🟠", "NORMAL": "🟢"}.get(level, "⚪")
+    reportable = row["decision"] in ("REPORTABLE", "NEEDS_INFO")
+    lines = [f"{icon} {level} · {row['decision']} ({row['category']}) · {row['confidence']}%",
+             f"#{c['id']} · {c['device']}",
+             f"Why: {short_words(row['reason'], 20)}"]
+    if due and row["decision"] != "NOT_REPORTABLE":
+        d = dt.date.fromisoformat(due)
+        lines.append(f"⏰ Due {d.day} {d:%b %Y} ({'5-day' if str(days) == '5' else '30-day'} report)")
+    missing = [short_words(re.sub(r"\s*\(.*?\)", "", m), 5) for m in row["missing"].split(";") if m.strip()]
+    if missing: lines.append("❓ Missing: " + " · ".join(missing[:3]))
+    if dup: lines.append(f"Possible duplicate of #{dup}")
+    if reportable: lines += ["📄 Draft FDA 3500A attached", f"Reply: approve {c['id']}"]
+    msg = "\n".join(lines)
     tg(msg, reply_markup=alert_buttons(c["id"], row["decision"]))
     if row["decision"] in ("REPORTABLE", "NEEDS_INFO"):
         try:
@@ -650,9 +673,23 @@ def cmd_sync(a):
     print(f"Syncing with sandbox '{SANDBOX}' every {a.interval}s (approvals from the OpenClaw vigil skill) ...")
     while True:
         for x in pull_approvals():
-            print(f"{x['time']} #{x['id']} approved by {x['by']}")
+            print(f"{x['time']} #{x['id']} {x['kind']} by {x['by']}")
         if a.once: break
         time.sleep(a.interval)
+
+
+def cmd_reset(_):
+    """Clean slate for a rehearsal / the demo: host log, PDFs, outbox, and the sandbox copies."""
+    with log_lock():
+        for p in (LOG, OUTBOX):
+            if os.path.exists(p): os.remove(p); print("removed", p)
+        if os.path.isdir(REPORTS):
+            shutil.rmtree(REPORTS); print("removed", REPORTS)
+    r = _nemoclaw("exec", "--", "rm", "-f", *(f"{SANDBOX_DIR}/{n}" for n in
+                                               ("decisions.csv", "approvals.csv", "info_requests.csv")))
+    ok = r is not None and r.returncode == 0
+    print(f"sandbox '{SANDBOX}': " + ("cleared decisions.csv, approvals.csv, info_requests.csv" if ok else
+          f"FAILED to clear ({(r.stderr or r.stdout)[-200:] if r else 'nemoclaw unavailable'})"))
 
 
 def cmd_listen(_):
@@ -674,10 +711,11 @@ def cmd_listen(_):
             m = re.match(r"^/?approve\b[:\s#]*(\S*)", text.strip(), re.I)  # "approve ID" (OpenClaw owns /approve)
             if m:
                 cid = m.group(1)
-                rows = read_log()
-                hit = [x for x in rows if cid and x["id"] == cid]
-                for x in hit: x["status"] = f"APPROVED by {who}"
-                write_log(rows)
+                with log_lock():
+                    rows = read_log()
+                    hit = [x for x in rows if cid and x["id"] == cid]
+                    for x in hit: x["status"] = f"APPROVED by {who}"
+                    write_log(rows)
                 tg(f"✅ #{cid} approved by {who}. Logged." if hit else "Usage: approve ID (unknown complaint id).")
             elif text.startswith("/due"):
                 rows = [x for x in read_log() if x["due_date"] and not x["status"].startswith("APPROVED")]
@@ -704,5 +742,6 @@ if __name__ == "__main__":
     sp = sub.add_parser("sync")
     sp.add_argument("--interval", type=float, default=10)
     sp.add_argument("--once", action="store_true")
+    sub.add_parser("reset")
     a = p.parse_args()
-    {"test": cmd_test, "replay": cmd_replay, "listen": cmd_listen, "sync": cmd_sync}[a.cmd](a)
+    {"test": cmd_test, "replay": cmd_replay, "listen": cmd_listen, "sync": cmd_sync, "reset": cmd_reset}[a.cmd](a)
