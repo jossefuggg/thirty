@@ -12,6 +12,7 @@ Usage:
   python3 vigil.py replay --limit 20 --delay 5     # replay Philips complaints in date order
   python3 vigil.py replay --file demo_complaints.txt  # one illustrative complaint per line
   python3 vigil.py replay --csv demo_set.csv --delay 5  # curated MAUDE-format CSV, in file order
+  python3 vigil.py replay --csv demo_set.csv --limit 3 --step  # presenter mode: Enter for the next complaint
   python3 vigil.py sync                      # pull 'approve ID' from the OpenClaw sandbox skill (skill/vigil)
   python3 vigil.py reset                     # clean slate: decisions.csv, reports/, outbox.txt, sandbox copies, group session
   python3 vigil.py listen                    # standalone Telegram commands (only if OpenClaw is NOT running)
@@ -704,13 +705,24 @@ def cmd_test(_):
 
 def cmd_replay(a):
     if a.csv: items = load_csv(a.csv, a.limit)
-    elif a.file: items = load_txt(a.file)
+    elif a.file: items = load_txt(a.file)[:a.limit]
     else: items = load_philips(a.limit)
     tg(f"▶️ Replay started: {len(items)} complaints.")
-    for c in items:
+    for n, c in enumerate(items, 1):
         r = process(c)
         print(r["id"], r["priority"], r["decision"], r["due_date"])
-        time.sleep(a.delay)
+        if n == len(items):
+            break
+        if a.step:  # presenter mode: the demo advances only when someone presses Enter
+            try:
+                answer = input(f"[{n}/{len(items)}] Press Enter for next complaint (q to quit) ")
+            except EOFError:
+                answer = "q"
+            if answer.strip().lower() == "q":
+                print("Replay stopped.")
+                break
+        else:
+            time.sleep(a.delay)
     tg("⏹ Replay finished. Send /due for open deadlines.")
 
 
@@ -789,6 +801,7 @@ if __name__ == "__main__":
     rp.add_argument("--delay", type=float, default=3)
     rp.add_argument("--file")
     rp.add_argument("--csv", help="MAUDE-format CSV, e.g. demo_set.csv")
+    rp.add_argument("--step", action="store_true", help="wait for Enter after each complaint (q to quit)")
     sub.add_parser("listen")
     sp = sub.add_parser("sync")
     sp.add_argument("--interval", type=float, default=10)
