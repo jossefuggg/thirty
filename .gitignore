@@ -20,3 +20,9 @@ history.csv
 settings.json
 intake/
 *.log
+# desktop app build output
+desktop/node_modules/
+desktop/dist/
+desktop/build/backend/
+desktop/build/pyinstaller-work/
+desktop/build/check-data/

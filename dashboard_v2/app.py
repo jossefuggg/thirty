@@ -12,8 +12,12 @@ from collections import defaultdict
 import requests
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-CODE_DIR = os.path.dirname(HERE)  # the repository / installed app: vigil.py, the thirty package, demo_set.csv
+if getattr(sys, "frozen", False):  # PyInstaller build (desktop app): everything is unpacked under _MEIPASS
+    CODE_DIR = sys._MEIPASS
+    HERE = os.path.join(CODE_DIR, "dashboard_v2")
+else:
+    HERE = os.path.dirname(os.path.abspath(__file__))
+    CODE_DIR = os.path.dirname(HERE)  # the repository / installed app: vigil.py, the thirty package, demo_set.csv
 if CODE_DIR not in sys.path:
     sys.path.insert(0, CODE_DIR)
 from thirty import config as tconfig, plugins, sample_data  # noqa: E402
@@ -28,16 +32,20 @@ OUTBOX = os.path.join(VIGIL_DIR, "outbox.txt")
 DEMO_CSV = os.path.join(CODE_DIR, "demo_set.csv")
 CHART = os.path.join(CODE_DIR, "philips_chart.png")
 HISTORY = os.path.join(VIGIL_DIR, "history.csv")  # past FDA MAUDE reports (vigil.py import-history)
-ACTIONS = os.environ.get("VIGIL_CONSOLE_ACTIONS", os.path.join(HERE, "actions.csv"))  # who/when for console actions
+ACTIONS = os.environ.get("VIGIL_CONSOLE_ACTIONS", os.path.join(VIGIL_DIR, "actions.csv"))  # who/when for console actions
 VENV_BIN = os.path.expanduser(os.environ.get("VIGIL_VENV_BIN", "~/hackathon/venv/bin"))
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
           "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text",
           "product_code", "memory", "failure_mode", "source"]  # same order as vigil.FIELDS; older files stop earlier
 
 VERSION = "1.1.0"
+try:
+    from thirty import __version__ as VERSION  # single source of truth: thirty/__init__.py
+except Exception:
+    pass
 WORKSPACE = {"org": "Northwind Medical", "unit": "Quality", "env": "ON-PREM · PRODUCTION", "env_short": "ON-PREM"}
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=os.path.join(HERE, "templates"), static_folder=os.path.join(HERE, "static"))
 import logging; logging.getLogger("werkzeug").setLevel(logging.WARNING)  # polling would flood console.log
 
 # ---------------------------------------------------------------- decisions.csv
@@ -305,8 +313,8 @@ def demo_total():
         return 0
 
 # ---------------------------------------------------------------- settings.json (console configuration)
-SETTINGS = os.environ.get("VIGIL_CONSOLE_SETTINGS", os.path.join(HERE, "settings.json"))
-INTAKE = os.environ.get("VIGIL_CONSOLE_INTAKE", os.path.join(HERE, "intake.json"))
+SETTINGS = os.environ.get("VIGIL_CONSOLE_SETTINGS", os.path.join(VIGIL_DIR, "settings.json"))
+INTAKE = os.environ.get("VIGIL_CONSOLE_INTAKE", os.path.join(VIGIL_DIR, "intake.json"))
 VIGIL_FIELDS = [("id", "Complaint ID"), ("text", "Complaint text"), ("device", "Device / brand"), ("received", "Date received"),
                 ("event_date", "Event date"), ("event_type", "Event type"), ("outcomes", "Patient outcome"),
                 ("manufacturer", "Manufacturer"), ("product_code", "Product code"), ("product_problems", "Product problems"),
@@ -405,8 +413,9 @@ def intake_mod():
     if not _intake_mod["tried"]:
         _intake_mod["tried"] = True
         try:
-            sys.path.insert(0, VIGIL_DIR)
-            import intake as m
+            import intake as m  # from CODE_DIR; its files go to the data folder
+            m.SETTINGS = os.path.join(VIGIL_DIR, "intake-settings.json")
+            m.INTAKE = os.path.join(VIGIL_DIR, "intake"); m.RAW = os.path.join(m.INTAKE, "raw"); m.INDEX = os.path.join(m.INTAKE, "index.csv")
             _intake_mod["m"] = m
         except Exception as e:
             print("intake.py not available:", type(e).__name__, e, flush=True)

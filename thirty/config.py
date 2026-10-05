@@ -9,7 +9,9 @@ forces it; default "local" when a model is configured via VIGIL_LLM_BASE, else "
 """
 import os
 
-CODE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import sys
+
+CODE_DIR = sys._MEIPASS if getattr(sys, "frozen", False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def data_dir():

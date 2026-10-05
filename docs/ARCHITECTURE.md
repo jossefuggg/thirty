@@ -169,9 +169,38 @@ points `vigil.py`'s file paths at the data folder after import.
 * The brand kit was delivered as `thirty-brand-kit.zip` at the repo root (not a `/thirty-brand-kit`
   folder); the parts the UI needs are copied to `dashboard_v2/static/thirty/`.
 
-## 7. Decisions log
+## 7. Desktop packaging (Phase 4 decision, recorded before building)
 
-Recorded per phase as they are made. (Phase 4 packaging decision will be added here before building.)
+**Chosen: Electron shell + the Python backend frozen with PyInstaller, spawned as a sidecar.**
+
+| option | rewriting needed | installers (mac / win / linux) | auto-update | verdict |
+|---|---|---|---|---|
+| Electron + PyInstaller sidecar | none: the console stays Flask/Jinja/JS; Electron is ~200 lines (spawn backend, window, menu, About) | `electron-builder`: DMG, NSIS, AppImage + deb from one YAML, signing/notarisation hooks built in | `electron-updater` → GitHub Releases, first-class | **chosen** |
+| Tauri + sidecar | none for the UI; Rust shell + `tauri.conf` | bundler covers all three; needs the Rust toolchain in CI | updater plugin, needs its own signing keys from day one | good, more moving parts for Phase 6/7 |
+| pywebview + PyInstaller | none; single Python process, OS webview | per-OS installer scripting by hand (hdiutil, Inno/NSIS, AppImage tooling) | nothing built in | least deps, most installer work |
+
+Trade-offs accepted: Electron adds ~100 MB per installer and a Node toolchain in CI; in return the UI
+is byte-identical to the web console and the release/update story is solved by one tool.
+
+How it works (`desktop/`):
+* `main.js` picks a free localhost port, sets `VIGIL_DIR` to `<userData>/data` (the OS app-data folder:
+  `~/Library/Application Support/Thirty`, `%APPDATA%\Thirty`, `~/.config/Thirty`), spawns the backend
+  (`resources/backend/thirty-backend` when packaged, `python3 dashboard_v2/app.py` in development),
+  waits for `/api/health`, then loads the console in a `BrowserWindow` titled Thirty. No remote
+  content, no network needed: the app works fully offline.
+* Menu: File (Open data folder, Quit), Edit, View (reload, zoom, dark mode is in the app), Window,
+  Help (About Thirty, Open documentation folder). About shows version, backend version, data folder,
+  "0 bytes to cloud AI".
+* `tools/build_backend.py` runs PyInstaller with `desktop/backend.spec` (templates, static, `thirty`
+  package incl. built-in plugins, `vigil.py`, `intake.py`, `demo_set.csv`, DejaVu fonts for the PDF).
+* `desktop/electron-builder.yml` packages `desktop/` + `build/backend` as `extraResources`; icons come
+  from the kit's `thirty-app-icon-1024.png`.
+* Frozen-mode paths: `dashboard_v2/app.py` and `thirty/config.py` resolve `CODE_DIR` to PyInstaller's
+  `sys._MEIPASS` when `sys.frozen` is set.
+
+## 8. Decisions log
+
+Recorded per phase as they are made.
 
 * **Phase 3** — Agents are plugins (`thirty/plugins`): a folder with `plugin.json` (id, name, version,
   capabilities, settings schema) and `plugin.py` (`create(settings) -> Agent`). Built-ins: `sample`,

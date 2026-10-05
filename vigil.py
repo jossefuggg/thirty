@@ -35,7 +35,7 @@ except Exception:
         os.execv(_venv_py, [_venv_py, *sys.argv])
     print("WARNING: fpdf2 not installed - MDR PDFs will NOT be generated (pip install fpdf2 in ~/hackathon/venv)")
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = sys._MEIPASS if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)  # ~/hackathon
 DATA = os.path.join(ROOT, "hackathon_data")
 LOG = os.path.join(HERE, "decisions.csv")
@@ -343,7 +343,8 @@ def tg_doc(path, caption=""):
 B2_OPTIONS = ["Death", "Life-threatening", "Hospitalization (initial or prolonged)", "Disability or permanent damage",
               "Congenital anomaly/birth defect", "Required intervention to prevent permanent impairment/damage",
               "Other serious (important medical event)"]
-FONT_DIR = "/usr/share/fonts/truetype/dejavu"
+FONT_DIR = next((d for d in (os.path.join(HERE, "thirty", "fonts"), "/usr/share/fonts/truetype/dejavu") if os.path.exists(os.path.join(d, "DejaVuSans.ttf"))),
+                os.path.join(HERE, "thirty", "fonts"))  # bundled with the app; system DejaVu as a fallback
 
 
 def deadline_text(days):
