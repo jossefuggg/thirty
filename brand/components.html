@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thirty — UI components</title>
+<link rel="icon" href="logo/svg/favicon.svg">
+<link rel="stylesheet" href="css/thirty.css">
+<style>
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 48px 32px; }
+  .section { padding: 40px 0; border-top: 1px solid var(--t-line); }
+  .section:first-of-type { border-top: 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+  .spec { font-size: 13px; color: var(--t-fg-2); margin-top: 8px; }
+  .dark-block { background: var(--t-ink); color: var(--t-paper); border-radius: var(--t-radius-lg); padding: 40px; margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="brand" href="#"><img src="logo/svg/thirty-lockup.svg" alt="Thirty"></a>
+  <div class="links"><a class="is-active" href="#">Product</a><a href="#">Why local</a><a href="#">Pricing</a><a href="#">Team</a></div>
+  <a class="btn btn-accent" href="#">Book a demo</a>
+</nav>
+
+<div class="wrap">
+
+  <section class="section">
+    <p class="t-eyebrow">Hero</p>
+    <h1 class="t-display">Every complaint,<br>on the clock.</h1>
+    <p class="t-lead" style="max-width:640px">Offline AI that reads every medical device complaint the minute it arrives, pre-decides what the FDA must be told, and hands it to a named person. 100% on one Dell Pro Max GB10.</p>
+    <div class="row" style="margin-top:24px">
+      <a class="btn btn-accent btn-lg" href="#">Book a demo</a>
+      <a class="btn btn-secondary btn-lg" href="#">See how it works</a>
+      <span class="badge-local">0 bytes to cloud AI</span>
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="t-eyebrow">Buttons</p>
+    <h2>Five buttons. One accent per screen.</h2>
+    <div class="row">
+      <button class="btn btn-primary">Primary</button>
+      <button class="btn btn-accent">Accent · Approve</button>
+      <button class="btn btn-secondary">Secondary</button>
+      <button class="btn btn-ghost">Ghost</button>
+      <button class="btn btn-danger">Override</button>
+    </div>
+    <p class="spec">Height 44px · padding 0 20px · radius 10px · Manrope 700 15px · 2px border (transparent unless outlined). Hover darkens, active moves down 1px, focus shows a coral ring. Primary is the default; Accent is for the one action that moves the clock (Approve, Start, Book a demo); Secondary sits next to a Primary or Accent; Ghost lives in table rows and toolbars; Destructive is coral-outlined and fills on hover.</p>
+    <div class="row" style="margin-top:20px">
+      <button class="btn btn-primary btn-sm">Small 36</button>
+      <button class="btn btn-primary">Default 44</button>
+      <button class="btn btn-primary btn-lg">Large 56</button>
+      <button class="btn btn-primary" disabled>Disabled</button>
+      <button class="btn btn-accent" disabled>Disabled accent</button>
+      <button class="btn btn-secondary" disabled>Disabled secondary</button>
+    </div>
+    <div class="row" style="margin-top:20px">
+      <button class="btn btn-primary"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>Approve</button>
+      <button class="btn btn-secondary"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>Request info</button>
+      <button class="btn btn-ghost"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4zM8 9h8M8 13h6"/></svg>Open draft</button>
+    </div>
+    <div class="dark-block t-dark">
+      <p class="t-eyebrow" style="color:var(--t-slate-dark)">On ink</p>
+      <div class="row">
+        <button class="btn btn-primary">Primary</button>
+        <button class="btn btn-accent">Accent · Approve</button>
+        <button class="btn btn-secondary">Secondary</button>
+        <button class="btn btn-ghost">Ghost</button>
+        <button class="btn btn-danger">Override</button>
+        <button class="btn btn-primary" disabled>Disabled</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="t-eyebrow">Status pills</p>
+    <h2>The console's language, kept exact.</h2>
+    <div class="row">
+      <span class="pill pill-reportable">Reportable</span>
+      <span class="pill pill-needs-info">Needs info</span>
+      <span class="pill pill-not-reportable">Not reportable</span>
+      <span class="pill pill-approved">Approved</span>
+      <span class="pill pill-five-day">5-day</span>
+      <span class="pill pill-neutral">Pending review</span>
+    </div>
+    <p class="spec">Height 28px · padding 0 12px · fully round · Manrope 800 12px, uppercase, +0.12em tracking. Coral means reportable and nothing else; amber means needs info and nothing else. Large variant (.pill-lg) is 36px.</p>
+  </section>
+
+  <section class="section">
+    <p class="t-eyebrow">Clocks</p>
+    <h2>The ring and the deadline bar.</h2>
+    <div class="grid" style="align-items:center">
+      <div class="row" style="gap:32px">
+        <!-- 23 days left: 7 elapsed = 5 coral + 2 ink. circumference 2*pi*70 = 439.8 -->
+        <div class="ring">
+          <svg viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="70" fill="none" stroke="var(--t-track)" stroke-width="16"/>
+            <circle cx="80" cy="80" r="70" fill="none" stroke="var(--t-fg)" stroke-width="16" stroke-dasharray="102.6 439.8"/>
+            <circle cx="80" cy="80" r="70" fill="none" stroke="var(--t-coral)" stroke-width="16" stroke-dasharray="73.3 439.8"/>
+          </svg>
+          <div class="ring-label">23<span>days</span></div>
+        </div>
+        <!-- 4 days left on a 5-day report: 1 elapsed -->
+        <div class="ring">
+          <svg viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="70" fill="none" stroke="var(--t-track)" stroke-width="16"/>
+            <circle cx="80" cy="80" r="70" fill="none" stroke="var(--t-coral)" stroke-width="16" stroke-dasharray="88 439.8"/>
+          </svg>
+          <div class="ring-label" style="color:var(--t-coral)">4<span>days</span></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="deadline"><div class="deadline-track"><div class="deadline-fill" style="width:77%"></div></div><span class="deadline-value">23d 7h</span></div>
+        <div class="deadline"><div class="deadline-track"><div class="deadline-fill" style="width:40%"></div></div><span class="deadline-value">12d 2h</span></div>
+        <div class="deadline"><div class="deadline-track"><div class="deadline-fill is-urgent" style="width:20%"></div></div><span class="deadline-value is-urgent">4d 6h · 5-day</span></div>
+        <p class="spec">Bar full = 30 days. Ink while on track; coral once a 5-day report or anything under 7 days.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="t-eyebrow">Numbers</p>
+    <h2>Big numbers in the serif, labels in the sans.</h2>
+    <div class="grid">
+      <div class="stat"><p class="t-number">30</p><p class="t-eyebrow">calendar days</p><p class="t-small">to report a death, serious injury or a malfunction that could cause one. 21 CFR 803.50</p></div>
+      <div class="stat stat-accent"><p class="t-number t-coral">5</p><p class="t-eyebrow">work days</p><p class="t-small">when the FDA asks, or the risk calls for action right away. 21 CFR 803.53</p></div>
+      <div class="stat"><p class="t-number">~60</p><p class="t-eyebrow">minutes per complaint</p><p class="t-small">by hand, today. MDDI survey</p></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="t-eyebrow">Forms and cards</p>
+    <h2>Inputs, cards, a decision card.</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Request a demo</h3>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="field"><label class="label">Work email</label><input class="input" placeholder="you@company.com"></div>
+          <div class="field"><label class="label">Company</label><input class="input" value="Beta Medical"></div>
+          <div class="field"><label class="label">Complaints per month</label><input class="input is-error" value="abc"><p class="help is-error">Enter a number.</p></div>
+          <button class="btn btn-accent btn-block">Book a demo</button>
+        </div>
+      </div>
+      <div class="card card-accent">
+        <div class="row" style="justify-content:space-between">
+          <span class="pill pill-reportable">Reportable</span>
+          <span class="deadline-value">30d 7h left</span>
+        </div>
+        <h3 style="margin-top:16px">Serious injury · 21 CFR 803.50(a)(1)</h3>
+        <p class="t-small">The device malfunction (inability to exhale) may have caused or contributed to serious injury (respiratory distress) per 21 CFR 803.50.</p>
+        <div class="deadline" style="margin:12px 0 20px"><div class="deadline-track"><div class="deadline-fill" style="width:85%"></div></div><span class="deadline-value">85%</span></div>
+        <div class="row">
+          <button class="btn btn-accent btn-sm">Approve</button>
+          <button class="btn btn-secondary btn-sm">Request info</button>
+          <button class="btn btn-ghost btn-sm">Override</button>
+        </div>
+        <p class="spec">Classified on the local model · 0 bytes sent to cloud AI</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer class="footer">
+  <img src="logo/svg/thirty-lockup-descriptor.svg" alt="Thirty — Medical device complaint reporting, on the clock." style="height:28px">
+  <span>© 2026 Thirty · Boston</span>
+</footer>
+
+</body>
+</html>

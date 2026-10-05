@@ -1,4 +1,4 @@
-"""Vigil Console v2 - live, demo-ready command center for the Vigil complaint agent.
+"""Thirty console - live command center for the Thirty complaint agent (formerly "Vigil Console v2").
 
 Reads ../decisions.csv (written by vigil.py), serves the draft 3500A PDFs from ../reports, drives demo
 replays/resets of vigil.py in a subprocess, and shows live system health. vigil.py is never edited.
@@ -28,8 +28,8 @@ FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "
           "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text",
           "product_code", "memory", "failure_mode", "source"]  # same order as vigil.FIELDS; older files stop earlier
 
-VERSION = "1.0.0"
-WORKSPACE = {"org": "Acme Medical", "unit": "Quality", "env": "ON-PREM · GB10 · PRODUCTION"}
+VERSION = "1.1.0"
+WORKSPACE = {"org": "Northwind Medical", "unit": "Quality", "env": "ON-PREM · PRODUCTION", "env_short": "ON-PREM"}
 
 app = Flask(__name__)
 import logging; logging.getLogger("werkzeug").setLevel(logging.WARNING)  # polling would flood console.log
@@ -578,6 +578,8 @@ ICONS = {k: _svg(v) for k, v in {
     "copy": '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
     "bell": '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
     "book": '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
+    "moon": '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 }.items()}
 STEP_ICONS = {"done": ICONS["check"], "info": ICONS["help"], "todo": _svg('<circle cx="12" cy="12" r="3"/>')}
 
@@ -658,13 +660,13 @@ def audit_events():
     for r in all_rows():
         t, cid = r.get("time") or "", r["id"]
         dec = (r.get("decision") or "").replace("_", " ")
-        ev.append({"t": t, "actor": "Vigil AI", "action": "Classified", "id": cid, "decision": r.get("decision") or "",
+        ev.append({"t": t, "actor": "Thirty agent", "action": "Classified", "id": cid, "decision": r.get("decision") or "",
                    "detail": f"{dec} · {r.get('category')} · {r.get('confidence')}% · {r.get('reason') or ''}"})
-        ev.append({"t": t, "actor": "Vigil AI", "action": "Alert sent", "id": cid, "decision": "",
+        ev.append({"t": t, "actor": "Thirty agent", "action": "Alert sent", "id": cid, "decision": "",
                    "detail": f"Telegram alert · {r.get('priority')} priority" + (" · queued in outbox" if alert_state(cid) != "sent" else "")})
         pdf = os.path.join(REPORTS, f"MDR_{cid}.pdf")
         if os.path.exists(pdf):
-            ev.append({"t": dt.datetime.fromtimestamp(os.path.getmtime(pdf)).isoformat(timespec="seconds"), "actor": "Vigil AI",
+            ev.append({"t": dt.datetime.fromtimestamp(os.path.getmtime(pdf)).isoformat(timespec="seconds"), "actor": "Thirty agent",
                        "action": "PDF drafted", "id": cid, "decision": "", "detail": f"Form 3500A draft MDR_{cid}.pdf · due {r.get('due_date') or 'n/a'}"})
         if owner_of(r) and not last_action(cid, t):  # decided in Telegram: no console timestamp
             ev.append({"t": t, "actor": owner_of(r), "action": "Approved" if status_kind(r.get("status")) == "appr" else "Info requested",
@@ -696,7 +698,7 @@ def audit_csv():
     for e in audit_events():
         w.writerow([e["t"], e["actor"], e["action"], e["id"], e["detail"]])
     return app.response_class(out.getvalue(), mimetype="text/csv",
-                              headers={"Content-Disposition": f"attachment; filename=vigil_audit_{dt.date.today():%Y%m%d}.csv"})
+                              headers={"Content-Disposition": f"attachment; filename=thirty_audit_{dt.date.today():%Y%m%d}.csv"})
 
 
 def status_kind(s):
@@ -1238,7 +1240,8 @@ def detail(r, rows=None):
     missing = [m.strip() for m in (r.get("missing") or "").split(";") if m.strip()]
     questions = follow_up_questions(cid)
     if not questions and missing and reportable:
-        questions = [f"Can you provide the {re.sub(r'\s*\(.*?\)', '', m).strip().rstrip('.').lower()}?" for m in missing[:5]]
+        _PAREN = re.compile(r"\s*\(.*?\)")  # Python 3.11: no backslashes inside an f-string expression
+        questions = [f"Can you provide the {_PAREN.sub('', m).strip().rstrip('.').lower()}?" for m in missing[:5]]
     src = source_complaint(cid) or {}
     try:
         conf = max(0, min(100, int(float(r.get("confidence") or 0))))
@@ -1324,9 +1327,9 @@ def api_demo_action(action):
 
 
 # ---------------------------------------------------------------- integrations + intake inbox
-SAMPLE_COMPLAINT = {"text": "Customer reports the DreamStation Auto CPAP stopped delivering pressure overnight and black particles were found "
+SAMPLE_COMPLAINT = {"text": "Customer reports the AeroFlow A200 CPAP stopped delivering pressure overnight and black particles were found "
                             "in the humidifier chamber. The patient woke up short of breath and visited urgent care the next morning.",
-                    "device": "DREAMSTATION AUTO CPAP", "event_type": "Injury", "reporter": "Integration test"}
+                    "device": "AeroFlow A200 CPAP", "event_type": "Injury", "reporter": "Integration test"}
 
 
 def api_key_ok():
@@ -1483,5 +1486,5 @@ if __name__ == "__main__":
             intake_mod().init_app(app)  # mounts POST /api/v1/complaints (+ /csv, status) and intake.py's worker
         except Exception as e:
             print("intake.py endpoints not mounted:", type(e).__name__, e, flush=True)
-    print(f"Vigil Console v2 on http://localhost:5001  (data: {VIGIL_DIR})", flush=True)
+    print(f"Thirty console on http://localhost:5001  (data: {VIGIL_DIR})", flush=True)
     app.run(host="127.0.0.1", port=int(os.environ.get("VIGIL_CONSOLE_PORT", 5001)), debug=False, threaded=True)

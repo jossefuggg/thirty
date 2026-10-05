@@ -11,11 +11,11 @@
     <div class="banner info">{{ icon('help') }}<div><b>{{ r.status.replace('INFO REQUESTED by ', 'Info requested by ') }}</b>
       <span>{{ r.act_time or 'Waiting for the reporter' }}</span></div>
       <button class="undo" data-undo>Undo</button></div>
-    <div class="rv-acts"><button class="btn btn-primary btn-lg" data-act="approve">{{ icon('check') }}Approve report</button></div>
+    <div class="rv-acts"><button class="btn btn-accent btn-lg" data-act="approve">{{ icon('check') }}Approve report</button></div>
   {% elif r.reportable %}
     <div class="rv-acts">
-      <button class="btn btn-primary btn-lg" data-act="approve">{{ icon('check') }}Approve</button>
-      <button class="btn btn-outline btn-lg" data-act="info">{{ icon('help') }}Request info</button>
+      <button class="btn btn-accent btn-lg" data-act="approve">{{ icon('check') }}Approve</button>
+      <button class="btn btn-secondary btn-lg" data-act="info">{{ icon('help') }}Request info</button>
     </div>
   {% else %}
     <div class="banner muted">{{ icon('file') }}<div><b>No FDA report required</b><span>Logged with its reason for the audit trail.</span></div></div>

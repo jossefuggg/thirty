@@ -1,0 +1,20 @@
+[project]
+name = "thirty"
+version = "1.1.0"
+description = "Thirty — medical device complaint reporting. Thirty drafts; a human files."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+dependencies = [
+  "flask>=3.0",
+  "requests>=2.31",
+  "fpdf2>=2.7",
+]
+
+[project.optional-dependencies]
+signals = ["vaderSentiment>=3.3", "rapidfuzz>=3.0"]
+dev = ["pytest>=8.0", "playwright>=1.45"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

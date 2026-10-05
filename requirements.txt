@@ -1,0 +1,7 @@
+# Thirty — runtime dependencies (console + pipeline). Everything runs locally; no cloud services.
+flask>=3.0
+requests>=2.31
+fpdf2>=2.7
+# optional signal libraries used by the rules layer; the code degrades gracefully without them
+vaderSentiment>=3.3
+rapidfuzz>=3.0

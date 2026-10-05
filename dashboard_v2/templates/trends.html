@@ -2,60 +2,62 @@
 {% block content_class %}tr-page{% endblock %}
 {% block head %}
 <style>
-  .tr-page { --hist: #2a78d6; --live: #0EA5A4; --sev-1: #9DC1EE; --sev-2: #2a78d6; --sev-3: #173F78; --grid: #EEF2F6; }
+  /* chart colours: history = slate, live = ink, severity = stone / slate / ink; recall band = hatched stone */
+  .tr-page { --hist: var(--muted); --live: var(--text); --sev-1: var(--border-2); --sev-2: var(--muted); --sev-3: var(--text); --grid: var(--border); }
   .tr { display: grid; gap: var(--s3); }
-  .filters { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
-  .filters .k { font-size: var(--fs-12); font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 8px; }
-  .fchip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; white-space: nowrap; border-radius: var(--r-pill); background: var(--surface); box-shadow: inset 0 0 0 1px var(--border);
-    font-weight: 650; font-size: var(--fs-14); color: var(--text-2); transition: background var(--t-fast), box-shadow var(--t-fast); }
-  .fchip:hover { box-shadow: inset 0 0 0 1px var(--border-2); background: var(--hover); }
+  .filters { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 4px; margin: -4px; }
+  .filters .k { font-size: var(--fs-12); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-right: 8px; white-space: nowrap; }
+  .fchip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; white-space: nowrap; border-radius: var(--r-pill); background: transparent; border: 2px solid var(--border);
+    font-weight: 700; font-size: var(--fs-14); color: var(--text); transition: background var(--t-fast), border-color var(--t-fast); }
+  .fchip:hover { border-color: var(--text); }
   .fchip em { font-style: normal; font-size: var(--fs-12); color: var(--muted); font-variant-numeric: tabular-nums; }
-  .fchip.on { background: var(--sidebar); color: #fff; box-shadow: none; } .fchip.on em { color: #94A3B8; }
-  .fchip .lv { display: inline-flex; align-items: center; gap: 4px; color: var(--accent-600); font-weight: 750; } .fchip.on .lv { color: #5EEAD4; }
+  .fchip.on { background: var(--text); color: var(--bg); border-color: var(--text); } .fchip.on em { color: var(--bg); opacity: .7; }
+  .fchip .lv { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; } .fchip.on .lv { color: var(--bg); }
   .fchip .lv i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
   .cb { padding: var(--s3); }
   .stats { display: flex; gap: var(--s4); margin-left: auto; }
-  .stat b { display: block; font-size: var(--fs-20); font-weight: 760; font-variant-numeric: tabular-nums; letter-spacing: -.01em; text-transform: none; }
-  .stat span { font-size: var(--fs-12); color: var(--muted); font-weight: 600; letter-spacing: 0; text-transform: none; }
-  .legend { display: flex; gap: 16px; align-items: center; font-size: 13px; color: var(--text-2); flex-wrap: wrap; }
+  .stat { border: 0; padding: 0; } .stat b { display: block; font-family: var(--font-display); font-weight: 400; font-size: var(--fs-24); font-variant-numeric: tabular-nums; letter-spacing: -.01em; text-transform: none; }
+  .stat span { font-size: var(--fs-12); color: var(--muted); font-weight: 700; letter-spacing: 0; text-transform: none; }
+  .legend { display: flex; gap: 16px; align-items: center; font-size: 13px; color: var(--text); flex-wrap: wrap; }
   .legend span { display: inline-flex; align-items: center; gap: 8px; }
   .legend i { width: 12px; height: 12px; border-radius: 3px; background: var(--c); }
-  .legend .band i { background: repeating-linear-gradient(135deg, #FECACA 0 3px, #FEF2F2 3px 6px); box-shadow: inset 0 0 0 1px #FCA5A5; }
+  .legend .band i { background: repeating-linear-gradient(135deg, var(--border) 0 3px, var(--hover) 3px 6px); box-shadow: inset 0 0 0 1px var(--border-2); }
   .legend b { font-variant-numeric: tabular-nums; }
 
   .chart { position: relative; width: 100%; }
   .chart svg { display: block; width: 100%; overflow: visible; }
   .chart text { font: 12px var(--font); fill: var(--muted); font-variant-numeric: tabular-nums; }
-  .chart .ann { font-weight: 700; fill: var(--critical-dark); font-size: 13px; }
-  .tip { position: absolute; pointer-events: none; background: var(--sidebar); color: #fff; border-radius: var(--r-btn); padding: 10px 12px; font-size: 13px; line-height: 1.5;
+  .chart .ann { font-weight: 800; fill: var(--text); font-size: 13px; }
+  .tip { position: absolute; pointer-events: none; background: var(--t-ink); color: var(--t-paper); border-radius: var(--r-btn); padding: 10px 12px; font-size: 13px; line-height: 1.5;
     box-shadow: var(--shadow-lg); opacity: 0; transform: translate(-50%, calc(-100% - 12px)); transition: opacity var(--t-fast); white-space: nowrap; z-index: 5; }
+  [data-theme="dark"] .tip { background: var(--t-paper); color: var(--t-ink); }
   .tip.show { opacity: 1; } .tip b { display: block; font-size: 13px; margin-bottom: 2px; }
   .tip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; background: var(--c); }
-  .tip span { display: block; font-variant-numeric: tabular-nums; color: #CBD5E1; } .tip span em { font-style: normal; color: #fff; font-weight: 700; }
+  .tip span { display: block; font-variant-numeric: tabular-nums; opacity: .8; } .tip span em { font-style: normal; opacity: 1; font-weight: 800; }
 
   .row2 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: var(--s3); align-items: start; }
   .modes { display: grid; gap: 14px; }
   .mo { display: grid; grid-template-columns: 220px minmax(0, 1fr) 96px; gap: 14px; align-items: center; }
-  .mo .nm { font-weight: 650; font-size: var(--fs-14); text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mo .bars { display: flex; gap: 2px; height: 16px; }
+  .mo .nm { font-weight: 700; font-size: var(--fs-14); text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mo .bars { display: flex; gap: 2px; height: 14px; }
   .mo .bars i { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--hist); min-width: 0; }
   .mo .bars i.l { background: var(--live); border-radius: 4px; }
   .mo .bars i.h:not(:last-child) { border-radius: 0; }
-  .mo .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: var(--fs-14); }
-  .mo .n em { display: block; font-style: normal; font-weight: 650; font-size: 12px; color: var(--accent-600); }
-  .mo.other .nm, .mo.other .n { color: var(--muted); } .mo.other .bars i.h { background: #CBD5E1; }
-  details.tbl { margin-top: var(--s2); } details.tbl summary { cursor: pointer; font-size: 13px; font-weight: 650; color: var(--accent-600); list-style: none; display: inline-flex; gap: 6px; align-items: center; }
+  .mo .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 800; font-size: var(--fs-14); }
+  .mo .n em { display: block; font-style: normal; font-weight: 700; font-size: 12px; color: var(--muted); }
+  .mo.other .nm, .mo.other .n { color: var(--muted); } .mo.other .bars i.h { background: var(--border); }
+  details.tbl { margin-top: var(--s2); } details.tbl summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text); list-style: none; display: inline-flex; gap: 6px; align-items: center; }
   details.tbl summary::-webkit-details-marker { display: none; } details.tbl summary .i { width: 16px; height: 16px; transition: transform var(--t); } details.tbl[open] summary .i { transform: rotate(90deg); }
   details.tbl table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; font-variant-numeric: tabular-nums; }
   details.tbl th, details.tbl td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--border); }
-  details.tbl th:first-child, details.tbl td:first-child { text-align: left; } details.tbl th { color: var(--muted); font-weight: 700; font-size: 12px; }
+  details.tbl th:first-child, details.tbl td:first-child { text-align: left; } details.tbl th { color: var(--muted); font-weight: 800; font-size: 12px; }
   .philips { display: grid; grid-template-columns: minmax(0, 760px) minmax(0, 1fr); gap: var(--s3); align-items: center; }
   .philips img { width: 100%; border-radius: var(--r-btn); border: 1px solid var(--border); }
-  .philips figcaption { max-width: 560px; } .philips figcaption b { display: block; font-size: var(--fs-28); font-weight: 750; line-height: 1.3; margin-bottom: 8px; }
+  .philips figcaption { max-width: 560px; } .philips figcaption b { display: block; font-family: var(--font-display); font-weight: 400; font-size: var(--fs-28); line-height: 1.2; margin-bottom: 8px; letter-spacing: -.01em; }
   .philips figcaption p { color: var(--muted); font-size: var(--fs-16); line-height: 1.6; }
-  .nohist { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: var(--r-btn); background: var(--info-50); color: #92400E; font-weight: 600; }
-  .nohist .i { color: var(--info); }
+  .nohist { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: var(--r-btn); background: var(--hover); color: var(--text); font-weight: 700; }
+  .nohist .i { color: var(--muted); }
 </style>
 {% endblock %}
 
@@ -70,8 +72,8 @@
     <div class="cb">
       <div class="legend" style="margin-bottom:16px">
         <span style="--c:var(--hist)"><i></i>FDA history (MAUDE)</span>
-        <span style="--c:var(--live)"><i></i>Live · processed by Vigil</span>
-        <span class="band"><i></i>Philips recall · Jun 2021</span>
+        <span style="--c:var(--live)"><i></i>Live · processed by Thirty</span>
+        <span class="band"><i></i>Recall · Jun 2021</span>
       </div>
       <div class="chart" id="c-month"><div class="tip"></div></div>
     </div>
@@ -96,9 +98,9 @@
   <section class="card">
     <div class="card-h"><h2>{{ icon('file') }}Why memory matters</h2></div>
     <figure class="cb philips">
-      <img src="/chart.png" alt="Public FDA reports for Philips CPAP devices by month, flat until the June 2021 recall">
-      <figcaption><b>Public FDA reports, Philips CPAP: flat until the 2021 recall</b>
-        <p>The foam-degradation signal was in MAUDE long before the recall. Vigil compares every new complaint against this history, by device family and failure mode, so a recurring pattern is flagged on day one instead of after the spike.</p></figcaption>
+      <img src="/chart.png" alt="Public FDA reports for one CPAP family by month, flat until the June 2021 recall">
+      <figcaption><b>Public FDA reports: flat until the 2021 recall</b>
+        <p>The foam-degradation signal was in MAUDE long before the recall. Thirty compares every new complaint against this history, by device family and failure mode, so a recurring pattern is flagged on day one instead of after the spike.</p></figcaption>
     </figure>
   </section>
   {% endif %}
@@ -124,17 +126,17 @@
   /* ---------- complaints per month (history + live stacked, recall band) ---------- */
   function drawMonths() {
     var box = $("c-month"), W = box.clientWidth, H = 300, L = 48, R = 8, T = 28, B = 28, rows = data.months;
-    var old = box.querySelector("svg"); if (old) old.remove();
+    var old = box.querySelector("svg"); if (old) old.remove(); var e0 = box.querySelector(".empty"); if (e0) e0.remove();
     if (!rows.length) { box.insertAdjacentHTML("afterbegin", '<div class="empty"><div class="art">' + ICONS.trend + "</div><b>No complaints for this family</b></div>"); return; }
     var max = nice(Math.max.apply(null, rows.map(function (r) { return r.history + r.live; }))), step = (W - L - R) / rows.length, bw = Math.max(2, step - 2);
     var y = function (v) { return T + (H - T - B) * (1 - v / max); }, s = "";
     for (var g = 0; g <= 4; g++) { var v = max * g / 4, yy = y(v).toFixed(1);
-      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + (g ? "var(--grid)" : "#CBD5E1") + '"/><text x="' + (L - 10) + '" y="' + yy + '" dy="4" text-anchor="end">' + num(v) + "</text>"; }
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + (g ? "var(--grid)" : "var(--border-2)") + '"/><text x="' + (L - 10) + '" y="' + yy + '" dy="4" text-anchor="end">' + num(v) + "</text>"; }
     var ri = rows.findIndex(function (r) { return r.m === data.recall.month; });
     if (ri >= 0) { var rx = L + ri * step - 1;
-      s += '<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#FEF2F2"/><line x1="0" y1="0" x2="0" y2="6" stroke="#FECACA" stroke-width="3"/></pattern></defs>' +
+      s += '<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--hover)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--border)" stroke-width="3"/></pattern></defs>' +
         '<rect x="' + rx + '" y="' + T + '" width="' + (step + 2) + '" height="' + (H - T - B) + '" fill="url(#hatch)"/>' +
-        '<line x1="' + (rx + step / 2 + 1) + '" x2="' + (rx + step / 2 + 1) + '" y1="' + (T - 8) + '" y2="' + (H - B) + '" stroke="var(--critical)" stroke-width="1.5" stroke-dasharray="4 3"/>' +
+        '<line x1="' + (rx + step / 2 + 1) + '" x2="' + (rx + step / 2 + 1) + '" y1="' + (T - 8) + '" y2="' + (H - B) + '" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="4 3"/>' +
         '<text class="ann" x="' + (rx + step / 2 + 8) + '" y="' + (T - 10) + '">' + esc(data.recall.label) + "</text>"; }
     rows.forEach(function (r, i) {
       var x = L + i * step + 1, hH = (H - T - B) * r.history / max, hL = (H - T - B) * r.live / max, base = H - B;
@@ -157,14 +159,15 @@
     var box = $("c-ev"), W = box.clientWidth, H = 260, L = 44, R = 4, T = 12, B = 28, rows = data.quarters;
     var old = box.querySelector("svg"); if (old) old.remove(); var e = box.querySelector(".empty"); if (e) e.remove();
     var tot = { Death: 0, Injury: 0, Malfunction: 0 }; rows.forEach(function (r) { SEV.forEach(function (k) { tot[k[0]] += r[k[0]]; }); });
-    $("ev-legend").innerHTML = SEV.slice().reverse().map(function (k) { return '<span style="--c:' + k[1] + '"><i></i>' + k[0] + (k[0] === "Malfunction" ? "s" : k[0] === "Injury" ? "ies" : "s").replace(/^ies$/, "ies") + " <b>" + num(tot[k[0]]) + "</b></span>"; }).join("").replace("Injuryies", "Injuries");
+    var PL = { Death: "Deaths", Injury: "Injuries", Malfunction: "Malfunctions" };
+    $("ev-legend").innerHTML = SEV.slice().reverse().map(function (k) { return '<span style="--c:' + k[1] + '"><i></i>' + PL[k[0]] + " <b>" + num(tot[k[0]]) + "</b></span>"; }).join("");
     $("ev-table").innerHTML = "<table><thead><tr><th>Quarter</th><th>Deaths</th><th>Injuries</th><th>Malfunctions</th></tr></thead><tbody>" +
       rows.filter(function (r) { return r.Death + r.Injury + r.Malfunction; }).map(function (r) { return "<tr><td>" + r.q + "</td><td>" + r.Death + "</td><td>" + r.Injury + "</td><td>" + r.Malfunction + "</td></tr>"; }).join("") + "</tbody></table>";
     if (!rows.length) { box.insertAdjacentHTML("afterbegin", '<div class="empty"><div class="art">' + ICONS.activity + "</div><b>No events recorded</b></div>"); return; }
     var max = nice(Math.max.apply(null, rows.map(function (r) { return r.Death + r.Injury + r.Malfunction; }))), step = (W - L - R) / rows.length, bw = Math.max(3, step - 2);
     var y = function (v) { return T + (H - T - B) * (1 - v / max); }, s = "";
     for (var g = 0; g <= 4; g++) { var v = max * g / 4, yy = y(v).toFixed(1);
-      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + (g ? "var(--grid)" : "#CBD5E1") + '"/><text x="' + (L - 10) + '" y="' + yy + '" dy="4" text-anchor="end">' + num(v) + "</text>"; }
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + (g ? "var(--grid)" : "var(--border-2)") + '"/><text x="' + (L - 10) + '" y="' + yy + '" dy="4" text-anchor="end">' + num(v) + "</text>"; }
     rows.forEach(function (r, i) {
       var x = L + i * step + 1, acc = 0, segs = SEV.filter(function (k) { return r[k[0]]; });
       segs.forEach(function (k, j) { var h = (H - T - B) * r[k[0]] / max, top = H - B - acc - h - (acc ? 2 : 0);
@@ -200,7 +203,7 @@
     $("t1").textContent = "Complaints per month · " + (data.family === "ALL" ? "all families" : data.family);
     var h = data.months.reduce(function (a, r) { return a + r.history; }, 0), l = data.months.reduce(function (a, r) { return a + r.live; }, 0);
     var peak = data.months.reduce(function (a, r) { return r.history + r.live > a.n ? { n: r.history + r.live, m: r.m } : a; }, { n: 0, m: "" });
-    $("stats").innerHTML = '<div class="stat"><b>' + num(h) + "</b><span>FDA history</span></div>" + '<div class="stat"><b style="color:var(--accent-600)">' + num(l) + "</b><span>Live (Vigil)</span></div>" +
+    $("stats").innerHTML = '<div class="stat"><b>' + num(h) + "</b><span>FDA history</span></div>" + '<div class="stat"><b>' + num(l) + "</b><span>Live (Thirty)</span></div>" +
       (peak.m ? '<div class="stat"><b>' + mlabel(peak.m) + "</b><span>Peak month · " + num(peak.n) + "</span></div>" : "");
     $("nohist").innerHTML = data.has_history ? "" : '<div class="nohist">' + ICONS.alert + "history.csv not found: showing live complaints only. Build it with <span class=\"mono\">python3 vigil.py import-history</span>.</div>";
     drawMonths(); drawModes(); drawEvents();

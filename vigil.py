@@ -468,7 +468,7 @@ def render_mdr_pdf(c, row, f):
         def header(self):
             self.set_font(FONT, "B", 9)
             self.set_text_color(90)
-            self.cell(0, 5, f"VIGIL   |   Complaint #{c['id']}   |   Due: {due}", align="L")
+            self.cell(0, 5, f"THIRTY   |   Complaint #{c['id']}   |   Due: {due}", align="L")
             self.cell(0, 5, f"Page {self.page_no()}/{{nb}}", align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             self.set_draw_color(0); self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
             self.ln(2); self.set_text_color(0)
@@ -477,7 +477,7 @@ def render_mdr_pdf(c, row, f):
             self.set_y(-12)
             self.set_font(FONT, "", 8)
             self.set_text_color(90)
-            self.cell(0, 5, "Generated locally on Dell Pro Max GB10, no data left the device", align="C")
+            self.cell(0, 5, "Thirty drafts; a human files. Generated on the local model: no data left this machine.", align="C")
 
     pdf = PDF(format="Letter")
     if os.path.exists(f"{FONT_DIR}/DejaVuSans.ttf"):
@@ -497,7 +497,7 @@ def render_mdr_pdf(c, row, f):
     pdf.cell(0, 6, "DRAFT for human review", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0)
     pdf.set_font(FONT, "", 8)
-    pdf.cell(0, 5, f"Vigil decision: {row['decision']} ({row['category']}), confidence {row['confidence']}%   "
+    pdf.cell(0, 5, f"Thirty decision: {row['decision']} ({row['category']}), confidence {row['confidence']}%   "
                    f"|   Priority: {row['priority']}", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
 
@@ -745,7 +745,7 @@ def device_memory(c):
     except Exception:
         last_txt = last or "unknown"
     n = len(prior)
-    summary = (f"{n} prior complaints on {fam} ({len(hist)} in FDA history, {len(live)} processed by Vigil). "
+    summary = (f"{n} prior complaints on {fam} ({len(hist)} in FDA history, {len(live)} processed by Thirty). "
                f"Events: {', '.join(f'{e} {k}' for e, k in events.most_common(4)) or 'unknown'}.\n"
                f"Top failure modes: {', '.join(f'{m} ({modes[m]})' for m in top) or 'unknown'}.\n"
                f"Most recent: {', '.join(f'#{i} ({d})' for d, i, _, _ in recent)}.")
@@ -891,8 +891,8 @@ def load_txt(path):
 # ---------------------------------------------------------------- commands
 def cmd_test(_):
     print("Model:", model_name(), "at", LLM_BASE)
-    print("Model says:", llm("Reply with exactly: Vigil online.", 20))
-    tg("Vigil is online. Watching complaints.")
+    print("Model says:", llm("Reply with exactly: Thirty online.", 20))
+    tg("Thirty is online. Watching complaints.")
     print("Telegram message sent (check the group).")
 
 
