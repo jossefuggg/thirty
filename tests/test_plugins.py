@@ -93,6 +93,8 @@ def test_pipeline_runs_with_no_agent(pdir):
 def test_plugins_api(client, console):
     j = client.get("/api/plugins").get_json()
     assert {p["id"] for p in j["plugins"]} >= {"sample", "local"} and j["active_agent"] == "sample" and j["forced_by_env"]
+    local = next(p for p in j["plugins"] if p["id"] == "local")
+    assert [s["key"] for s in local["schema"]][:2] == ["base_url", "model"] and isinstance(local["settings"], dict)
     html = client.get("/settings/plugins").get_data(as_text=True)
     assert "Active agent" in html and "Install a plugin" in html
     r = client.post("/api/plugins/local", json={"settings": {"base_url": "http://127.0.0.1:9/v1"}})

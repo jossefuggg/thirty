@@ -67,7 +67,7 @@ class Plugin:
 
     def public(self):
         return {"id": self.id, "name": self.name, "version": self.version, "description": self.description,
-                "capabilities": self.capabilities, "settings": self.settings_schema, "builtin": self.builtin,
+                "capabilities": self.capabilities, "schema": self.settings_schema, "builtin": self.builtin,
                 "path": self.path, "error": self.error}
 
 

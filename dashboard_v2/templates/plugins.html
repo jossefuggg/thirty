@@ -75,7 +75,7 @@
       return '<section class="card pl" data-id="' + esc(p.id) + '"><div class="nm"><b>' + esc(p.name) + '</b><span class="ver">v' + esc(p.version) + "</span>" + pill(p.status) + (p.active ? '<span class="pill pill-sm pill-approved">Active</span>' : "") + (p.builtin ? "" : '<span class="pill pill-sm pill-neutral">User plugin</span>') + "</div>" +
         '<p class="desc">' + esc(p.description) + (p.error ? ' <b style="color:var(--text)">' + esc(p.error) + "</b>" : "") + "</p>" +
         '<div class="right"><label class="tgl"><input type="checkbox" data-enable' + (p.enabled ? " checked" : "") + (p.error ? " disabled" : "") + ">" + (p.enabled ? "Enabled" : "Disabled") + '</label><div class="caps">' + p.capabilities.map(function (c) { return '<span class="pill pill-sm pill-neutral">' + esc(c) + "</span>"; }).join("") + "</div></div>" +
-        (p.settings.length && !p.error ? "<form>" + p.settings.map(function (s) { return field(p, s); }).join("") +
+        (p.schema.length && !p.error ? "<form>" + p.schema.map(function (s) { return field(p, s); }).join("") +
           '<div class="acts"><button class="btn btn-primary btn-sm" type="submit">Save settings</button><button class="btn btn-secondary btn-sm" type="button" data-test>Test</button><span class="res" data-res></span></div></form>' : "") +
         '<div class="path">' + esc(p.path) + "</div></section>";
     }).join("");
