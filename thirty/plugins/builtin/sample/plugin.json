@@ -1,0 +1,11 @@
+{
+  "id": "sample",
+  "name": "Sample agent",
+  "version": "1.0.0",
+  "description": "Pre-written results for the sample complaints and simple rules for anything else. No model, nothing leaves the machine. Used for demos and first runs.",
+  "capabilities": ["agent"],
+  "settings": [
+    {"key": "delay", "label": "Fake delay (seconds)", "type": "number", "default": 1.2,
+     "help": "How long each classification pretends to take, so loading states are visible."}
+  ]
+}

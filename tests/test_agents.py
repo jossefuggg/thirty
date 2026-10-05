@@ -69,10 +69,10 @@ class _FakeLLM:
     def __init__(self, answer):
         self.answer, self.calls = answer, []
 
-    def get(self, url, timeout=0):
+    def get(self, url, timeout=0, headers=None):
         self.calls.append(("GET", url)); return self
 
-    def post(self, url, timeout=0, json=None):
+    def post(self, url, timeout=0, json=None, headers=None):
         self.calls.append(("POST", url, json)); return self
 
     def raise_for_status(self): pass

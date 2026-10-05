@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+  .pg { display: grid; gap: var(--s3); max-width: 1100px; }
+  .lede { color: var(--muted); font-size: var(--fs-16); max-width: 72ch; margin-top: -8px; }
+  .active-card { padding: var(--s3); display: grid; gap: 16px; }
+  .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .choice { display: grid; grid-template-columns: 24px 1fr; gap: 4px 12px; align-items: start; padding: 14px 16px; border: 2px solid var(--border); border-radius: var(--r-card); cursor: pointer; transition: border-color var(--t-fast); }
+  .choice:hover { border-color: var(--text); } .choice.on { border-color: var(--text); background: var(--hover); }
+  .choice input { margin: 4px 0 0; accent-color: var(--t-ink); width: 18px; height: 18px; }
+  .choice b { font-size: var(--fs-14); font-weight: 800; } .choice span { grid-column: 2; font-size: 13px; color: var(--muted); }
+  .choice.off { opacity: .55; cursor: not-allowed; }
+  .forced { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; } .forced .i { width: 16px; height: 16px; }
+  .plist { display: grid; gap: 16px; }
+  .pl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; padding: var(--s3); align-items: start; }
+  .pl .nm { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .pl .nm b { font-size: var(--fs-16); font-weight: 800; }
+  .pl .ver { font: 700 12px var(--mono); color: var(--muted); }
+  .pl .desc { color: var(--muted); font-size: var(--fs-14); max-width: 70ch; grid-column: 1; }
+  .pl .right { display: grid; justify-items: end; gap: 10px; grid-row: 1 / 3; }
+  .pl .caps { display: flex; gap: 6px; }
+  .pl form { grid-column: 1 / 3; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 16px; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 8px; }
+  .pl form .help { font-size: 12px; color: var(--muted); } .pl form .chk { display: inline-flex; gap: 8px; align-items: center; height: 44px; font-weight: 700; font-size: 14px; }
+  .pl form .chk input { width: 18px; height: 18px; accent-color: var(--t-ink); }
+  .pl form .acts { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .pl form .acts .res { margin-left: auto; font-size: 13px; color: var(--muted); }
+  .pl .path { grid-column: 1 / -1; font: 12px var(--mono); color: var(--muted); word-break: break-all; }
+  .st-ready { background: var(--text); color: var(--bg); } .st-not-configured { background: transparent; color: var(--text); border-color: var(--text); }
+  .st-error { background: transparent; color: var(--text); border-color: var(--t-amber); } .st-disabled { background: var(--hover); color: var(--muted); }
+  .tgl { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text); cursor: pointer; white-space: nowrap; }
+  .tgl input { appearance: none; width: 36px; height: 22px; border-radius: 11px; background: var(--track); position: relative; cursor: pointer; transition: background var(--t-fast); margin: 0; }
+  .tgl input::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); transition: transform var(--t-fast); box-shadow: 0 1px 2px rgba(21,24,29,.3); }
+  .tgl input:checked { background: var(--text); } .tgl input:checked::after { transform: translateX(14px); } .tgl input:focus-visible { box-shadow: var(--t-focus); }
+  .install { padding: var(--s3); display: grid; gap: 8px; color: var(--muted); font-size: var(--fs-14); } .install code { font-family: var(--mono); color: var(--text); font-size: 13px; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="pg">
+  <p class="lede">Plugins add an agent to Thirty: something that classifies each complaint and drafts the Form 3500A. One agent is active at a time. With no agent, every complaint waits for a human decision.</p>
+  <section class="card active-card">
+    <div class="card-h" style="padding:0;height:auto;border:0"><h2>{{ icon('cpu') }}Active agent</h2><span class="aside" id="active-label"></span></div>
+    <div class="choices" id="choices"><div class="empty loading"><span class="spin"></span><b>Loading…</b></div></div>
+    <div class="forced" id="forced" hidden>{{ icon('alert') }}<span>The active agent is set by the THIRTY_AGENT environment variable; the choice here is ignored until it is unset.</span></div>
+  </section>
+  <div class="card-h" style="padding:0;height:auto;border:0"><h2>{{ icon('list') }}Installed plugins</h2><span class="aside" id="count"></span></div>
+  <div class="plist" id="plist"><div class="empty loading"><span class="spin"></span><b>Loading plugins…</b></div></div>
+  <section class="card install">
+    <b style="color:var(--text)">Install a plugin</b>
+    <span>Copy a plugin folder (with <code>plugin.json</code> and <code>plugin.py</code>) into <code id="udir">{{ data_dir }}/plugins/</code> and reload this page. The contract and an example are in <code>docs/PLUGINS.md</code>.</span>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var data = null;
+  var ST = { ready: "Ready", "not-configured": "Not configured", error: "Error", disabled: "Disabled" };
+  function pill(s) { return '<span class="pill pill-sm st-' + esc(s.state) + '" title="' + esc(s.label) + '">' + esc(ST[s.state] || s.state) + "</span>"; }
+  function field(p, s) {
+    var v = p.settings[s.key], id = "f-" + p.id + "-" + s.key, help = s.help ? '<span class="help">' + esc(s.help) + "</span>" : "";
+    if (s.type === "bool") return '<label class="chk"><input type="checkbox" name="' + esc(s.key) + '"' + (v ? " checked" : "") + ">" + esc(s.label) + "</label>";
+    var ph = s.type === "secret" && p.has_secret[s.key] ? "Stored · leave blank to keep" : "";
+    return '<div class="field"><label for="' + id + '">' + esc(s.label) + (s.required ? " *" : "") + '</label><input class="input" id="' + id + '" name="' + esc(s.key) + '" type="' +
+      (s.type === "secret" ? "password" : s.type === "number" ? "number" : "text") + '" value="' + esc(s.type === "secret" ? "" : (v == null ? "" : v)) + '" placeholder="' + esc(ph) + '"' + (s.type === "number" ? ' step="any"' : "") + ">" + help + "</div>";
+  }
+  function render() {
+    var agents = data.plugins.filter(function (p) { return p.capabilities.indexOf("agent") >= 0; });
+    $("choices").innerHTML = agents.map(function (p) {
+      var can = p.enabled && !p.error, on = data.active_agent === p.id;
+      return '<label class="choice' + (on ? " on" : "") + (can ? "" : " off") + '"><input type="radio" name="active" value="' + esc(p.id) + '"' + (on ? " checked" : "") + (can ? "" : " disabled") + '><b>' + esc(p.name) + "</b><span>" + esc(p.status.label) + "</span></label>";
+    }).join("") + '<label class="choice' + (data.active_agent === "none" ? " on" : "") + '"><input type="radio" name="active" value="none"' + (data.active_agent === "none" ? " checked" : "") + '><b>No agent</b><span>Manual review only: every complaint waits for a reviewer, nothing is drafted.</span></label>';
+    var act = agents.filter(function (p) { return p.id === data.active_agent; })[0];
+    $("active-label").textContent = act ? act.name + " · " + act.status.label : "Manual review only";
+    $("forced").hidden = !data.forced_by_env;
+    $("count").textContent = data.plugins.length + " installed · " + data.plugins.filter(function (p) { return p.builtin; }).length + " built in";
+    $("plist").innerHTML = data.plugins.map(function (p) {
+      return '<section class="card pl" data-id="' + esc(p.id) + '"><div class="nm"><b>' + esc(p.name) + '</b><span class="ver">v' + esc(p.version) + "</span>" + pill(p.status) + (p.active ? '<span class="pill pill-sm pill-approved">Active</span>' : "") + (p.builtin ? "" : '<span class="pill pill-sm pill-neutral">User plugin</span>') + "</div>" +
+        '<p class="desc">' + esc(p.description) + (p.error ? ' <b style="color:var(--text)">' + esc(p.error) + "</b>" : "") + "</p>" +
+        '<div class="right"><label class="tgl"><input type="checkbox" data-enable' + (p.enabled ? " checked" : "") + (p.error ? " disabled" : "") + ">" + (p.enabled ? "Enabled" : "Disabled") + '</label><div class="caps">' + p.capabilities.map(function (c) { return '<span class="pill pill-sm pill-neutral">' + esc(c) + "</span>"; }).join("") + "</div></div>" +
+        (p.settings.length && !p.error ? "<form>" + p.settings.map(function (s) { return field(p, s); }).join("") +
+          '<div class="acts"><button class="btn btn-primary btn-sm" type="submit">Save settings</button><button class="btn btn-secondary btn-sm" type="button" data-test>Test</button><span class="res" data-res></span></div></form>' : "") +
+        '<div class="path">' + esc(p.path) + "</div></section>";
+    }).join("");
+  }
+  function load() {
+    fetch("/api/plugins", { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (j) { data = j; render(); })
+      .catch(function () { V.state($("plist"), "error", "Could not load plugins", V.offline(), load); });
+  }
+  function post(url, body) { return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }); }
+  $("choices").addEventListener("change", function (e) {
+    var r = e.target.closest("input[name=active]"); if (!r) return;
+    post("/api/plugins/active", { id: r.value }).then(function (x) { V.toast(x.ok ? "Active agent: " + x.j.agent : x.j.error, !x.ok); load(); document.dispatchEvent(new CustomEvent("vigil:changed")); });
+  });
+  $("plist").addEventListener("change", function (e) {
+    var t = e.target.closest("[data-enable]"); if (!t) return;
+    var id = t.closest(".pl").dataset.id;
+    post("/api/plugins/" + encodeURIComponent(id), { enabled: t.checked }).then(function (x) { V.toast(x.ok ? (t.checked ? "Enabled" : "Disabled") : x.j.error, !x.ok); load(); });
+  });
+  $("plist").addEventListener("submit", function (e) {
+    var f = e.target.closest("form"); if (!f) return; e.preventDefault();
+    var id = f.closest(".pl").dataset.id, o = {}; Array.prototype.forEach.call(f.elements, function (el) { if (!el.name) return; o[el.name] = el.type === "checkbox" ? el.checked : el.value; });
+    var res = f.querySelector("[data-res]"); res.textContent = "Saving…";
+    post("/api/plugins/" + encodeURIComponent(id), { settings: o }).then(function (x) { res.textContent = x.ok ? "Saved · " + x.j.status.label : x.j.error; if (x.ok) load(); });
+  });
+  $("plist").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-test]"); if (!b) return;
+    var pl = b.closest(".pl"), res = pl.querySelector("[data-res]"); res.innerHTML = '<span class="spin"></span> Testing…'; b.disabled = true;
+    post("/api/plugins/" + encodeURIComponent(pl.dataset.id) + "/test", {}).then(function (x) { res.textContent = (ST[x.j.status.state] || x.j.status.state) + " · " + x.j.status.label; b.disabled = false; load(); });
+  });
+  load();
+})();
+</script>
+{% endblock %}

@@ -8,8 +8,8 @@ as phases land.
 
 - [x] Phase 0 — Read the repo, write `docs/ARCHITECTURE.md`, save this plan
 - [x] Phase 1 — Visuals and rebrand (reviewed: "continue")
-- [x] Phase 2 — Demo mode with sample data, mock agent (screenshots taken; awaiting review)
-- [ ] Phase 3 — The agent becomes a plugin
+- [x] Phase 2 — Demo mode with sample data, mock agent (reviewed)
+- [x] Phase 3 — The agent becomes a plugin
 - [ ] Phase 4 — Desktop app
 - [ ] Phase 5 — First-run setup
 - [ ] Phase 6 — Installers

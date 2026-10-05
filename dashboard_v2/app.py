@@ -16,11 +16,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CODE_DIR = os.path.dirname(HERE)  # the repository / installed app: vigil.py, the thirty package, demo_set.csv
 if CODE_DIR not in sys.path:
     sys.path.insert(0, CODE_DIR)
-from thirty import config as tconfig, sample_data  # noqa: E402
+from thirty import config as tconfig, plugins, sample_data  # noqa: E402
 from thirty.agents import get_agent  # noqa: E402
 
 VIGIL_DIR = tconfig.data_dir()  # the data folder (VIGIL_DIR env; defaults to the repository root)
-DEMO_MODE = tconfig.demo_mode()  # sample agent + sample data: on automatically when no model is configured
+demo_mode = tconfig.demo_mode  # sample agent + sample data: on automatically when no model is configured; can change at runtime
 LOG = os.path.join(VIGIL_DIR, "decisions.csv")
 LOCK = LOG + ".lock"  # the same lock file vigil.py's log_lock() uses
 REPORTS = os.path.join(VIGIL_DIR, "reports")
@@ -133,8 +133,8 @@ def vigil():
         if _vigil is None:
             import vigil as v  # from CODE_DIR
             v.LOG, v.REPORTS, v.OUTBOX, v.HISTORY = LOG, REPORTS, OUTBOX, HISTORY
-            if DEMO_MODE:
-                v.SANDBOX = ""  # no OpenClaw sandbox in demo mode
+            if tconfig.agent_id() != "local":
+                v.SANDBOX = ""  # the OpenClaw sandbox only exists next to the hackathon's local model
             _vigil = v
         return _vigil
 
@@ -153,11 +153,20 @@ DEMO_COMMANDS = {
     "replay": 'sg docker -c "python3 vigil.py replay --csv demo_set.csv --delay 8"',
     "reset": 'sg docker -c "python3 vigil.py reset"',
 }
-if DEMO_MODE:  # no subprocess, no model: the sample agent runs inside the console
-    DEMO_COMMANDS = {"replay": f"sample agent · {len(sample_data.INCOMING)} incoming complaints through the pipeline",
-                     "reset": "reset sample data · 40 complaints, history and drafts rewritten for today"}
 DEMO_DELAY = float(os.environ.get("THIRTY_DEMO_DELAY", "2.5"))  # seconds between replayed complaints in demo mode
 PROCESSED_LINE = re.compile(r"^\S+ (URGENT|HIGH|NORMAL) (REPORTABLE|NEEDS_INFO|NOT_REPORTABLE|None)\b")  # cmd_replay's per-complaint line
+
+
+def in_process():
+    """Run demo actions inside the console (no subprocess, no sandbox) unless the hackathon local model is active."""
+    return tconfig.agent_id() != "local"
+
+
+def demo_commands():
+    if not in_process():
+        return DEMO_COMMANDS
+    return {"replay": f"{get_agent().name} · {len(sample_data.INCOMING)} incoming complaints through the pipeline",
+            "reset": "reset sample data · 40 complaints, history and drafts rewritten for today" if demo_mode() else "clear decisions.csv, drafted PDFs and the intake queue"}
 
 
 class DemoRunner:
@@ -187,10 +196,10 @@ class DemoRunner:
         with self.lock:
             if self.running:
                 return f"A {self.kind} is already running. Stop it first."
-            self.lines, self.kind, self.cmd = [], kind, DEMO_COMMANDS[kind]
+            self.lines, self.kind, self.cmd = [], kind, demo_commands()[kind]
             self.started, self.ended, self.rc, self.stopped, self.processed = time.time(), None, None, False, 0
         self._emit(f"$ {self.cmd}", "cmd")
-        if DEMO_MODE:
+        if in_process():
             self._stop.clear(); self.proc = None
             self.thread = threading.Thread(target=self._run_inprocess, args=(kind,), daemon=True)
             self.thread.start()
@@ -218,11 +227,17 @@ class DemoRunner:
         reseed the sample data. Same output lines as the subprocess path, so the Demo page needs no changes."""
         rc = 0
         try:
-            if kind == "reset":
+            if kind == "reset" and demo_mode():
                 self._emit("Rewriting sample data for today…")
                 ids = sample_data.seed(VIGIL_DIR)
                 _cache.update(rows=[], mtime=None)
                 self._emit(f"{len(ids)} complaints, {len(sample_data.history_rows())} history rows, drafted PDFs written to {VIGIL_DIR}")
+            elif kind == "reset":
+                for name in ("decisions.csv", "outbox.txt", "intake.json", ".push_pending"):
+                    try: os.remove(os.path.join(VIGIL_DIR, name)); self._emit(f"removed {name}")
+                    except OSError: pass
+                shutil.rmtree(REPORTS, ignore_errors=True); self._emit("removed reports/")
+                _cache.update(rows=[], mtime=None)
             else:
                 items = sample_data.incoming_complaints()
                 self._emit(f"Replay started: {len(items)} complaints · agent: {get_agent().name}")
@@ -281,7 +296,7 @@ DEMO = DemoRunner()
 
 def demo_total():
     """Complaints a replay will process: the sample incoming set in demo mode, else demo_set.csv rows with text."""
-    if DEMO_MODE:
+    if in_process():
         return len(sample_data.INCOMING)
     try:
         with open(DEMO_CSV, newline="", encoding="utf-8") as f:
@@ -547,7 +562,7 @@ def read_upload(f):
 # ---------------------------------------------------------------- system health (refreshed in the background)
 HEALTH = {"model": {"ok": False, "label": "checking…"}, "telegram": {"ok": False, "label": "checking…"},
           "sync": {"ok": False, "label": "checking…"}, "checked": None,
-          "agent": {"id": tconfig.agent_id(), "name": get_agent().name}, "demo_mode": DEMO_MODE}
+          "agent": {"id": tconfig.agent_id(), "name": get_agent().name}, "demo_mode": demo_mode()}
 
 def _check_model():
     """The active agent's own health check (local model: ping the server; sample agent: always ready)."""
@@ -565,8 +580,8 @@ def _check_telegram():
     """Reachability of api.telegram.org, debounced: one slow or failed probe must not flip the badge.
     Reported offline only after 3 consecutive failures."""
     now = dt.datetime.now().strftime("%H:%M:%S")
-    if DEMO_MODE:
-        return {"ok": False, "label": "not configured (demo mode)", "checked": now, "fails": 0, "off": True}
+    if tconfig.agent_id() != "local":
+        return {"ok": False, "label": "not configured", "checked": now, "fails": 0, "off": True}
     try:
         t0 = time.perf_counter()
         requests.get("https://api.telegram.org", timeout=4, allow_redirects=False)
@@ -590,7 +605,7 @@ def _check_sync():
 def health_loop():
     while True:
         HEALTH.update(model=_check_model(), telegram=_check_telegram(), sync=_check_sync(),
-                      checked=dt.datetime.now().strftime("%H:%M:%S"), agent={"id": tconfig.agent_id(), "name": get_agent().name})
+                      checked=dt.datetime.now().strftime("%H:%M:%S"), agent={"id": tconfig.agent_id(), "name": get_agent().name}, demo_mode=demo_mode())
         time.sleep(10)
 
 # ---------------------------------------------------------------- pages / API
@@ -641,14 +656,15 @@ STEP_ICONS = {"done": ICONS["check"], "info": ICONS["help"], "todo": _svg('<circ
 
 NAV = [("home", "/", "Command Center", "grid"), ("intake", "/intake", "Intake inbox", "download"), ("complaints", "/complaints", "Complaints", "inbox"),
        ("clock", "/clock", "Compliance Clock", "clock"), ("trends", "/trends", "Trends", "trend"),
-       ("audit", "/audit", "Audit Log", "file"), ("integrations", "/integrations", "Integrations", "plug"), ("demo", "/demo", "Demo Control", "play")]
+       ("audit", "/audit", "Audit Log", "file"), ("integrations", "/integrations", "Integrations", "plug"), ("demo", "/demo", "Demo Control", "play"),
+       ("plugins", "/settings/plugins", "Plugins", "cpu")]
 
 
 @app.context_processor
 def _globals():
     from markupsafe import Markup
     return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": WORKSPACE, "SOURCES": SOURCES,
-            "DEMO_MODE": DEMO_MODE, "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name},
+            "DEMO_MODE": demo_mode(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name},
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 
@@ -1016,7 +1032,7 @@ def api_state():
     clock = sorted((r for r in rows if is_open(r)), key=lambda r: (r["due_date"], -int(r.get("score") or 0)))
     return jsonify(history=history_context(), kpi=kpis(rows), feed=[brief(r) for r in feed], queue=[brief(r) for r in queue],
                    alerts=pattern_alerts(rows), pipeline=pipeline(rows), clock=[brief(r) for r in clock],
-                   demo={**{k: v for k, v in DEMO.public(since=10**12).items() if k in ("running", "kind", "processed", "total")}, "demo_mode": DEMO_MODE})
+                   demo={**{k: v for k, v in DEMO.public(since=10**12).items() if k in ("running", "kind", "processed", "total")}, "demo_mode": demo_mode()})
 
 
 RECALL = ("2021-06", "Philips recall · 14 Jun 2021")
@@ -1367,13 +1383,13 @@ def api_action(cid):
 
 @app.route("/demo")
 def demo():
-    return render_template("demo.html", page="demo", commands=DEMO_COMMANDS, title="Demo Control",
-                           seeded=sample_data.seed_date(VIGIL_DIR) if DEMO_MODE else None, data_dir=VIGIL_DIR)
+    return render_template("demo.html", page="demo", commands=demo_commands(), title="Demo Control", in_process=in_process(),
+                           seeded=sample_data.seed_date(VIGIL_DIR) if demo_mode() else None, data_dir=VIGIL_DIR)
 
 
 def ensure_sample_data():
     """Demo mode: seed on first run, and reseed once a day so the deadlines stay relative to today."""
-    if DEMO_MODE and (not os.path.exists(LOG) or sample_data.seed_date(VIGIL_DIR) != dt.date.today()):
+    if demo_mode() and (not os.path.exists(LOG) or sample_data.seed_date(VIGIL_DIR) != dt.date.today()):
         print(f"Demo mode: writing sample data to {VIGIL_DIR}", flush=True)
         sample_data.seed(VIGIL_DIR)
         _cache.update(rows=[], mtime=None)
@@ -1519,6 +1535,46 @@ def api_rotate_key():
     return jsonify(api_key=st["api_key"])
 
 
+# ---------------------------------------------------------------- plugins (settings)
+@app.route("/settings/plugins")
+def plugins_page():
+    return render_template("plugins.html", page="plugins", title="Plugins", data_dir=VIGIL_DIR)
+
+
+@app.route("/api/plugins")
+def api_plugins():
+    return jsonify(plugins.overview(probe=request.args.get("probe", "1") != "0"))
+
+
+@app.post("/api/plugins/active")
+def api_plugins_active():
+    pid = (request.get_json(silent=True) or {}).get("id") or "none"
+    try:
+        plugins.set_active(pid)
+    except plugins.PluginError as e:
+        return jsonify(error=str(e)), 400
+    HEALTH.update(model=_check_model(), agent={"id": tconfig.agent_id(), "name": get_agent().name}, demo_mode=demo_mode())
+    if demo_mode():
+        ensure_sample_data()
+    return jsonify(ok=True, active_agent=plugins.active_agent_id(), agent=get_agent().name, demo_mode=demo_mode())
+
+
+@app.post("/api/plugins/<pid>")
+def api_plugins_update(pid):
+    d = request.get_json(silent=True) or {}
+    try:
+        st = plugins.update_plugin(pid, enabled=d.get("enabled"), settings=d.get("settings"))
+    except plugins.PluginError as e:
+        return jsonify(error=str(e)), 400
+    HEALTH.update(model=_check_model(), agent={"id": tconfig.agent_id(), "name": get_agent().name}, demo_mode=demo_mode())
+    return jsonify(ok=True, enabled=st["enabled"], status=plugins.status(pid, probe=False), active_agent=plugins.active_agent_id())
+
+
+@app.post("/api/plugins/<pid>/test")
+def api_plugins_test(pid):
+    return jsonify(status=plugins.status(pid, probe=True))
+
+
 @app.route("/api/health")
 def api_health():
     d = DEMO.public(since=10**12)
@@ -1557,5 +1613,5 @@ if __name__ == "__main__":
         except Exception as e:
             print("intake.py endpoints not mounted:", type(e).__name__, e, flush=True)
     port = int(os.environ.get("VIGIL_CONSOLE_PORT", 5001))
-    print(f"Thirty console on http://localhost:{port}  (data: {VIGIL_DIR} · agent: {get_agent().name}{' · demo mode' if DEMO_MODE else ''})", flush=True)
+    print(f"Thirty console on http://localhost:{port}  (data: {VIGIL_DIR} · agent: {get_agent().name}{' · demo mode' if demo_mode() else ''})", flush=True)
     app.run(host="127.0.0.1", port=port, debug=False, threaded=True)

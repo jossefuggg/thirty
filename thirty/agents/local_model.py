@@ -87,17 +87,28 @@ def deadline_text(days):
     return "5 work days (urgent remedial action needed)" if str(days) == "5" else "30 calendar days"
 
 
-def model_name():
+def _headers(api_key):
+    return {"Authorization": f"Bearer {api_key}"} if api_key else {}
+
+
+def model_name(base_url=None, model=None, api_key=""):
+    """The model id to use: the configured one, else the first the server lists (cached on the module default)."""
     global LLM_MODEL
+    if model:
+        return model
+    if base_url and base_url.rstrip("/") != LLM_BASE.rstrip("/"):
+        r = requests.get(f"{base_url.rstrip('/')}/models", timeout=10, headers=_headers(api_key))
+        return r.json()["data"][0]["id"]
     if not LLM_MODEL:
-        r = requests.get(f"{LLM_BASE}/models", timeout=10)
+        r = requests.get(f"{LLM_BASE}/models", timeout=10, headers=_headers(api_key))
         LLM_MODEL = r.json()["data"][0]["id"]
     return LLM_MODEL
 
 
-def llm(prompt, max_tokens=600, temperature=0.1):
-    r = requests.post(f"{LLM_BASE}/chat/completions", timeout=180, json={
-        "model": model_name(), "temperature": temperature, "max_tokens": max_tokens,
+def llm(prompt, max_tokens=600, temperature=0.1, base_url=None, model=None, api_key="", timeout=180):
+    base = (base_url or LLM_BASE).rstrip("/")
+    r = requests.post(f"{base}/chat/completions", timeout=timeout, headers=_headers(api_key), json={
+        "model": model_name(base, model, api_key), "temperature": temperature, "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": prompt}],
         "chat_template_kwargs": {"enable_thinking": False},
     })
@@ -115,36 +126,43 @@ class LocalModelAgent(Agent):
     id = "local"
     name = "Local model agent"
 
+    def __init__(self, base_url=None, model=None, api_key="", timeout=180):
+        self.base_url = (base_url or LLM_BASE).rstrip("/")
+        self.model, self.api_key, self.timeout = model or LLM_MODEL, api_key, timeout
+
+    def _llm(self, prompt, max_tokens, temperature=0.1):
+        return llm(prompt, max_tokens, temperature, base_url=self.base_url, model=self.model, api_key=self.api_key, timeout=self.timeout)
+
     def classify(self, complaint, memory=""):
-        raw = llm(CLASSIFY.format(memory=memory or "No prior complaints on this device family.", **complaint), 400,
-                  temperature=0)  # same complaint -> same decision and deadline on every run
+        raw = self._llm(CLASSIFY.format(memory=memory or "No prior complaints on this device family.", **complaint), 400,
+                        temperature=0)  # same complaint -> same decision and deadline on every run
         try:
             return _json(raw)
         except Exception:
             return dict(UNREADABLE)
 
     def draft_report(self, complaint, row):
-        raw = llm(MDR_FIELDS.format(decision=row["decision"], category=row["category"],
-                                    deadline=deadline_text(row.get("deadline_days")), missing=row["missing"] or "none listed",
-                                    **{"generic_name": "", "product_code": "", "manufacturer": "",
-                                       "manufacturer_narrative": "none", **complaint}), 1500)
+        raw = self._llm(MDR_FIELDS.format(decision=row["decision"], category=row["category"],
+                                          deadline=deadline_text(row.get("deadline_days")), missing=row["missing"] or "none listed",
+                                          **{"generic_name": "", "product_code": "", "manufacturer": "",
+                                             "manufacturer_narrative": "none", **complaint}), 1500)
         try:
             return _json(raw)
         except Exception:
             return {"H10_manufacturer_narrative": "Model output unreadable - complete all fields manually."}
 
     def follow_up_questions(self, row, missing):
-        raw = llm(ASK.format(id=row["id"], decision=row["decision"], category=row["category"], device=row["device"],
-                             text=row.get("text") or "", missing="; ".join(missing) or "none listed"), 700, temperature=0.2)
+        raw = self._llm(ASK.format(id=row["id"], decision=row["decision"], category=row["category"], device=row["device"],
+                                   text=row.get("text") or "", missing="; ".join(missing) or "none listed"), 700, temperature=0.2)
         j = _json(raw)
         qs = [str(q).strip() for q in j.get("questions") or [] if str(q).strip()][:5]
         return qs, str(j.get("message") or "").strip()
 
     def health(self):
         try:
-            name = requests.get(f"{LLM_BASE}/models", timeout=3).json()["data"][0]["id"]
+            name = self.model or requests.get(f"{self.base_url}/models", timeout=3, headers=_headers(self.api_key)).json()["data"][0]["id"]
             t0 = time.perf_counter()
-            r = requests.post(f"{LLM_BASE}/chat/completions", timeout=15, json={
+            r = requests.post(f"{self.base_url}/chat/completions", timeout=15, headers=_headers(self.api_key), json={
                 "model": name, "max_tokens": 1, "temperature": 0, "messages": [{"role": "user", "content": "ping"}],
                 "chat_template_kwargs": {"enable_thinking": False}})
             r.raise_for_status()

@@ -16,20 +16,22 @@ _active = {"id": None, "agent": None}
 
 
 def make_agent(agent_id):
-    if agent_id == "local":
-        from .local_model import LocalModelAgent
-        return LocalModelAgent()
-    if agent_id == "sample":
-        from .sample import SampleAgent
-        return SampleAgent()
-    return NoAgent()
+    """An agent for a plugin id ("none" = manual review), built by the plugin with its saved settings."""
+    if agent_id in (None, "", "none"):
+        return NoAgent()
+    from .. import plugins
+    return plugins.instantiate(agent_id)
 
 
 def get_agent():
     wanted = config.agent_id()
     with _lock:
         if _active["agent"] is None or _active["id"] != wanted:
-            _active.update(id=wanted, agent=make_agent(wanted))
+            try:
+                _active.update(id=wanted, agent=make_agent(wanted))
+            except Exception as e:  # a broken plugin never stops the pipeline: fall back to manual review
+                _active.update(id=wanted, agent=NoAgent())
+                _active["agent"].error = f"{type(e).__name__}: {e}"
         return _active["agent"]
 
 

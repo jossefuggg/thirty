@@ -102,7 +102,8 @@ failure mode recurring live and in history), KPIs and sparklines.
 | `/audit` | `audit.html` | Event log (agent + human actions), filter chips, CSV export |
 | `/intake` | `intake.html` | Intake inbox: items from REST / CSV / email with status |
 | `/integrations` | `integrations.html` | REST endpoint + API key, file upload, IMAP settings, connector placeholders, field mapping |
-| `/demo` | `demo.html` | Demo Control: reset, start replay, stop; streamed `vigil.py` output |
+| `/demo` | `demo.html` | Demo Control: reset, start replay, stop; streamed pipeline output |
+| `/settings/plugins` | `plugins.html` | Plugins: active agent, installed plugins with status, enable/disable, settings, Test (Phase 3) |
 | (404) | `missing.html` | Complaint not found |
 
 Shared chrome in `base.html`: sidebar with nav + system health LEDs + "0 bytes to cloud AI" badge,
@@ -172,6 +173,13 @@ points `vigil.py`'s file paths at the data folder after import.
 
 Recorded per phase as they are made. (Phase 4 packaging decision will be added here before building.)
 
+* **Phase 3** — Agents are plugins (`thirty/plugins`): a folder with `plugin.json` (id, name, version,
+  capabilities, settings schema) and `plugin.py` (`create(settings) -> Agent`). Built-ins: `sample`,
+  `local` (the local-model code behind the contract, unchanged). User plugins in `<data>/plugins/`;
+  state in `<data>/plugins.json`. `get_agent()` resolves through the plugin registry; a broken plugin
+  falls back to manual review (`NoAgent`) so the pipeline never stops. Plugins screen at
+  `/settings/plugins` (enable/disable, active agent, settings form, status ready / not configured /
+  error / disabled, Test). Documented in `docs/PLUGINS.md` with `examples/plugins/keyword-agent`.
 * **Phase 2** — One agent interface, two implementations; demo mode on by default when no model is
   configured; sample data is invented and date-relative; the hackathon Philips chart is no longer shown
   (Trends draws from `history.csv`, which the seeder also writes). `tests/` run entirely on the sample

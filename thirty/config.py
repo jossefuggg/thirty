@@ -4,9 +4,8 @@ Code lives in the repository (or the installed app); data lives in one folder:
   VIGIL_DIR   -> explicit data folder (tests, screenshots, the desktop app)
   otherwise   -> the repository root, as in the hackathon layout
 
-Agent selection (Phase 2; Phase 3 moves this into settings):
-  THIRTY_AGENT = sample | local | none
-  default: "local" when a model is configured (VIGIL_LLM_BASE set), else "sample" (demo mode).
+Agent selection: thirty.plugins decides (plugins.json in the data folder; THIRTY_AGENT=sample|local|none
+forces it; default "local" when a model is configured via VIGIL_LLM_BASE, else "sample" = demo mode).
 """
 import os
 
@@ -22,11 +21,9 @@ def model_configured():
 
 
 def agent_id():
-    """Which built-in agent runs the pipeline."""
-    a = (os.environ.get("THIRTY_AGENT") or "").strip().lower()
-    if a in ("sample", "local", "none"):
-        return a
-    return "local" if model_configured() else "sample"
+    """Which agent plugin runs the pipeline ("none" = manual review). See thirty.plugins.active_agent_id()."""
+    from . import plugins
+    return plugins.active_agent_id()
 
 
 def demo_mode():
