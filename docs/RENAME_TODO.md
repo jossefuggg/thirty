@@ -18,5 +18,5 @@ identifiers nobody sees.
 | Console JS | `vigil:changed` DOM event, `vigil-reviewer` localStorage key | Internal identifiers; renaming the storage key would forget every reviewer's saved name on upgrade |
 | `dashboard/` (console v1) | Whole folder | Superseded by `dashboard_v2`; candidate for deletion rather than rename (decision for the owner) |
 | `dashboard_v2/app.py` | Code comments ("vigil.py bridge", "Vigil field") and the `vigil()` import helper | Comments and identifiers, not UI |
-| `make_chart_and_demo.py`, `philips_chart.png` | Hackathon chart script and image (real-company data) | Needs the hackathon data to regenerate; the Trends page still shows the PNG. Replace with a brand-coloured chart from sample data in Phase 2 |
+| `make_chart_and_demo.py`, `philips_chart.png` | Hackathon chart script and image (real-company data) | No longer shown anywhere since Phase 2 (Trends draws from history.csv). Safe to delete; left for the owner to decide |
 | `.gitignore`, `secrets.env` | Comment lines | Not user-facing |

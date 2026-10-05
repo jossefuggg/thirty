@@ -71,11 +71,11 @@
       <div class="stats" id="stats"></div></div>
     <div class="cb">
       <div class="legend" style="margin-bottom:16px">
-        <span style="--c:var(--hist)"><i></i>FDA history (MAUDE)</span>
+        <span style="--c:var(--hist)"><i></i>Device history</span>
         <span style="--c:var(--live)"><i></i>Live · processed by Thirty</span>
-        <span class="band"><i></i>Recall · Jun 2021</span>
+        <span class="band" id="band-legend"><i></i>Recall</span>
       </div>
-      <div class="chart" id="c-month"><div class="tip"></div></div>
+      <div class="chart" id="c-month"><div class="tip"></div><div class="empty loading"><span class="spin"></span><b>Loading…</b></div></div>
     </div>
   </section>
 
@@ -94,16 +94,6 @@
     </section>
   </div>
 
-  {% if chart %}
-  <section class="card">
-    <div class="card-h"><h2>{{ icon('file') }}Why memory matters</h2></div>
-    <figure class="cb philips">
-      <img src="/chart.png" alt="Public FDA reports for one CPAP family by month, flat until the June 2021 recall">
-      <figcaption><b>Public FDA reports: flat until the 2021 recall</b>
-        <p>The foam-degradation signal was in MAUDE long before the recall. Thirty compares every new complaint against this history, by device family and failure mode, so a recurring pattern is flagged on day one instead of after the spike.</p></figcaption>
-    </figure>
-  </section>
-  {% endif %}
 </div>
 {% endblock %}
 
@@ -127,6 +117,7 @@
   function drawMonths() {
     var box = $("c-month"), W = box.clientWidth, H = 300, L = 48, R = 8, T = 28, B = 28, rows = data.months;
     var old = box.querySelector("svg"); if (old) old.remove(); var e0 = box.querySelector(".empty"); if (e0) e0.remove();
+    $("band-legend").style.display = rows.some(function (r) { return r.m === data.recall.month; }) ? "" : "none";
     if (!rows.length) { box.insertAdjacentHTML("afterbegin", '<div class="empty"><div class="art">' + ICONS.trend + "</div><b>No complaints for this family</b></div>"); return; }
     var max = nice(Math.max.apply(null, rows.map(function (r) { return r.history + r.live; }))), step = (W - L - R) / rows.length, bw = Math.max(2, step - 2);
     var y = function (v) { return T + (H - T - B) * (1 - v / max); }, s = "";
@@ -149,7 +140,7 @@
     box.querySelectorAll(".hit").forEach(function (h) {
       h.addEventListener("mouseenter", function () { var r = rows[+h.dataset.i], x = (+h.getAttribute("x")) + step / 2;
         tipAt(box, x, y(r.history + r.live), "<b>" + mlabel(r.m) + (r.m === data.recall.month ? " · recall" : "") + "</b>" +
-          '<span><i style="--c:var(--hist)"></i>FDA history <em>' + num(r.history) + "</em></span>" + '<span><i style="--c:var(--live)"></i>Live <em>' + num(r.live) + "</em></span>"); });
+          '<span><i style="--c:var(--hist)"></i>History <em>' + num(r.history) + "</em></span>" + '<span><i style="--c:var(--live)"></i>Live <em>' + num(r.live) + "</em></span>"); });
       h.addEventListener("mouseleave", function () { tipOff(box); });
     });
   }
@@ -203,14 +194,15 @@
     $("t1").textContent = "Complaints per month · " + (data.family === "ALL" ? "all families" : data.family);
     var h = data.months.reduce(function (a, r) { return a + r.history; }, 0), l = data.months.reduce(function (a, r) { return a + r.live; }, 0);
     var peak = data.months.reduce(function (a, r) { return r.history + r.live > a.n ? { n: r.history + r.live, m: r.m } : a; }, { n: 0, m: "" });
-    $("stats").innerHTML = '<div class="stat"><b>' + num(h) + "</b><span>FDA history</span></div>" + '<div class="stat"><b>' + num(l) + "</b><span>Live (Thirty)</span></div>" +
+    $("stats").innerHTML = '<div class="stat"><b>' + num(h) + "</b><span>History</span></div>" + '<div class="stat"><b>' + num(l) + "</b><span>Live (Thirty)</span></div>" +
       (peak.m ? '<div class="stat"><b>' + mlabel(peak.m) + "</b><span>Peak month · " + num(peak.n) + "</span></div>" : "");
-    $("nohist").innerHTML = data.has_history ? "" : '<div class="nohist">' + ICONS.alert + "history.csv not found: showing live complaints only. Build it with <span class=\"mono\">python3 vigil.py import-history</span>.</div>";
+    $("nohist").innerHTML = data.has_history ? "" : '<div class="nohist">' + ICONS.alert + "No device history loaded: showing live complaints only. Build history.csv with <span class=\"mono\">python3 vigil.py import-history</span>.</div>";
     drawMonths(); drawModes(); drawEvents();
   }
   function load(f, push) {
-    fetch("/api/trends" + (f ? "?family=" + encodeURIComponent(f) : ""), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
-      data = j; fam = j.family; if (push) history.replaceState(null, "", "?family=" + encodeURIComponent(fam)); render(); });
+    fetch("/api/trends" + (f ? "?family=" + encodeURIComponent(f) : ""), { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (j) {
+      data = j; fam = j.family; if (push) history.replaceState(null, "", "?family=" + encodeURIComponent(fam)); render(); })
+      .catch(function () { if (!data) V.state($("c-month"), "error", "Could not load trends", V.offline(), function () { load(f, push); }); });
   }
   $("filters").addEventListener("click", function (e) { var a = e.target.closest("[data-f]"); if (!a) return; e.preventDefault(); load(a.dataset.f, true); });
   var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(function () { if (data) { drawMonths(); drawEvents(); } }, 120); });

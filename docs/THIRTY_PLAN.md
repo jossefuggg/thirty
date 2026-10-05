@@ -7,8 +7,8 @@ as phases land.
 ## Status
 
 - [x] Phase 0 — Read the repo, write `docs/ARCHITECTURE.md`, save this plan
-- [x] Phase 1 — Visuals and rebrand (screenshots taken; awaiting review)
-- [ ] Phase 2 — Demo mode with sample data, mock agent (screenshots, then WAIT for review)
+- [x] Phase 1 — Visuals and rebrand (reviewed: "continue")
+- [x] Phase 2 — Demo mode with sample data, mock agent (screenshots taken; awaiting review)
 - [ ] Phase 3 — The agent becomes a plugin
 - [ ] Phase 4 — Desktop app
 - [ ] Phase 5 — First-run setup
@@ -142,4 +142,7 @@ and build on those tokens and components. If the folder is missing, use the valu
 - Python 3.11 in the dev container; install with `pip install -r requirements.txt` (added in Phase 1).
 - Run the console: `cd dashboard_v2 && python3 app.py` → http://localhost:5001.
 - Tests: `pytest` from the repo root.
-- Screenshots: `python3 tools/screenshots.py` (Playwright, Chromium) writes `docs/screenshots/`.
+- Screenshots: `python3 tools/screenshots.py` (Playwright, Chromium) writes `docs/screenshots/`; set
+  `THIRTY_CHROMIUM=/path/to/chrome` when Playwright's own browser download is unavailable.
+- Demo mode: no `VIGIL_LLM_BASE` -> sample agent + sample data (`THIRTY_AGENT=sample|local|none` overrides).
+  `python3 -m thirty.sample_data <dir>` reseeds by hand.

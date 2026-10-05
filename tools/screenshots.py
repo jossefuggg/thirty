@@ -11,7 +11,7 @@ import argparse, os, shutil, socket, subprocess, sys, tempfile, time, urllib.req
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-from tests.sample_data import write_sample_dir  # noqa: E402
+from thirty import sample_data  # noqa: E402
 
 
 def free_port():
@@ -37,11 +37,12 @@ def main():
     from playwright.sync_api import sync_playwright
 
     data = tempfile.mkdtemp(prefix="thirty-shots-")
-    ids = write_sample_dir(data)
+    ids = sample_data.seed(data)
     port = free_port()
     env = {**os.environ, "VIGIL_DIR": data, "VIGIL_CONSOLE_PORT": str(port),
            "VIGIL_CONSOLE_ACTIONS": os.path.join(data, "actions.csv"), "VIGIL_CONSOLE_SETTINGS": os.path.join(data, "settings.json"),
-           "VIGIL_CONSOLE_INTAKE": os.path.join(data, "intake.json"), "VIGIL_LLM_BASE": "http://127.0.0.1:9/v1"}
+           "VIGIL_CONSOLE_INTAKE": os.path.join(data, "intake.json"), "THIRTY_AGENT": "sample", "THIRTY_SAMPLE_DELAY": "0.6", "THIRTY_DEMO_DELAY": "1.5"}
+    env.pop("VIGIL_LLM_BASE", None)
     proc = subprocess.Popen([sys.executable, "app.py"], cwd=os.path.join(ROOT, "dashboard_v2"), env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     base = f"http://127.0.0.1:{port}"
@@ -76,6 +77,16 @@ def main():
             page.screenshot(path=os.path.join(a.out, "13-command-center-dark.png"), full_page=True); print("wrote 13-command-center-dark")
             page.goto(base + f"/complaint/{ids[1]}", wait_until="networkidle"); page.wait_for_timeout(1000)
             page.screenshot(path=os.path.join(a.out, "14-complaint-detail-dark.png"), full_page=True); print("wrote 14-complaint-detail-dark")
+            page.click("#theme"); page.wait_for_timeout(300)
+            # demo replay running: loading states on the Demo page and the Command Center feed
+            page.goto(base + "/demo", wait_until="networkidle"); page.click("#b-replay"); page.wait_for_timeout(2500)
+            page.screenshot(path=os.path.join(a.out, "15-demo-replay-running.png"), full_page=True); print("wrote 15-demo-replay-running")
+            page.goto(base + "/", wait_until="networkidle"); page.wait_for_timeout(1500)
+            page.screenshot(path=os.path.join(a.out, "16-command-center-replay.png"), full_page=False); print("wrote 16-command-center-replay")
+            # error state: stop the console while the Command Center keeps polling
+            proc.terminate(); proc.wait(5)
+            page.wait_for_timeout(4500)
+            page.screenshot(path=os.path.join(a.out, "17-command-center-offline.png"), full_page=False); print("wrote 17-command-center-offline")
             browser.close()
     finally:
         proc.terminate()

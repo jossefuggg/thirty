@@ -99,6 +99,8 @@ img { display: block; max-width: 100%; }
 .org-m { width: 28px; height: 28px; border-radius: 8px; background: var(--text); color: var(--bg) !important; display: grid; place-items: center; font-size: 12px; font-weight: 800; }
 .env { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: var(--r-pill); border: 2px solid var(--text); color: var(--text); font-size: var(--fs-12); font-weight: 800; letter-spacing: .1em; white-space: nowrap; }
 .env i { width: 7px; height: 7px; border-radius: 50%; background: var(--text); }
+.sample { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: var(--r-pill); border: 2px solid var(--border); color: var(--muted); font-size: var(--fs-12); font-weight: 800; letter-spacing: .1em; white-space: nowrap; text-transform: uppercase; }
+.sample:hover { border-color: var(--text); color: var(--text); } .sample .i { width: 14px; height: 14px; }
 .help { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); box-shadow: inset 0 0 0 2px var(--border); background: transparent; transition: all var(--t-fast); }
 .help:hover { color: var(--text); box-shadow: inset 0 0 0 2px var(--text); }
 .ph { display: flex; align-items: center; gap: 16px; margin-bottom: var(--s3); min-height: 44px; }
@@ -183,6 +185,10 @@ img { display: block; max-width: 100%; }
 .empty .art .i { width: 32px; height: 32px; }
 .empty b { color: var(--text); font-size: var(--fs-16); font-weight: 800; }
 .empty p { max-width: 360px; font-size: var(--fs-14); }
+.empty.loading .spin { width: 28px; height: 28px; border-width: 3px; }
+.empty.loading b { color: var(--muted); }
+.empty.error .art { background: var(--t-amber); color: var(--t-ink); }
+tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty { padding: var(--s4) var(--s3); }
 .dh { font-size: var(--fs-12); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
 .quote { padding: 16px 20px; border-left: 3px solid var(--text); background: var(--hover); border-radius: 0 var(--r-btn) var(--r-btn) 0; font-size: var(--fs-14); line-height: 1.7; color: var(--text); }
 .ticks { display: grid; gap: 10px; } .ticks li { display: flex; gap: 10px; align-items: flex-start; } .ticks .i { color: var(--t-amber); width: 18px; height: 18px; margin-top: 1px; }
@@ -288,7 +294,7 @@ img { display: block; max-width: 100%; }
     </nav>
     <div class="sys">
       <h4>System</h4>
-      <div class="sys-row"><i class="led" id="sy-model"></i><span class="lbl">Local model</span><span class="val" id="sy-model-v">Checking…</span></div>
+      <div class="sys-row"><i class="led" id="sy-model"></i><span class="lbl" id="sy-model-l">{{ 'Agent' if DEMO_MODE else 'Local model' }}</span><span class="val" id="sy-model-v">Checking…</span></div>
       <div class="sys-row"><i class="led" id="sy-tg"></i><span class="lbl">Telegram agent</span><span class="val" id="sy-tg-v">Checking…</span></div>
       <div class="sys-row"><i class="led" id="sy-sync"></i><span class="lbl">Sandbox sync</span><span class="val" id="sy-sync-v">Checking…</span></div>
       <div class="cloud0"><span class="badge-local">0 bytes to cloud AI</span></div>
@@ -306,6 +312,7 @@ img { display: block; max-width: 100%; }
         <div class="results" id="results"></div>
       </div>
       <div class="live" id="live" role="status"><i></i>LIVE</div>
+      {% if DEMO_MODE %}<a class="sample" href="/demo" title="Sample agent on invented complaints. No model is configured.">{{ icon('play') }}Sample data</a>{% endif %}
       <span class="env"><i></i>{{ WS.env_short }}</span>
       <div class="now"><b id="clock-t">--:--:--</b><span id="clock-d"></span></div>
       <button class="help" id="help" aria-label="Help" title="Keyboard: / search · Esc close">{{ icon('help') }}</button>
@@ -398,6 +405,18 @@ V.spark = function (vals, color) {
     '<polyline points="' + line + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>' +
     '<i class="spark-dot" style="top:' + (last[1] / h * 100).toFixed(1) + '%;background:' + color + '"></i>';
 };
+/* loading / empty / error states: V.state(el, "loading"|"empty"|"error", title, text, retryFn) */
+V.state = function (el, kind, title, text, retry) {
+  var art = kind === "loading" ? '<span class="spin"></span>' : '<div class="art">' + (kind === "error" ? ICONS.alert : ICONS.inbox) + "</div>";
+  el.innerHTML = '<div class="empty ' + kind + '">' + art + "<b>" + esc(title) + "</b>" + (text ? "<p>" + esc(text) + "</p>" : "") +
+    (retry ? '<button class="btn btn-secondary btn-sm" data-retry>Try again</button>' : "") + "</div>";
+  var b = el.querySelector("[data-retry]"); if (b) b.onclick = retry;
+};
+V.stateRow = function (tbody, cols, kind, title, text, retry) {
+  tbody.innerHTML = '<tr class="state"><td colspan="' + cols + '"></td></tr>';
+  V.state(tbody.querySelector("td"), kind, title, text, retry);
+};
+V.offline = function () { return "The console did not answer. It may be restarting; your data is unchanged."; };
 /* toast */
 V.toast = function (msg, err) {
   var t = document.createElement("div"); t.className = "toast" + (err ? " err" : "");
@@ -528,9 +547,10 @@ $("help").onclick = function () { V.toast("Shortcuts: / search · Esc close pane
   function poll() {
     fetch("/api/health", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (h) {
       var m = h.model || {}, short = (m.name || "").replace(/-A\d+B.*$/i, "");
-      set("sy-model", m.name || m.ok === false ? m.ok : undefined, m.ok ? esc(short) + " <small>" + m.ms + " ms</small>" : esc(m.label || "Checking…"));
-      var t = h.telegram || {}; set("sy-tg", /checking/i.test(t.label || "") ? undefined : t.ok,
-        t.ok ? "Online <small>" + esc((t.label || "").replace(/^reachable · /, "")) + "</small>" : /checking/i.test(t.label || "") ? "Checking…" : "Offline <small>alerts queue</small>");
+      if (h.agent && h.agent.name) $("sy-model-l").textContent = h.agent.id === "local" ? "Local model" : h.agent.name;
+      set("sy-model", m.name || m.ok === false ? m.ok : undefined, m.ok ? (h.agent && h.agent.id === "sample" ? "Ready <small>no model</small>" : esc(short) + " <small>" + m.ms + " ms</small>") : esc(m.label || "Checking…"));
+      var t = h.telegram || {}; set("sy-tg", t.off ? "warn" : /checking/i.test(t.label || "") ? undefined : t.ok,
+        t.off ? "Not configured" : t.ok ? "Online <small>" + esc((t.label || "").replace(/^reachable · /, "")) + "</small>" : /checking/i.test(t.label || "") ? "Checking…" : "Offline <small>alerts queue</small>");
       var s = h.sync || {}; set("sy-sync", /checking/i.test(s.label || "") ? undefined : s.ok || "warn", s.ok ? "Running" : /checking/i.test(s.label || "") ? "Checking…" : "Stopped");
       var fresh = (h.log_changed && (h.now - h.log_changed) < 10) || Date.now() < V.liveUntil;
       $("live").classList.remove("off"); $("live").classList.toggle("on", !!fresh); $("live").title = fresh ? "New data in the last 10 s" : "Connected · watching for new complaints";

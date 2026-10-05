@@ -30,7 +30,7 @@
   </div>
   <div class="scroll"><table class="tbl">
     <thead><tr>{% for k, l in [('id','ID'),('received','Received'),('family','Device family'),('decision','Decision'),('category','Category'),('priority','Priority'),('mode','Failure mode'),('due','Due'),('status','Status'),('owner','Owner'),('source','Source')] %}<th data-sort="{{ k }}" tabindex="0">{{ l }}</th>{% endfor %}</tr></thead>
-    <tbody id="rows"></tbody></table></div>
+    <tbody id="rows"><tr class="state"><td colspan="11"><div class="empty loading"><span class="spin"></span><b>Loading complaints…</b></div></td></tr></tbody></table></div>
   <div class="pager"><span id="count"></span><span class="grow"></span><button class="btn btn-secondary btn-sm" id="prev">Previous</button><span id="pg"></span><button class="btn btn-secondary btn-sm" id="next">Next</button></div>
 </section></div>
 {% endblock %}
@@ -60,11 +60,13 @@
           "<td>" + (r.priority ? '<span class="pill p-' + esc(r.priority) + '">' + esc(r.priority) + "</span>" : '<span class="muted">—</span>') + "</td>" +
           '<td class="mode">' + esc(r.mode.replace("/", " / ")) + "</td><td>" + due + "</td>" +
           '<td><span class="pill s-' + r.status_kind + '">' + SK[r.status_kind] + "</span></td><td>" + (esc(r.owner) || '<span class="muted">Unassigned</span>') + "</td><td>" + V.srcChip(r.source) + "</td></tr>";
-      }).join("") : '<tr><td colspan="11" class="muted" style="padding:20px">No complaints match these filters.</td></tr>';
+      }).join("") : "";
+      if (!j.rows.length) V.stateRow($("rows"), 11, "empty", j.total === 0 && !Object.keys(st).some(function (k) { return st[k] && !/sort|dir|page/.test(k); }) ? "No complaints yet" : "No complaints match these filters",
+        j.total === 0 ? "Complaints appear here once the agent has processed them." : "Clear a filter or change the search.");
       $("count").textContent = j.total.toLocaleString("en-US") + " complaint" + (j.total === 1 ? "" : "s"); $("pg").textContent = "Page " + j.page + " of " + j.pages.toLocaleString("en-US");
       $("prev").disabled = j.page <= 1; $("next").disabled = j.page >= j.pages;
       document.querySelectorAll("th[data-sort]").forEach(function (th) { th.className = th.dataset.sort === st.sort ? st.dir : ""; });
-    });
+    }).catch(function () { last = ""; V.stateRow($("rows"), 11, "error", "Could not load complaints", V.offline(), load); });
   }
   $("chips").addEventListener("click", function (e) { var b = e.target.closest("[data-k]"); if (!b) return; st[b.dataset.k] = st[b.dataset.k] === b.dataset.v ? "" : b.dataset.v; st.page = 1; load(); });
   function sortBy(th) { if (st.sort === th.dataset.sort) st.dir = st.dir === "asc" ? "desc" : "asc"; else { st.sort = th.dataset.sort; st.dir = "asc"; } load(); }

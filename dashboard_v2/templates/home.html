@@ -4,7 +4,9 @@
 <style>
   /* the command center fills exactly one screen; panels scroll inside */
   .cc-page { padding-bottom: var(--s3); }
-  .cc { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--s3); height: calc(100vh - var(--topbar-h) - var(--s3) * 2 - 68px); min-height: 720px; }
+  #cc-err .empty { padding: 12px 16px; grid-template-columns: auto auto 1fr auto; display: grid; text-align: left; align-items: center; gap: 12px; border: 2px solid var(--t-amber); border-radius: var(--r-panel); }
+  #cc-err .empty .art { width: 32px; height: 32px; border-radius: 8px; } #cc-err .empty .art .i { width: 18px; height: 18px; } #cc-err .empty p { margin: 0; max-width: none; }
+  .cc { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: var(--s3); height: calc(100vh - var(--topbar-h) - var(--s3) * 2 - 68px); min-height: 720px; }
 
   /* KPI cards: serif number, eyebrow label, ink rule on top (coral only for the two deadline tiles when > 0) */
   .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s2); }
@@ -104,6 +106,7 @@
 
 {% block body %}
 <div class="cc">
+  <div id="cc-err" hidden></div>
   <section class="kpis" id="kpis" aria-label="Key figures">
     {% for key, label, ic in [('processed','Processed today','inbox'), ('reportable','Reportable','alert'),
         ('needs_info','Needs info','help'), ('due7','Due in 7 days','clock'),
@@ -119,18 +122,18 @@
   <section class="grid">
     <div class="card panel">
       <div class="card-h"><h2>{{ icon('activity') }}Live intake feed</h2><div class="aside" id="feed-aside"></div></div>
-      <div class="panel-b" id="feed"></div>
+      <div class="panel-b" id="feed"><div class="empty loading" style="height:100%"><span class="spin"></span><b>Loading complaints…</b></div></div>
     </div>
     <div class="col">
       <div class="card panel">
         <div class="card-h"><h2>{{ icon('user') }}Needs your decision</h2><span class="count-badge" id="q-n">0</span>
           <div class="aside">Priority, then due date</div></div>
-        <div class="panel-b" id="queue" style="padding-top:4px;padding-bottom:4px"></div>
+        <div class="panel-b" id="queue" style="padding-top:4px;padding-bottom:4px"><div class="empty loading" style="height:100%"><span class="spin"></span><b>Loading…</b></div></div>
       </div>
       <div class="card panel">
         <div class="card-h"><h2>{{ icon('alert') }}Pattern alerts</h2><span class="count-badge" id="al-n">0</span>
-          <div class="aside">Device family · failure mode · FDA history + live</div></div>
-        <div class="panel-b" id="alerts"></div>
+          <div class="aside">Device family · failure mode · history + live</div></div>
+        <div class="panel-b" id="alerts"><div class="empty loading" style="height:100%"><span class="spin"></span><b>Loading…</b></div></div>
       </div>
       <a class="card hx lift" href="/trends" id="hx">
         <div><div class="k">{{ icon('brain') }}Historical context</div><div class="t" id="hx-t">Loading FDA history</div></div>
@@ -168,7 +171,7 @@
   /* keyed DOM diff: reuse nodes (no flicker), animate new ones in, flash changed ones */
   function sync(key, list, idOf, cls, html, opts) {
     var box = $(key); nodes[key] = nodes[key] || {}; sigs[key] = sigs[key] || {};
-    if (!list.length) { if (!box.querySelector(".empty")) box.innerHTML = EMPTY[key]; nodes[key] = {}; sigs[key] = {}; return; }
+    if (!list.length) { if (!box.querySelector(".empty:not(.loading)")) box.innerHTML = EMPTY[key]; nodes[key] = {}; sigs[key] = {}; return; }
     var emp = box.querySelector(".empty"); if (emp) emp.remove();
     var seen = {};
     list.forEach(function (r, i) {
@@ -236,7 +239,7 @@
       var nb = $("nav-queue"); nb.textContent = s.queue.length; nb.classList.toggle("show", s.queue.length > 0);
 
       var hx = s.history;
-      if (hx && hx.rows) { $("hx-t").innerHTML = "<b>" + hx.rows.toLocaleString("en-US") + "</b> FDA reports in memory · <b>" + hx.dream.toLocaleString("en-US") + "</b> " + esc(hx.top_family) + " · top failure mode: <b>" + esc(hx.top_mode) + "</b>";
+      if (hx && hx.rows) { $("hx-t").innerHTML = "<b>" + hx.rows.toLocaleString("en-US") + "</b> history reports in memory · <b>" + hx.dream.toLocaleString("en-US") + "</b> " + esc(hx.top_family) + " · top failure mode: <b>" + esc(hx.top_mode) + "</b>";
         var sg = hx.spark.join(","); if ($("hx").dataset.sp !== sg) { $("hx").dataset.sp = sg; $("hx-sp").innerHTML = V.spark(hx.spark, getComputedStyle($("hx")).getPropertyValue("--muted").trim()); } }
       else $("hx-t").textContent = "FDA history not loaded (python3 vigil.py import-history)";
       var p = s.pipeline, d = s.demo || {};
@@ -247,8 +250,13 @@
       $("ps-decided-l").textContent = p.reviewable ? "of " + p.reviewable + " decided" : "human decided";
       $("ps-decided").textContent = p.reviewable ? p.approved + " approved · " + p.info + " info requested" : "Approve or request info";
       $("pipe").classList.toggle("flow", !!(d.running && d.kind === "replay"));
+      $("cc-err").hidden = true;
       first = false;
-    }).catch(function () {});
+    }).catch(function () {
+      var e = $("cc-err"); e.hidden = false;
+      if (!e.firstChild) V.state(e, "error", "Could not load the Command Center", V.offline(), refresh);
+      ["feed", "queue", "alerts"].forEach(function (k) { var l = $(k).querySelector(".empty.loading"); if (l) V.state($(k), "error", "Not loaded", "", refresh); });
+    });
   }
 
   document.addEventListener("click", function (e) {

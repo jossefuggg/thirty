@@ -24,7 +24,7 @@
     <div class="toolbar"><span id="chips" style="display:flex;gap:6px;flex-wrap:wrap"></span><span class="grow"></span>
       <span class="lock">{{ icon('shield') }}Append-only · <span id="count"></span></span>
       <label class="tsearch">{{ icon('search') }}<input id="q" type="search" placeholder="Search actor, complaint, detail" aria-label="Search the audit log"></label></div>
-    <div class="scroll"><table class="tbl"><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Complaint</th><th>Detail</th></tr></thead><tbody id="rows"></tbody></table></div>
+    <div class="scroll"><table class="tbl"><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Complaint</th><th>Detail</th></tr></thead><tbody id="rows"><tr class="state"><td colspan="5"><div class="empty loading"><span class="spin"></span><b>Loading events…</b></div></td></tr></tbody></table></div>
   </section>
 </div>
 {% endblock %}
@@ -48,9 +48,11 @@
         '<td><span class="act ' + esc(e.action.split(" ")[0]) + '">' + esc(e.action) + "</span></td>" +
         '<td><a class="lnk mono" href="/complaint/' + encodeURIComponent(e.id) + '" data-open="' + esc(e.id) + '">#' + esc(e.id) + "</a></td>" +
         '<td class="det"><div title="Click to expand">' + (e.decision ? '<span class="pill pill-sm d-' + esc(e.decision) + '" style="margin-right:8px">' + esc(V.label(e.decision)) + "</span>" : "") + esc(e.detail.replace(/^[A-Z_ ]+ · /, e.decision ? "" : "$&")) + "</div></td></tr>";
-    }).join("") : '<tr><td colspan="5" class="muted" style="padding:20px">' + (ev.length ? "No events match these filters." : "No events recorded yet. Events appear as soon as a complaint is processed.") + "</td></tr>";
+    }).join("") : "";
+    if (!rows.length) V.stateRow($("rows"), 5, "empty", ev.length ? "No events match these filters" : "No events recorded yet", ev.length ? "Clear a filter or change the search." : "Events appear as soon as a complaint is processed.");
   }
-  function load() { fetch("/api/audit", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { var s = JSON.stringify(j); if (s === sig) return; sig = s; ev = j.events; draw(); }); }
+  function load() { fetch("/api/audit", { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (j) { var s = JSON.stringify(j); if (s === sig) return; sig = s; ev = j.events; draw(); })
+    .catch(function () { sig = ""; V.stateRow($("rows"), 5, "error", "Could not load the audit log", V.offline(), load); }); }
   $("chips").addEventListener("click", function (e) { var b = e.target.closest("[data-f]"); if (b) { f = b.dataset.f; draw(); } });
   $("rows").addEventListener("click", function (e) { var d = e.target.closest("td.det"); if (d) d.parentNode.classList.toggle("open"); });
   $("q").oninput = draw; document.addEventListener("vigil:changed", load); load(); setInterval(load, 4000);

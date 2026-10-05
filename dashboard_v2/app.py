@@ -13,17 +13,23 @@ import requests
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-VIGIL_DIR = os.environ.get("VIGIL_DIR", os.path.dirname(HERE))  # override only for testing on a scratch copy
+CODE_DIR = os.path.dirname(HERE)  # the repository / installed app: vigil.py, the thirty package, demo_set.csv
+if CODE_DIR not in sys.path:
+    sys.path.insert(0, CODE_DIR)
+from thirty import config as tconfig, sample_data  # noqa: E402
+from thirty.agents import get_agent  # noqa: E402
+
+VIGIL_DIR = tconfig.data_dir()  # the data folder (VIGIL_DIR env; defaults to the repository root)
+DEMO_MODE = tconfig.demo_mode()  # sample agent + sample data: on automatically when no model is configured
 LOG = os.path.join(VIGIL_DIR, "decisions.csv")
 LOCK = LOG + ".lock"  # the same lock file vigil.py's log_lock() uses
 REPORTS = os.path.join(VIGIL_DIR, "reports")
 OUTBOX = os.path.join(VIGIL_DIR, "outbox.txt")
-DEMO_CSV = os.path.join(VIGIL_DIR, "demo_set.csv")
-CHART = os.path.join(VIGIL_DIR, "philips_chart.png")
+DEMO_CSV = os.path.join(CODE_DIR, "demo_set.csv")
+CHART = os.path.join(CODE_DIR, "philips_chart.png")
 HISTORY = os.path.join(VIGIL_DIR, "history.csv")  # past FDA MAUDE reports (vigil.py import-history)
 ACTIONS = os.environ.get("VIGIL_CONSOLE_ACTIONS", os.path.join(HERE, "actions.csv"))  # who/when for console actions
 VENV_BIN = os.path.expanduser(os.environ.get("VIGIL_VENV_BIN", "~/hackathon/venv/bin"))
-LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "http://localhost:8000/v1")
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
           "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text",
           "product_code", "memory", "failure_mode", "source"]  # same order as vigil.FIELDS; older files stop earlier
@@ -125,8 +131,10 @@ def vigil():
     global _vigil
     with _vigil_lock:
         if _vigil is None:
-            sys.path.insert(0, VIGIL_DIR)
-            import vigil as v
+            import vigil as v  # from CODE_DIR
+            v.LOG, v.REPORTS, v.OUTBOX, v.HISTORY = LOG, REPORTS, OUTBOX, HISTORY
+            if DEMO_MODE:
+                v.SANDBOX = ""  # no OpenClaw sandbox in demo mode
             _vigil = v
         return _vigil
 
@@ -135,7 +143,6 @@ def push_to_sandbox():
     """Keep the OpenClaw sandbox copy in sync after a console approval, like vigil.write_log does."""
     try:
         v = vigil()
-        v.LOG = LOG
         v.push_log()
     except Exception as e:
         print("sandbox push skipped:", e, flush=True)
@@ -146,6 +153,10 @@ DEMO_COMMANDS = {
     "replay": 'sg docker -c "python3 vigil.py replay --csv demo_set.csv --delay 8"',
     "reset": 'sg docker -c "python3 vigil.py reset"',
 }
+if DEMO_MODE:  # no subprocess, no model: the sample agent runs inside the console
+    DEMO_COMMANDS = {"replay": f"sample agent · {len(sample_data.INCOMING)} incoming complaints through the pipeline",
+                     "reset": "reset sample data · 40 complaints, history and drafts rewritten for today"}
+DEMO_DELAY = float(os.environ.get("THIRTY_DEMO_DELAY", "2.5"))  # seconds between replayed complaints in demo mode
 PROCESSED_LINE = re.compile(r"^\S+ (URGENT|HIGH|NORMAL) (REPORTABLE|NEEDS_INFO|NOT_REPORTABLE|None)\b")  # cmd_replay's per-complaint line
 
 
@@ -153,15 +164,20 @@ class DemoRunner:
     def __init__(self):
         self.lock = threading.Lock()
         self.proc, self.kind, self.cmd = None, None, None
+        self.thread, self._stop = None, threading.Event()
         self.lines, self.seq = [], 0
         self.started = self.ended = None
         self.rc, self.stopped, self.processed = None, False, 0
 
     @property
     def running(self):
+        if self.thread is not None and self.thread.is_alive():
+            return True
         return self.proc is not None and self.proc.poll() is None
 
     def _emit(self, text, tag=""):
+        if not tag and PROCESSED_LINE.match(text):  # one per processed complaint, subprocess or in-process
+            self.processed += 1
         with self.lock:
             self.seq += 1
             self.lines.append((self.seq, tag, text))
@@ -173,8 +189,13 @@ class DemoRunner:
                 return f"A {self.kind} is already running. Stop it first."
             self.lines, self.kind, self.cmd = [], kind, DEMO_COMMANDS[kind]
             self.started, self.ended, self.rc, self.stopped, self.processed = time.time(), None, None, False, 0
-        env = {**os.environ, "PATH": f"{VENV_BIN}:{os.environ.get('PATH', '')}", "PYTHONUNBUFFERED": "1"}
         self._emit(f"$ {self.cmd}", "cmd")
+        if DEMO_MODE:
+            self._stop.clear(); self.proc = None
+            self.thread = threading.Thread(target=self._run_inprocess, args=(kind,), daemon=True)
+            self.thread.start()
+            return None
+        env = {**os.environ, "PATH": f"{VENV_BIN}:{os.environ.get('PATH', '')}", "PYTHONUNBUFFERED": "1"}
         self.proc = subprocess.Popen(self.cmd, shell=True, cwd=VIGIL_DIR, env=env, stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True, bufsize=1,
                                      start_new_session=True)  # own process group, so Stop kills sg -> sh -> python
@@ -184,8 +205,6 @@ class DemoRunner:
     def _pump(self, proc):
         for line in proc.stdout:
             line = line.rstrip("\n")
-            if PROCESSED_LINE.match(line):
-                self.processed += 1
             self._emit(line, "warn" if re.search(r"WARNING|failed|FAILED|Traceback|Error", line) else "")
         rc = proc.wait()
         self.rc, self.ended = rc, time.time()
@@ -194,10 +213,46 @@ class DemoRunner:
         else:
             self._emit(f"■ {self.kind} finished (exit code {rc})", "ok" if rc == 0 else "warn")
 
+    def _run_inprocess(self, kind):
+        """Demo mode: replay the sample incoming complaints through vigil.process() with the sample agent, or
+        reseed the sample data. Same output lines as the subprocess path, so the Demo page needs no changes."""
+        rc = 0
+        try:
+            if kind == "reset":
+                self._emit("Rewriting sample data for today…")
+                ids = sample_data.seed(VIGIL_DIR)
+                _cache.update(rows=[], mtime=None)
+                self._emit(f"{len(ids)} complaints, {len(sample_data.history_rows())} history rows, drafted PDFs written to {VIGIL_DIR}")
+            else:
+                items = sample_data.incoming_complaints()
+                self._emit(f"Replay started: {len(items)} complaints · agent: {get_agent().name}")
+                for n, c in enumerate(items, 1):
+                    if self._stop.is_set():
+                        break
+                    self._emit(f"→ #{c['id']} {c['device']}")
+                    with _process_lock:
+                        row = vigil().process(dict(c))
+                    self._emit(f"{row['id']} {row['priority']} {row['decision']} {row['due_date']}")
+                    if n < len(items):
+                        self._stop.wait(DEMO_DELAY)
+                if not self._stop.is_set():
+                    self._emit("Replay finished.")
+        except Exception as e:
+            rc = 1
+            self._emit(f"Error: {type(e).__name__}: {e}", "warn")
+        self.rc, self.ended = rc, time.time()
+        if self.stopped:
+            self._emit("■ stopped from the console", "warn")
+        else:
+            self._emit(f"■ {kind} finished (exit code {rc})", "ok" if rc == 0 else "warn")
+
     def stop(self):
         if not self.running:
             return "Nothing is running."
         self.stopped = True
+        if self.proc is None:  # in-process demo run
+            self._stop.set()
+            return None
         pgid = self.proc.pid  # start_new_session: the group id is the shell's pid
         for sig, wait in ((signal.SIGTERM, 4), (signal.SIGKILL, 2)):
             try:
@@ -225,7 +280,9 @@ DEMO = DemoRunner()
 
 
 def demo_total():
-    """Complaints a replay of demo_set.csv will process (rows with a description, like vigil.load_csv)."""
+    """Complaints a replay will process: the sample incoming set in demo mode, else demo_set.csv rows with text."""
+    if DEMO_MODE:
+        return len(sample_data.INCOMING)
     try:
         with open(DEMO_CSV, newline="", encoding="utf-8") as f:
             return sum(1 for r in csv.DictReader(f) if (r.get("event_description") or r.get("manufacturer_narrative") or "").strip())
@@ -489,20 +546,17 @@ def read_upload(f):
 
 # ---------------------------------------------------------------- system health (refreshed in the background)
 HEALTH = {"model": {"ok": False, "label": "checking…"}, "telegram": {"ok": False, "label": "checking…"},
-          "sync": {"ok": False, "label": "checking…"}, "checked": None}
+          "sync": {"ok": False, "label": "checking…"}, "checked": None,
+          "agent": {"id": tconfig.agent_id(), "name": get_agent().name}, "demo_mode": DEMO_MODE}
 
 def _check_model():
+    """The active agent's own health check (local model: ping the server; sample agent: always ready)."""
     try:
-        name = requests.get(f"{LLM_BASE}/models", timeout=3).json()["data"][0]["id"]
-        t0 = time.perf_counter()
-        r = requests.post(f"{LLM_BASE}/chat/completions", timeout=15, json={
-            "model": name, "max_tokens": 1, "temperature": 0, "messages": [{"role": "user", "content": "ping"}],
-            "chat_template_kwargs": {"enable_thinking": False}})
-        r.raise_for_status()
-        ms = (time.perf_counter() - t0) * 1000
-        return {"ok": True, "name": name.split("/")[-1], "ms": round(ms), "label": f"{name.split('/')[-1]} · {ms:.0f} ms"}
+        a = get_agent()
+        h = a.health()
+        return {"ok": bool(h.get("ok")), "name": h.get("name") or a.name, "ms": h.get("ms"), "label": h.get("label") or ""}
     except Exception as e:
-        return {"ok": False, "label": f"offline ({type(e).__name__})"}
+        return {"ok": False, "label": f"error ({type(e).__name__})"}
 
 
 _tg_fails = {"n": 0, "last_ok": None}
@@ -511,6 +565,8 @@ def _check_telegram():
     """Reachability of api.telegram.org, debounced: one slow or failed probe must not flip the badge.
     Reported offline only after 3 consecutive failures."""
     now = dt.datetime.now().strftime("%H:%M:%S")
+    if DEMO_MODE:
+        return {"ok": False, "label": "not configured (demo mode)", "checked": now, "fails": 0, "off": True}
     try:
         t0 = time.perf_counter()
         requests.get("https://api.telegram.org", timeout=4, allow_redirects=False)
@@ -534,7 +590,7 @@ def _check_sync():
 def health_loop():
     while True:
         HEALTH.update(model=_check_model(), telegram=_check_telegram(), sync=_check_sync(),
-                      checked=dt.datetime.now().strftime("%H:%M:%S"))
+                      checked=dt.datetime.now().strftime("%H:%M:%S"), agent={"id": tconfig.agent_id(), "name": get_agent().name})
         time.sleep(10)
 
 # ---------------------------------------------------------------- pages / API
@@ -592,6 +648,7 @@ NAV = [("home", "/", "Command Center", "grid"), ("intake", "/intake", "Intake in
 def _globals():
     from markupsafe import Markup
     return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": WORKSPACE, "SOURCES": SOURCES,
+            "DEMO_MODE": DEMO_MODE, "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name},
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 
@@ -932,16 +989,19 @@ def history_context():
     if not hist:
         return {"rows": 0}
     if _hx["mtime"] != _hist["mtime"]:
-        fam, modes, months = defaultdict(int), defaultdict(int), defaultdict(int)
+        fam, months = defaultdict(int), defaultdict(int)
         for d, f, m, _, _ in hist:
             fam[f] += 1; months[d.strftime("%Y-%m")] += 1
-            if f == "DREAMSTATION" and m != "other": modes[m] += 1
+        top_family = max(fam, key=fam.get)
+        modes = defaultdict(int)
+        for _, f, m, _, _ in hist:  # failure modes of the family with the most history
+            if f == top_family and m != "other": modes[m] += 1
         if not modes:
             for _, _, m, _, _ in hist:
                 if m != "other": modes[m] += 1
         keys = sorted(months)[-36:]
-        _hx.update(mtime=_hist["mtime"], data={"rows": len(hist), "dream": fam.get("DREAMSTATION", 0),
-                   "top_family": max(fam, key=fam.get), "top_mode": max(modes, key=modes.get).split("/")[0] if modes else "n/a",
+        _hx.update(mtime=_hist["mtime"], data={"rows": len(hist), "dream": fam.get(top_family, 0),
+                   "top_family": top_family, "top_mode": max(modes, key=modes.get).split("/")[0] if modes else "n/a",
                    "spark": [months[k] for k in keys]})
     return _hx["data"]
 
@@ -956,7 +1016,7 @@ def api_state():
     clock = sorted((r for r in rows if is_open(r)), key=lambda r: (r["due_date"], -int(r.get("score") or 0)))
     return jsonify(history=history_context(), kpi=kpis(rows), feed=[brief(r) for r in feed], queue=[brief(r) for r in queue],
                    alerts=pattern_alerts(rows), pipeline=pipeline(rows), clock=[brief(r) for r in clock],
-                   demo={k: v for k, v in DEMO.public(since=10**12).items() if k in ("running", "kind", "processed", "total")})
+                   demo={**{k: v for k, v in DEMO.public(since=10**12).items() if k in ("running", "kind", "processed", "total")}, "demo_mode": DEMO_MODE})
 
 
 RECALL = ("2021-06", "Philips recall · 14 Jun 2021")
@@ -964,7 +1024,7 @@ RECALL = ("2021-06", "Philips recall · 14 Jun 2021")
 
 @app.route("/trends")
 def trends():
-    return render_template("trends.html", page="trends", title="Trends", chart=os.path.exists(CHART))
+    return render_template("trends.html", page="trends", title="Trends")
 
 
 @app.route("/api/trends")
@@ -1307,7 +1367,16 @@ def api_action(cid):
 
 @app.route("/demo")
 def demo():
-    return render_template("demo.html", page="demo", commands=DEMO_COMMANDS, title="Demo Control")
+    return render_template("demo.html", page="demo", commands=DEMO_COMMANDS, title="Demo Control",
+                           seeded=sample_data.seed_date(VIGIL_DIR) if DEMO_MODE else None, data_dir=VIGIL_DIR)
+
+
+def ensure_sample_data():
+    """Demo mode: seed on first run, and reseed once a day so the deadlines stay relative to today."""
+    if DEMO_MODE and (not os.path.exists(LOG) or sample_data.seed_date(VIGIL_DIR) != dt.date.today()):
+        print(f"Demo mode: writing sample data to {VIGIL_DIR}", flush=True)
+        sample_data.seed(VIGIL_DIR)
+        _cache.update(rows=[], mtime=None)
 
 
 @app.route("/api/demo")
@@ -1479,6 +1548,7 @@ def _shutdown(*_):
 
 if __name__ == "__main__":
     signal.signal(signal.SIGTERM, _shutdown)
+    ensure_sample_data()
     threading.Thread(target=health_loop, daemon=True).start()
     start_intake_worker(recover=True)  # resume anything left queued or interrupted
     if intake_mod():
@@ -1486,5 +1556,6 @@ if __name__ == "__main__":
             intake_mod().init_app(app)  # mounts POST /api/v1/complaints (+ /csv, status) and intake.py's worker
         except Exception as e:
             print("intake.py endpoints not mounted:", type(e).__name__, e, flush=True)
-    print(f"Thirty console on http://localhost:5001  (data: {VIGIL_DIR})", flush=True)
-    app.run(host="127.0.0.1", port=int(os.environ.get("VIGIL_CONSOLE_PORT", 5001)), debug=False, threaded=True)
+    port = int(os.environ.get("VIGIL_CONSOLE_PORT", 5001))
+    print(f"Thirty console on http://localhost:{port}  (data: {VIGIL_DIR} · agent: {get_agent().name}{' · demo mode' if DEMO_MODE else ''})", flush=True)
+    app.run(host="127.0.0.1", port=port, debug=False, threaded=True)

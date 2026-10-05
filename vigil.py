@@ -52,8 +52,11 @@ def load_env():
 load_env()
 TG_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TG_CHAT = os.environ.get("TELEGRAM_CHAT_ID", "")
-LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "http://localhost:8000/v1")  # local vLLM (OpenAI-compatible)
-LLM_MODEL = os.environ.get("VIGIL_LLM_MODEL", "")  # auto-detected if empty
+LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "http://localhost:8000/v1")  # see thirty/agents/local_model.py
+LLM_MODEL = os.environ.get("VIGIL_LLM_MODEL", "")
+# the repository root must be importable for the thirty package (vigil.py may be run from another cwd)
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
 
 # ---------------------------------------------------------------- layer 1: rules
 RED_FLAGS = {
@@ -225,63 +228,31 @@ def spike(c):
         return f"{key}: {len(last30)} complaints in 30 days (previous 30 days: {len(prev30)})"
     return None
 
-# ---------------------------------------------------------------- layer 2/3: local AI
-CLASSIFY = """You are Vigil, a medical device complaint analyst for a manufacturer's quality team.
-Apply FDA 21 CFR 803 (Medical Device Reporting).
-This is a MANUFACTURER report: cite 21 CFR 803.50 (manufacturer reporting) — never 803.30 (user facilities).
-A complaint is REPORTABLE if the information reasonably suggests the device:
-- may have caused or contributed to a DEATH, or
-- may have caused or contributed to a SERIOUS INJURY (life-threatening, permanent impairment, or needing medical/surgical intervention to prevent permanent damage), or
-- MALFUNCTIONED and the malfunction would be likely to cause death or serious injury if it recurred.
-Deadlines (Vigil computes them from your answer): 30 calendar days from awareness by default; 5 work days only
-when remedial action is needed to prevent an unreasonable risk of substantial harm to the public.
-Set "remedial_action_needed" to true ONLY if the complaint shows such a risk that needs action now (e.g. a defect
-likely to recur in other units and seriously harm patients); otherwise false.
-When unsure, lean toward REPORTABLE or NEEDS_INFO and say what is missing. Never discard a complaint.
-Each "missing_info" item must be 2-4 words (e.g. "patient age", "lot number", "autopsy findings").
-The examples only show the length: list the gaps that are actually missing from THIS complaint, and do not
-list anything the complaint already states.
-
-Complaint: {text}
-Device: {device}   Event date: {event_date}   Received: {received}
-
-Prior history for this device (long-term memory):
-{memory}
-Use history only to judge patterns and priority; base the decision on this complaint's facts.
-
-Answer ONLY with JSON:
-{{"decision": "REPORTABLE|NOT_REPORTABLE|NEEDS_INFO", "category": "DEATH|SERIOUS_INJURY|MALFUNCTION|NONE",
- "reason": "one sentence citing the rule", "remedial_action_needed": true or false, "missing_info": [], "confidence": 0-100}}"""
-
-
-def model_name():
-    global LLM_MODEL
-    if not LLM_MODEL:
-        r = requests.get(f"{LLM_BASE}/models", timeout=10)
-        LLM_MODEL = r.json()["data"][0]["id"]
-    return LLM_MODEL
+# ---------------------------------------------------------------- layer 2/3: the agent
+# The prompts and model calls live in thirty/agents/local_model.py; the sample agent (demo mode) and any
+# plugin implement the same interface (thirty/agents/base.py). Which one runs comes from thirty.config.
+def agent():
+    from thirty.agents import get_agent
+    return get_agent()
 
 
 def llm(prompt, max_tokens=600, temperature=0.1):
-    r = requests.post(f"{LLM_BASE}/chat/completions", timeout=180, json={
-        "model": model_name(), "temperature": temperature, "max_tokens": max_tokens,
-        "messages": [{"role": "user", "content": prompt}],
-        "chat_template_kwargs": {"enable_thinking": False},
-    })
-    r.raise_for_status()
-    out = r.json()["choices"][0]["message"]["content"] or ""
-    return re.sub(r"<think>.*?</think>", "", out, flags=re.S).strip()
+    """Direct model call (kept for `vigil.py test`); the pipeline itself goes through agent()."""
+    from thirty.agents.local_model import llm as _llm
+    return _llm(prompt, max_tokens, temperature)
+
+
+def model_name():
+    from thirty.agents.local_model import model_name as _model_name
+    return _model_name()
 
 
 def classify(c, memory=""):
-    raw = llm(CLASSIFY.format(memory=memory or "No prior complaints on this device family.", **c), 400,
-              temperature=0)  # same complaint -> same decision and deadline on every run
-    m = re.search(r"\{.*\}", raw, re.S)
-    try:
-        return json.loads(m.group(0))
-    except Exception:
-        return {"decision": "NEEDS_INFO", "category": "NONE", "reason": "model output unreadable - human review",
+    res = agent().classify(c, memory)
+    if not isinstance(res, dict) or res.get("decision") not in ("REPORTABLE", "NOT_REPORTABLE", "NEEDS_INFO"):
+        return {"decision": "NEEDS_INFO", "category": "NONE", "reason": "agent output unreadable - human review",
                 "deadline_days": 30, "missing_info": [], "confidence": 0}
+    return res
 
 # 5-day trigger words: fire, smoke, explosion, electrical shock to a patient (21 CFR 803.53 remedial-action cases).
 _FIVE_DAY = re.compile(r"\b(?:fire|flames?|caught fire|smok(?:e|ed|ing)|explo(?:de|ded|des|ding|sion|sions)|"
@@ -369,35 +340,6 @@ def tg_doc(path, caption=""):
         _outbox("sendDocument", f"file: {path}\ncaption: {caption}")
 
 # ---------------------------------------------------------------- MDR PDF (FDA Form 3500A draft)
-MDR_FIELDS = """You are Vigil. Fill the FDA MedWatch Form 3500A (mandatory reporting) fields for this medical device complaint.
-STRICT RULE: never invent facts. Use only what the complaint states. Write "UNKNOWN" for anything not stated.
-Only use company and device names that appear in the complaint data below. Never add or guess any other manufacturer, brand or model.
-Deadline rule (21 CFR 803): 5 work days only when urgent remedial action is needed to prevent substantial harm to the public; otherwise 30 calendar days. Use the deadline given below; do not recalculate it.
-Dates as YYYY-MM-DD.
-
-Complaint: {text}
-Device: {device}   Common name: {generic_name}   Product code: {product_code}
-Manufacturer: {manufacturer}   Event date: {event_date}   Date received: {received}
-Manufacturer narrative: {manufacturer_narrative}
-Vigil decision: {decision} ({category})   Deadline: {deadline}   Missing information: {missing}
-
-Extract D4 model, lot and serial numbers from the complaint AND the manufacturer narrative when present
-(e.g. "MODEL #CAX500T12" -> D4_model "CAX500T12"). FDA redaction codes such as (B)(4) or (B)(6) mean the value
-was redacted: write "REDACTED" for that field, never guess it.
-
-Answer ONLY with JSON, all values strings except where a list is shown:
-{{"A1_patient_identifier": "", "A2_age": "", "A3_sex": "", "A4_weight": "",
- "B1_event_type": "ADVERSE_EVENT|PRODUCT_PROBLEM|BOTH",
- "B2_outcomes": ["any of: Death, Life-threatening, Hospitalization (initial or prolonged), Disability or permanent damage, Congenital anomaly/birth defect, Required intervention to prevent permanent impairment/damage, Other serious (important medical event)"],
- "B3_date_of_event": "", "B5_event_description": "factual summary of the complaint",
- "D1_brand_name": "", "D2_common_device_name": "", "D2b_product_code": "", "D3_manufacturer": "",
- "D4_model": "", "D4_lot": "", "D4_serial": "",
- "G4_date_received_by_manufacturer": "",
- "H1_type_of_reportable_event": "DEATH|SERIOUS_INJURY|MALFUNCTION",
- "H3_device_evaluated": "YES|NO|UNKNOWN",
- "H10_manufacturer_narrative": "factual narrative, no speculation",
- "follow_up_questions": ["at most 5 specific questions, most important first, to close the gaps, e.g. patient age, serial number, treatment given, device available for return"]}}"""
-
 B2_OPTIONS = ["Death", "Life-threatening", "Hospitalization (initial or prolonged)", "Disability or permanent damage",
               "Congenital anomaly/birth defect", "Required intervention to prevent permanent impairment/damage",
               "Other serious (important medical event)"]
@@ -409,15 +351,12 @@ def deadline_text(days):
 
 
 def mdr_fields(c, row):
-    raw = llm(MDR_FIELDS.format(decision=row["decision"], category=row["category"],
-                                deadline=deadline_text(row.get("deadline_days")), missing=row["missing"] or "none listed",
-                                **{"generic_name": "", "product_code": "", "manufacturer": "",
-                                   "manufacturer_narrative": "none", **c}), 1500)
-    m = re.search(r"\{.*\}", raw, re.S)
     try:
-        f = json.loads(m.group(0))
+        f = agent().draft_report(c, row)
+        if not isinstance(f, dict):
+            raise ValueError("not a dict")
     except Exception:
-        f = {"H10_manufacturer_narrative": "Model output unreadable - complete all fields manually."}
+        f = {"H10_manufacturer_narrative": "Agent output unreadable - complete all fields manually."}
     # Set by Vigil, not the model: today's date and the report type that matches the computed deadline.
     f["B4_date_of_report"] = dt.date.today().isoformat()
     f["G7_report_type"] = "5-day" if str(row.get("deadline_days")) == "5" else "30-day"
@@ -890,8 +829,10 @@ def load_txt(path):
 
 # ---------------------------------------------------------------- commands
 def cmd_test(_):
-    print("Model:", model_name(), "at", LLM_BASE)
-    print("Model says:", llm("Reply with exactly: Thirty online.", 20))
+    print("Agent:", agent().name, "·", agent().health().get("label"))
+    if agent().id == "local":
+        print("Model:", model_name(), "at", LLM_BASE)
+        print("Model says:", llm("Reply with exactly: Thirty online.", 20))
     tg("Thirty is online. Watching complaints.")
     print("Telegram message sent (check the group).")
 

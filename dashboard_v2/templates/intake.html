@@ -34,7 +34,7 @@
     <div class="ib-scroll">
       <table class="tbl">
         <thead><tr><th>Source</th><th>Item</th><th>Reporter</th><th>Received</th><th>Status</th><th>Complaint</th></tr></thead>
-        <tbody id="rows"></tbody>
+        <tbody id="rows"><tr class="state"><td colspan="6"><div class="empty loading"><span class="spin"></span><b>Loading intake items…</b></div></td></tr></tbody>
       </table>
     </div>
   </section>
@@ -65,13 +65,14 @@
         "<td>" + (esc(it.reporter) || '<span class="muted">Not provided</span>') + '</td><td class="num muted">' + fmt(it.received) + "</td>" +
         '<td><span class="pill pill-sm st-' + esc(it.status) + '">' + (it.status === "processing" ? '<span class="spin" style="width:10px;height:10px"></span>' : "") + esc(LABEL[it.status] || it.status) + "</span></td>" +
         "<td>" + link + "</td></tr>";
-    }).join("") : '<tr><td colspan="6" class="muted" style="padding:14px 12px">' + (all ? "No items match the filters." : 'No items received yet. Send a complaint to the REST API or upload a file on <a class="lnk" href="/integrations">Integrations</a>.') + "</td></tr>";
+    }).join("") : "";
+    if (!rows.length) V.stateRow($("rows"), 6, "empty", all ? "No items match the filters" : "No items received yet", all ? "Clear a filter or change the search." : "Send a complaint to the REST API or upload a file on Integrations.");
     $("working").innerHTML = data.working ? '<span class="spin"></span>Classifying on the local model' : "";
   }
   function poll() {
-    fetch("/api/intake", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+    fetch("/api/intake", { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (j) {
       var s = JSON.stringify(j); if (s === sig) return; sig = s; data = j; render();
-    }).catch(function () {});
+    }).catch(function () { sig = ""; V.stateRow($("rows"), 6, "error", "Could not load the inbox", V.offline(), poll); });
   }
   $("filters").addEventListener("click", function (e) { var b = e.target.closest("[data-s]"); if (b) { status = b.dataset.s; render(); } });
   $("f-src").onchange = render; $("f-q").oninput = render;

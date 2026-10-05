@@ -34,7 +34,7 @@
 <section class="card">
   <div class="card-h"><h2>{{ icon('clock') }}Open reports</h2><span class="count-badge" id="n">0</span><span class="aside">Sorted by time remaining · bar full = 30 days</span></div>
   <div class="scale"><span>Complaint</span><span class="ax"><span>Due now</span><span>15 days</span><span>30 days</span></span><span>Time remaining</span><span>Due date</span></div>
-  <div id="list"></div>
+  <div id="list"><div class="empty loading"><span class="spin"></span><b>Loading open reports…</b></div></div>
 </section>
 {% endblock %}
 {% block scripts %}
@@ -52,11 +52,13 @@
         '<span class="pill pill-sm d-' + esc(r.decision) + '">' + esc(V.label(r.decision)) + "</span>" + (five ? '<span class="pill pill-sm pill-five-day">5-day</span>' : "") + "</span></div>" +
         '<div class="track' + (u === "over" ? " over" : "") + '"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
         '<div class="left">' + V.dueShort(r.ms) + '</div><div class="due"><b>' + d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + "</b>" + esc(r.deadline_days) + "-day report · " + V.statusPill(r).replace(/<[^>]+>/g, "") + "</div></a>";
-    }).join("") : '<div class="empty" style="padding:32px 20px;justify-items:start;text-align:left"><b>No open reports</b><p>Reportable and needs-info complaints appear here until they are approved.</p></div>';
+    }).join("") : "";
+    if (!rows.length) V.state($("list"), "empty", "No open reports", "Reportable and needs-info complaints appear here until they are approved.");
     $("n").textContent = rows.length; $("s-over").textContent = c.over; $("s-week").textContent = c.week; $("s-mid").textContent = c.mid; $("s-ok").textContent = c.ok;
     $("s-over").classList.toggle("hot", c.over > 0); $("s-week").classList.toggle("hot", c.week > 0);
   }
-  function load() { fetch("/api/state", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (s) { var g = JSON.stringify(s.clock) + Math.floor(Date.now() / 60000); if (g !== sig) { sig = g; draw(s.clock); } }); }
+  function load() { fetch("/api/state", { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (s) { var g = JSON.stringify(s.clock) + Math.floor(Date.now() / 60000); if (g !== sig) { sig = g; draw(s.clock); } })
+    .catch(function () { sig = ""; V.state($("list"), "error", "Could not load the clock", V.offline(), load); }); }
   document.addEventListener("vigil:changed", load); load(); setInterval(load, 3000);
 })();
 </script>

@@ -134,8 +134,28 @@ LLM calls inside `vigil.py` go through one helper, `llm(prompt, max_tokens, temp
 to an OpenAI-compatible `/chat/completions` endpoint. Two prompts exist: `CLASSIFY` (decision JSON) and
 `MDR_FIELDS` (Form 3500A field JSON). The model name is auto-detected from `/models`.
 
-There is no abstraction between "the pipeline" and "the model": `process()` always needs a live model,
-which is why the app cannot run on sample data today. Phase 2 introduces that seam.
+**Since Phase 2** the pipeline no longer talks to a model directly. `vigil.classify()` and
+`vigil.mdr_fields()` call `thirty.agents.get_agent()`, the single seam between the pipeline/console and
+any AI:
+
+```
+thirty/agents/base.py        Agent interface: classify(), draft_report(), follow_up_questions(), health()
+thirty/agents/local_model.py LocalModelAgent: the hackathon prompts + OpenAI-compatible HTTP calls, unchanged
+thirty/agents/sample.py      SampleAgent: pre-written results for the sample complaints, rule fallback, fake delay
+thirty/agents/__init__.py    get_agent() / set_agent(): picks by thirty.config.agent_id()
+thirty/config.py             data_dir(), agent_id(), demo_mode()
+thirty/sample_data.py        40 invented complaints + 6 incoming, invented history, seed(data_dir)
+```
+
+Selection: `THIRTY_AGENT=sample|local|none`; default `local` when `VIGIL_LLM_BASE`/`VIGIL_LLM_MODEL` is
+set, otherwise `sample` = **demo mode**. In demo mode the console seeds the data folder on first start
+(and once a day, so deadlines stay relative to today), shows a "Sample data" label, runs the demo replay
+in-process (no subprocess, no sandbox), and skips the Telegram probe. The console's health panel asks the
+active agent (`agent.health()`) instead of pinging the model itself.
+
+Code and data are now separate: `CODE_DIR` (repo / installed app: `vigil.py`, `thirty/`, `demo_set.csv`)
+vs `VIGIL_DIR` (data: `decisions.csv`, `reports/`, `history.csv`, `actions.csv`, settings). The console
+points `vigil.py`'s file paths at the data folder after import.
 
 ## 6. Known constraints found while reading
 
@@ -152,6 +172,10 @@ which is why the app cannot run on sample data today. Phase 2 introduces that se
 
 Recorded per phase as they are made. (Phase 4 packaging decision will be added here before building.)
 
+* **Phase 2** — One agent interface, two implementations; demo mode on by default when no model is
+  configured; sample data is invented and date-relative; the hackathon Philips chart is no longer shown
+  (Trends draws from `history.csv`, which the seeder also writes). `tests/` run entirely on the sample
+  agent; the local-model agent is tested against a fake HTTP server.
 * **Phase 1** — Restyle only. The console keeps its Flask/Jinja/vanilla-JS structure; the design
   system in `base.html` is replaced by the brand kit tokens (`css/thirty.css`), fonts are self-hosted,
   logos come from the kit's SVGs. User-facing "Vigil" becomes "Thirty"; file names, env vars, the
