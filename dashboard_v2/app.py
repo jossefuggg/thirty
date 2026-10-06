@@ -578,7 +578,7 @@ def read_upload(f):
         df = pd.read_excel(io.BytesIO(data), dtype=str).fillna("")
         return df.to_dict("records")
     text = data.decode("utf-8-sig", errors="replace")
-    csv.field_size_limit(sys.maxsize)
+    csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
     return list(csv.DictReader(io.StringIO(text)))
 
 # ---------------------------------------------------------------- system health (refreshed in the background)
@@ -980,7 +980,7 @@ def history_rows():
         _hist.update(mtime=None, rows=[])
         return []
     if _hist["mtime"] != m:
-        csv.field_size_limit(sys.maxsize)
+        csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
         out = []
         with open(HISTORY, newline="", encoding="utf-8") as f:
             for r in csv.DictReader(f):

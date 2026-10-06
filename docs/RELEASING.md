@@ -11,8 +11,11 @@ git commit -am "Thirty 1.2.0" && git tag v1.2.0 && git push && git push --tags
 
 Pushing a `v*` tag runs `.github/workflows/release.yml`: three runners (macOS 14, Windows 2022,
 Ubuntu 22.04) each run the tests, freeze the backend with PyInstaller, build the Electron app with
-`electron-builder`, and upload to a **draft GitHub Release** for that tag. Review the draft, then publish
-it. The CI workflow (`ci.yml`) runs the tests and a backend boot on every push.
+`electron-builder`, and attach the files to the GitHub Release `v<version>`: created as a draft when it
+does not exist yet, reused when you created it first (draft, pre-release or published). Review, then
+publish. The workflow can also be started by hand (Actions → Release → Run workflow) on `main`; it then
+builds the version stamped in the repository. The CI workflow (`ci.yml`) runs the tests and a backend
+boot on every push.
 
 Artifacts per platform:
 

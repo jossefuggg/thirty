@@ -60,7 +60,7 @@ DEFAULT_SETTINGS = {
 
 def settings():
     """settings.json, created on first use with a fresh API key (file mode 0600: it holds secrets)."""
-    s = json.load(open(SETTINGS)) if os.path.exists(SETTINGS) else {}
+    s = json.load(open(SETTINGS, encoding="utf-8")) if os.path.exists(SETTINGS) else {}
     changed = not os.path.exists(SETTINGS)
     for k, v in DEFAULT_SETTINGS.items():
         if k not in s:
@@ -69,7 +69,7 @@ def settings():
         s["api_key"], changed = secrets.token_urlsafe(32), True
     if changed:
         fd = os.open(SETTINGS, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, "w") as f:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(s, f, indent=2)
     return s
 
@@ -155,9 +155,9 @@ def submit(payload, kind="api", default_source="api", raw=None, raw_ext="json"):
         return 200, {"status": "duplicate", "vigil_id": c["id"], "state": existing["status"]}
     os.makedirs(RAW, exist_ok=True)
     path = os.path.join(RAW, f"{c['id']}.{raw_ext}")
-    with open(path, "wb" if isinstance(raw, bytes) else "w") as f:  # raw evidence, as received
-        f.write(raw if raw is not None else json.dumps({"payload": payload, "complaint": c}, indent=2))
-    json.dump(c, open(os.path.join(RAW, f"{c['id']}.complaint.json"), "w"), indent=2)
+    with open(path, "wb") as f:  # raw evidence, as received
+        f.write(raw if isinstance(raw, bytes) else (raw if raw is not None else json.dumps({"payload": payload, "complaint": c}, indent=2)).encode("utf-8"))
+    json.dump(c, open(os.path.join(RAW, f"{c['id']}.complaint.json"), "w", encoding="utf-8"), indent=2)
     _index_update(c["id"], time=dt.datetime.now().isoformat(timespec="seconds"), source=c["source"],
                   external_id=c["external_id"], status="queued", error="")
     start_worker()
@@ -191,7 +191,7 @@ def start_worker():
     for r in _index_rows():
         cpath = os.path.join(RAW, f"{r['vigil_id']}.complaint.json")
         if r["status"] in ("queued", "processing") and os.path.exists(cpath):
-            _q.put(json.load(open(cpath)))
+            _q.put(json.load(open(cpath, encoding="utf-8")))
 
 
 # ---------------------------------------------------------------- CSV upload (console + CLI)
@@ -201,7 +201,7 @@ def enqueue_csv(f, source="csv"):
         f = io.StringIO(f.decode("utf-8-sig"))
     elif isinstance(f, str):
         f = open(f, encoding="utf-8-sig", newline="")
-    csv.field_size_limit(sys.maxsize)
+    csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
     out = []
     for i, row in enumerate(csv.DictReader(f), 1):
         status, res = submit({k: v for k, v in row.items() if k}, kind="csv", default_source=source)

@@ -45,7 +45,7 @@ function backendCommand() {
 function startBackend() {
   const { cmd, args, cwd } = backendCommand();
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  const env = { ...process.env, VIGIL_DIR: DATA_DIR, VIGIL_CONSOLE_PORT: String(port), PYTHONUNBUFFERED: "1", THIRTY_DESKTOP: "1",
+  const env = { ...process.env, VIGIL_DIR: DATA_DIR, VIGIL_CONSOLE_PORT: String(port), PYTHONUNBUFFERED: "1", PYTHONUTF8: "1", THIRTY_DESKTOP: "1",
                 THIRTY_APP_VERSION: app.getVersion() };
   log(`starting backend: ${cmd} ${args.join(" ")} (port ${port}, data ${DATA_DIR})`);
   backend = spawn(cmd, args, { cwd, env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
