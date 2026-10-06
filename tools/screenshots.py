@@ -71,7 +71,7 @@ def main():
         shots = [("01-command-center", "/"), ("02-complaints", "/complaints"), ("03-complaint-detail", f"/complaint/{ids[0]}"),
                  ("04-compliance-clock", "/clock"), ("05-trends", "/trends"), ("06-audit-log", "/audit"), ("07-intake-inbox", "/intake"),
                  ("08-integrations", "/integrations"), ("09-demo-control", "/demo"), ("10-not-found", "/complaint/missing-id"),
-                 ("18-plugins", "/settings/plugins")]
+                 ("18-plugins", "/settings/plugins"), ("24-licence-updates", "/settings/licence")]
         with sync_playwright() as p:
             exe = os.environ.get("THIRTY_CHROMIUM")  # optional: a Chromium build that differs from Playwright's own
             browser = p.chromium.launch(executable_path=exe) if exe else p.chromium.launch()

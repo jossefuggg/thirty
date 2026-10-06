@@ -313,6 +313,7 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
       </div>
       <div class="live" id="live" role="status"><i></i>LIVE</div>
       {% if DEMO_MODE %}<a class="sample" href="/demo" title="Sample agent on invented complaints. No model is configured.">{{ icon('play') }}Sample data</a>{% endif %}
+      {% if LICENCE.state != 'licensed' %}<a class="sample" href="/settings/licence" title="{{ LICENCE.label }}">{{ icon('key') }}{{ 'Evaluation' if LICENCE.state == 'evaluation' else 'Licence' }}</a>{% endif %}
       <span class="env"><i></i>{{ WS.env_short }}</span>
       <div class="now"><b id="clock-t">--:--:--</b><span id="clock-d"></span></div>
       <button class="help" id="help" aria-label="Help" title="Keyboard: / search · Esc close">{{ icon('help') }}</button>

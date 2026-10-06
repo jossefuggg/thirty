@@ -12,8 +12,8 @@ as phases land.
 - [x] Phase 3 — The agent becomes a plugin
 - [x] Phase 4 — Desktop app
 - [x] Phase 5 — First-run setup
-- [ ] Phase 6 — Installers
-- [ ] Phase 7 — Licensing and updates (scaffold only)
+- [x] Phase 6 — Installers
+- [x] Phase 7 — Licensing and updates (scaffold only)
 - [ ] Finish — README, final PR summary
 
 ## Product context

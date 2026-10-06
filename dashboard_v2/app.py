@@ -20,7 +20,7 @@ else:
     CODE_DIR = os.path.dirname(HERE)  # the repository / installed app: vigil.py, the thirty package, demo_set.csv
 if CODE_DIR not in sys.path:
     sys.path.insert(0, CODE_DIR)
-from thirty import config as tconfig, plugins, sample_data, setup as tsetup  # noqa: E402
+from thirty import config as tconfig, licensing, plugins, sample_data, setup as tsetup  # noqa: E402
 from thirty.agents import get_agent  # noqa: E402
 
 VIGIL_DIR = tconfig.data_dir()  # the data folder (VIGIL_DIR env; defaults to the repository root)
@@ -669,14 +669,14 @@ STEP_ICONS = {"done": ICONS["check"], "info": ICONS["help"], "todo": _svg('<circ
 NAV = [("home", "/", "Command Center", "grid"), ("intake", "/intake", "Intake inbox", "download"), ("complaints", "/complaints", "Complaints", "inbox"),
        ("clock", "/clock", "Compliance Clock", "clock"), ("trends", "/trends", "Trends", "trend"),
        ("audit", "/audit", "Audit Log", "file"), ("integrations", "/integrations", "Integrations", "plug"), ("demo", "/demo", "Demo Control", "play"),
-       ("plugins", "/settings/plugins", "Plugins", "cpu")]
+       ("plugins", "/settings/plugins", "Plugins", "cpu"), ("licence", "/settings/licence", "Licence & updates", "key")]
 
 
 @app.context_processor
 def _globals():
     from markupsafe import Markup
     return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": workspace(), "SOURCES": SOURCES,
-            "DEMO_MODE": demo_mode(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name},
+            "DEMO_MODE": demo_mode(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name}, "LICENCE": licensing.check().status(),
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 
@@ -1584,6 +1584,75 @@ def api_rotate_key():
     return jsonify(api_key=st["api_key"])
 
 
+# ---------------------------------------------------------------- licence, updates, workspace (settings)
+DESKTOP_FILE = os.path.join(VIGIL_DIR, "desktop.json")  # read by the Electron shell: {"auto_update": bool}
+
+
+def desktop_settings():
+    try:
+        with open(DESKTOP_FILE, encoding="utf-8") as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        d = {}
+    d.setdefault("auto_update", False)
+    d["in_desktop"] = bool(os.environ.get("THIRTY_DESKTOP"))
+    d["app_version"] = os.environ.get("THIRTY_APP_VERSION") or ""
+    return d
+
+
+@app.route("/settings/licence")
+def licence_page():
+    return render_template("licence.html", page="licence", title="Licence & updates", data_dir=VIGIL_DIR,
+                           app_version=os.environ.get("THIRTY_APP_VERSION") or "")
+
+
+@app.route("/api/licence")
+def api_licence():
+    return jsonify(licence=licensing.check().status(), desktop=desktop_settings())
+
+
+@app.post("/api/licence")
+def api_licence_install():
+    key = (request.get_json(silent=True) or {}).get("key") or ""
+    try:
+        st = licensing.check().install(key)
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    if st["state"] == "invalid":
+        licensing.check().remove()
+        return jsonify(error=st["reason"] or st["label"]), 400
+    return jsonify(ok=True, licence=st)
+
+
+@app.post("/api/licence/remove")
+def api_licence_remove():
+    licensing.check().remove()
+    return jsonify(ok=True, licence=licensing.check().status())
+
+
+@app.post("/api/desktop")
+def api_desktop():
+    d = request.get_json(silent=True) or {}
+    cur = {k: v for k, v in desktop_settings().items() if k in ("auto_update",)}
+    if "auto_update" in d:
+        cur["auto_update"] = bool(d["auto_update"])
+    tmp = DESKTOP_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cur, f, indent=2)
+    os.replace(tmp, DESKTOP_FILE)
+    return jsonify(ok=True, **cur)
+
+
+@app.post("/api/workspace")
+def api_workspace():
+    d = request.get_json(silent=True) or {}
+    org, unit = (d.get("org") or "").strip()[:80], (d.get("unit") or "").strip()[:80]
+    if not org:
+        return jsonify(error="Enter a company or site name."), 400
+    st = tsetup.update(org=org, unit=unit or "Quality")
+    return jsonify(ok=True, org=st["org"], unit=st["unit"])
+
+
 # ---------------------------------------------------------------- plugins (settings)
 @app.route("/settings/plugins")
 def plugins_page():
@@ -1631,7 +1700,7 @@ def api_health():
         changed = os.path.getmtime(LOG)
     except OSError:
         changed = None
-    return jsonify({**HEALTH, "log_changed": changed, "now": time.time(),
+    return jsonify({**HEALTH, "licence": licensing.check().status()["state"], "log_changed": changed, "now": time.time(),
                     "demo": {k: d[k] for k in ("running", "kind", "processed", "total")}})
 
 

@@ -104,6 +104,8 @@ failure mode recurring live and in history), KPIs and sparklines.
 | `/integrations` | `integrations.html` | REST endpoint + API key, file upload, IMAP settings, connector placeholders, field mapping |
 | `/demo` | `demo.html` | Demo Control: reset, start replay, stop; streamed pipeline output |
 | `/settings/plugins` | `plugins.html` | Plugins: active agent, installed plugins with status, enable/disable, settings, Test (Phase 3) |
+| `/settings/licence` | `licence.html` | Licence key (install / remove), update checks toggle, workspace name (Phase 7) |
+| `/setup` | `setup.html` | First-run setup: welcome, sample data or own site, agent choice with local-model requirements and connection test (Phase 5) |
 | (404) | `missing.html` | Complaint not found |
 
 Shared chrome in `base.html`: sidebar with nav + system health LEDs + "0 bytes to cloud AI" badge,
@@ -202,6 +204,20 @@ How it works (`desktop/`):
 
 Recorded per phase as they are made.
 
+* **Phase 7** — Licensing scaffold: `thirty/licensing.py` has a `LicenseCheck` interface and an
+  offline implementation (`OfflineKeyFile`: one-line Ed25519-signed key in `<data>/licence.key`, verified
+  with a pure-Python Ed25519 so the frozen app needs no crypto dependency). `PUBLIC_KEY` is empty until
+  the owner runs `tools/make_licence.py keygen`; until then every key is "unverified" and the app shows
+  **Evaluation**. No enforcement beyond the label (owner decision). Auto-update: `electron-updater`
+  against GitHub Releases, **off by default**, toggled from Settings → Licence & updates, which writes
+  `<data>/desktop.json`; the Electron shell re-reads it on every check.
+* **Phase 6** — `release.yml` builds unsigned installers for macOS (dmg x64+arm64), Windows (NSIS) and
+  Linux (AppImage, deb) on a `v*` tag and uploads them to a draft GitHub Release; signing/notarisation
+  switch on when the secrets listed in `docs/RELEASING.md` exist. `ci.yml` runs the tests and a frozen
+  backend boot on every push. `tools/set_version.py` keeps the version in one place.
+* **Phase 5** — First-run setup lives in the console (`/setup`, `thirty/setup.py`), gated by a
+  `before_request` hook until `<data>/setup.json` exists, so the desktop shell needs no extra UI.
+* **Phase 4** — Electron + PyInstaller sidecar (see §7).
 * **Phase 3** — Agents are plugins (`thirty/plugins`): a folder with `plugin.json` (id, name, version,
   capabilities, settings schema) and `plugin.py` (`create(settings) -> Agent`). Built-ins: `sample`,
   `local` (the local-model code behind the contract, unchanged). User plugins in `<data>/plugins/`;
