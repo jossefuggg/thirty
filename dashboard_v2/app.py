@@ -20,7 +20,7 @@ else:
     CODE_DIR = os.path.dirname(HERE)  # the repository / installed app: vigil.py, the thirty package, demo_set.csv
 if CODE_DIR not in sys.path:
     sys.path.insert(0, CODE_DIR)
-from thirty import config as tconfig, licensing, plugins, sample_data, setup as tsetup  # noqa: E402
+from thirty import audit as taudit, config as tconfig, decisions as tdecisions, jurisdictions as tjur, licensing, plugins, sample_data, setup as tsetup  # noqa: E402
 from thirty.agents import get_agent  # noqa: E402
 from thirty.filelock import lock as _flock, unlock as _funlock, LockBusy  # noqa: E402
 
@@ -51,7 +51,7 @@ except Exception:
 def workspace():
     """Top-bar identity: the site chosen at first-run setup, or the sample company."""
     ws = tsetup.workspace()
-    return {"org": ws["org"], "unit": ws["unit"], "mode": ws["mode"], "env": "ON-PREM · PRODUCTION", "env_short": "ON-PREM"}
+    return {"org": ws["org"], "unit": ws["unit"], "mode": ws["mode"], "jurisdictions": ws.get("jurisdictions") or ["US"], "env": "ON-PREM · PRODUCTION", "env_short": "ON-PREM"}
 
 app = Flask(__name__, template_folder=os.path.join(HERE, "templates"), static_folder=os.path.join(HERE, "static"))
 import logging; logging.getLogger("werkzeug").setLevel(logging.WARNING)  # polling would flood console.log
@@ -105,8 +105,19 @@ def read_rows():
 
 
 def set_status(cid, status, guard):
-    """Read-modify-write under vigil.py's exclusive lock. guard(old_status) -> bool decides if a row changes.
-    The new file is written next to the old one and swapped in atomically, so unlocked readers never see it torn."""
+    """Read-modify-write under vigil.py's exclusive lock. guard(old_status) -> bool decides if a row changes."""
+    def mutate(r):
+        if guard(r.get("status") or ""):
+            r["status"] = status
+            return True
+        return False
+    return update_rows(cid, mutate)
+
+
+def update_rows(cid, mutate):
+    """Apply mutate(row) -> changed? to every row of a complaint under vigil.py's exclusive lock.
+    The new file is written next to the old one and swapped in atomically, so unlocked readers never see it torn.
+    Returns None (unknown id), False (nothing changed) or True."""
     with open(LOCK, "a+") as lockf:
         deadline = time.time() + 90  # vigil.py may hold the lock through a sandbox upload (<= 60 s)
         while True:
@@ -120,10 +131,9 @@ def set_status(cid, status, guard):
             fields, rows = parse_log(f)
         hit = [r for r in rows if r["id"] == cid]
         if not hit:
+            _funlock(lockf)
             return None
-        changed = [r for r in hit if guard(r.get("status") or "")]
-        for r in changed:
-            r["status"] = status
+        changed = [r for r in hit if mutate(r)]
         if changed:
             fd, tmp = tempfile.mkstemp(dir=VIGIL_DIR, prefix=".decisions.", suffix=".tmp")
             with os.fdopen(fd, "w", newline="", encoding="utf-8") as f:
@@ -698,7 +708,7 @@ def _globals():
     from markupsafe import Markup
     return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": workspace(), "SOURCES": SOURCES,
             "DEMO_MODE": demo_mode(), "SAMPLE_DATA": sample_data_mode(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name}, "LICENCE": licensing.check().status(),
-            "fmt_day": fmt_day, "LOCAL_AGENT": tconfig.agent_id() == "local", "DATA_DIR": VIGIL_DIR,
+            "fmt_day": fmt_day, "LOCAL_AGENT": tconfig.agent_id() == "local", "DATA_DIR": VIGIL_DIR, "TODAY": dt.date.today().isoformat(), "JURISDICTIONS": tjur.JURISDICTIONS,
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 
@@ -821,6 +831,10 @@ def audit_events():
                 ev.append({"t": a["time"], "actor": a["by"], "action": {"approve": "Approved", "info": "Info requested", "undo": "Undo"}.get(a["kind"], a["kind"]),
                            "id": a["id"], "decision": "", "detail": {"approve": "Draft Form 3500A approved for submission", "info": "More information requested from the reporter",
                                                                     "undo": "Decision reverted to pending review"}.get(a["kind"], "")})
+    for e in taudit.entries():
+        if e.get("action") not in ("Approved", "Info requested", "Undo"):  # those come from actions.csv above
+            ev.append({"t": e["time"], "actor": e["actor"], "action": e["action"], "id": e.get("id") or "", "decision": (e.get("data") or {}).get("outcome", {}).get("decision", ""),
+                       "detail": e.get("detail") or "", "signed": True})
     ev.sort(key=lambda e: e["t"], reverse=True)
     return ev
 
@@ -928,7 +942,15 @@ def brief(r):
                                        "due_date", "deadline_days", "status", "product_code")} | {
         "confidence": conf, "status_kind": status_kind(r.get("status")), "days_left": days_left(r),
         "memory": memory_text(r), "mem": memory_parts(r), "excerpt": sentence_case(text[:260]),
-        "family": device_family(r.get("device")), "open": is_open(r), "source": source_of(r["id"])}
+        "family": device_family(r.get("device")), "open": is_open(r), "source": source_of(r["id"]),
+        "clocks": [{"code": c["code"], "due": c["due"], "days_left": c["days_left"], "days": c["days"]} for c in tdecisions.clocks(r, _jur_cache()) if c["code"] != "US"] if is_open(r) else []}
+
+
+_jur = {"t": 0.0, "v": ["US"]}
+def _jur_cache():
+    if time.time() - _jur["t"] > 5:
+        _jur.update(t=time.time(), v=tsetup.jurisdictions())
+    return _jur["v"]
 
 
 def approvals_at():
@@ -1294,12 +1316,21 @@ def last_action(cid, since):
     return hits[-1] if hits else None
 
 
-def record_action(cid, kind, by):
+def record_action(cid, kind, by, meaning=""):
     new = not os.path.exists(ACTIONS)
     with open(ACTIONS, "a", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         if new: w.writerow(["time", "id", "kind", "by"])
         w.writerow([dt.datetime.now().isoformat(timespec="seconds"), cid, kind, by])
+    try:  # the signed, hash-chained copy (21 CFR 11 style); never blocks the decision itself
+        taudit.append(by, {"approve": "Approved", "info": "Info requested", "undo": "Undo"}.get(kind, kind), cid,
+                      ACTION_DETAIL.get(kind, ""), meaning or taudit.MEANINGS.get(kind, ""))
+    except Exception as e:
+        print("audit chain append failed:", e, flush=True)
+
+
+ACTION_DETAIL = {"approve": "Draft Form 3500A approved for submission", "info": "More information requested from the reporter",
+                 "undo": "Decision reverted to pending review"}
 
 
 def alert_state(cid):
@@ -1395,6 +1426,9 @@ def detail(r, rows=None):
         steps.append(["current" if has_pdf else "future", "Human decision", "Approve the draft or request info", ""])
     else:
         steps.append(["done", "Logged for audit", "Reason kept in the audit trail", t])
+    drec = tdecisions.latest(cid)
+    if drec:
+        steps.insert(4, ["done", "Decision recorded", f"{tdecisions.label(drec['outcome']['decision'])} · by {drec['by']}", drec["time"]])
     for st in steps:
         st[3] = short_time(st[3]) if st[3] else ""
 
@@ -1408,8 +1442,14 @@ def detail(r, rows=None):
         conf = max(0, min(100, int(float(r.get("confidence") or 0))))
     except ValueError:
         conf = 0
+    rec = tdecisions.latest(cid)
+    enabled = tsetup.jurisdictions()
+    clocks = tdecisions.clocks(r, enabled) if is_open(r) or rec else []
     return {**r, "status_kind": kind, "days_left": days_left(r), "reportable": reportable, "open": is_open(r),
             "timeline": steps, "missing_list": missing, "questions": questions, "breakdown": b, "conf": conf,
+            "tree": tdecisions.QUESTIONS, "answers": (rec or {}).get("answers") or tdecisions.prefill(r), "record": rec,
+            "record_fields": tdecisions.RECORD_FIELDS, "aware": tdecisions.awareness_of(r).isoformat(), "clocks": clocks,
+            "jurisdictions": enabled, "jur_names": tjur.JURISDICTIONS, "records_n": len(tdecisions.history(cid)),
             "legal": legal_basis(r), "pdf": has_pdf, "processed": fmt_time(t), "received_d": rec_d,
             "act": act if kind != "pend" else None, "act_time": fmt_time(act_t) if act_t else "",
             "history": device_history(r, rows), "family": device_family(r.get("device")), "source": source_of(cid),
@@ -1435,7 +1475,7 @@ def api_complaint(cid):
     if not r:
         abort(404)
     d = detail(r, rows)
-    frag = {k: render_template(f"_detail_{k}.html", r=d) for k in ("review", "timeline", "pdf", "status_pill", "cd")}
+    frag = {k: render_template(f"_detail_{k}.html", r=d) for k in ("review", "timeline", "pdf", "status_pill", "cd", "decision")}
     frag["hstatus"] = frag.pop("status_pill")
     return jsonify(frag | {"status": d.get("status"), "status_kind": d["status_kind"], "pdf": d["pdf"]})
 
@@ -1464,8 +1504,100 @@ def api_action(cid):
         return jsonify(error="Complaint not found."), 404
     if not changed:
         return jsonify(error="Nothing to undo." if kind == "undo" else "Already approved; nothing changed."), 409
-    record_action(cid, kind, name)
+    record_action(cid, kind, name, " ".join((data.get("meaning") or "").split())[:300])
     return jsonify(ok=True, status=status)
+
+
+# ---------------------------------------------------------------- reportability decision record (803.18 / 820.35)
+@app.post("/api/complaint/<cid>/decision")
+def api_decision(cid):
+    d = request.get_json(silent=True) or {}
+    name = " ".join((d.get("name") or "").split())[:60]
+    if licensing.blocks_decisions():
+        return jsonify(error="The licence has expired. Install a renewed key under Licence & updates to record decisions."), 403
+    rows = all_rows()
+    if not any(r["id"] == cid for r in rows):
+        return jsonify(error="Complaint not found."), 404
+    try:
+        rec = tdecisions.record(cid, d.get("answers") or {}, d.get("rationale"), name, aware=d.get("aware") or None,
+                                fields=d.get("fields") or {}, enabled=tsetup.jurisdictions())
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    out = rec["outcome"]
+    us = next((c for c in rec["clocks"] if c["code"] == "US"), None)
+
+    def mutate(r):
+        r["decision"], r["category"] = out["decision"], out["category"]
+        r["deadline_days"] = str(us["days"]) if us else ""
+        r["due_date"] = us["due"] if us else ""
+        r["reason"] = rec["rationale"][:500]
+        st = r.get("status") or ""
+        if out["decision"] == "NOT_REPORTABLE" and not st.startswith("APPROVED"):
+            r["status"] = "LOGGED"
+        elif out["decision"] != "NOT_REPORTABLE" and st in ("LOGGED", ""):
+            r["status"] = "PENDING_REVIEW"
+        return True
+    try:
+        update_rows(cid, mutate)
+    except TimeoutError as e:
+        return jsonify(error=str(e)), 503
+    _cache.update(rows=[], mtime=None)
+    taudit.append(name, "Decision recorded", cid, f"{out['decision'].replace('_', ' ')} · {out['basis']} · awareness {rec['aware']} · {rec['rationale'][:200]}",
+                  taudit.MEANINGS["decision"], extra={"outcome": out, "clocks": [(c["code"], c["due"]) for c in rec["clocks"]], "aware": rec["aware"]})
+    return jsonify(ok=True, record=rec)
+
+
+@app.route("/api/complaint/<cid>/decisions")
+def api_decisions(cid):
+    return jsonify(records=tdecisions.history(cid), questions=[{"key": k, "q": q, "help": h, "for": f.split()} for k, q, h, f in tdecisions.QUESTIONS])
+
+
+@app.route("/complaint/<cid>/pack.zip")
+def submission_pack(cid):
+    """Everything a human needs to file: the drafted 3500A (PDF + fields), the decision record and the signed audit entries."""
+    import zipfile
+    rows = all_rows()
+    r = next((x for x in rows if x["id"] == cid), None)
+    if not r:
+        abort(404)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for ext in ("pdf", "json"):
+            fp = os.path.join(REPORTS, f"MDR_{cid}.{ext}")
+            if os.path.exists(fp):
+                z.write(fp, f"MDR_{cid}.{ext}")
+        z.writestr("complaint.json", json.dumps({k: r.get(k, "") for k in r}, indent=1, ensure_ascii=False))
+        z.writestr("decision-record.json", json.dumps(tdecisions.history(cid), indent=1, ensure_ascii=False))
+        z.writestr("clocks.json", json.dumps(tdecisions.clocks(r, tsetup.jurisdictions()), indent=1))
+        chain = taudit.entries(cid=cid)
+        z.writestr("audit-entries.jsonl", "".join(json.dumps(e, sort_keys=True, ensure_ascii=False) + "\n" for e in chain))
+        v = taudit.verify()
+        z.writestr("README.txt", f"Thirty submission pack for complaint #{cid}\nGenerated {dt.datetime.now():%Y-%m-%d %H:%M}\n\n"
+                   "MDR_<id>.pdf / .json   drafted Form 3500A and its fields (UNKNOWN fields must be completed before filing)\n"
+                   "decision-record.json   reportability decision tree answers, rationale, reviewer, awareness date (21 CFR 803.18)\n"
+                   "clocks.json            reporting deadlines per jurisdiction\n"
+                   "audit-entries.jsonl    hash-chained audit entries for this complaint "
+                   f"(chain {'verified' if v['ok'] else 'BROKEN at entry ' + str(v['broken_at'])}, head {v['head'][:16]}…)\n\n"
+                   "Thirty drafts; a human files. Submit through the regulator's own channel (FDA ESG / eSubmitter, competent authority, MORE portal).\n")
+    buf.seek(0)
+    return app.response_class(buf.getvalue(), mimetype="application/zip",
+                              headers={"Content-Disposition": f"attachment; filename=thirty_{cid}_pack.zip"})
+
+
+@app.route("/api/audit/verify")
+def api_audit_verify():
+    return jsonify(taudit.verify())
+
+
+@app.route("/audit.jsonl")
+def audit_jsonl():
+    try:
+        with open(taudit.path(), encoding="utf-8") as f:
+            body = f.read()
+    except FileNotFoundError:
+        body = ""
+    return app.response_class(body, mimetype="application/x-ndjson",
+                              headers={"Content-Disposition": f"attachment; filename=thirty_audit_chain_{dt.date.today():%Y%m%d}.jsonl"})
 
 
 @app.route("/demo")
@@ -1687,8 +1819,11 @@ def api_workspace():
     org, unit = (d.get("org") or "").strip()[:80], (d.get("unit") or "").strip()[:80]
     if not org:
         return jsonify(error="Enter a company or site name."), 400
-    st = tsetup.update(org=org, unit=unit or "Quality")
-    return jsonify(ok=True, org=st["org"], unit=st["unit"])
+    jur = tjur.normalise(d.get("jurisdictions")) if isinstance(d.get("jurisdictions"), list) else None
+    st = tsetup.update(org=org, unit=unit or "Quality", jurisdictions=jur)
+    taudit.append("Console", "Workspace changed", "", f"{st['org']} · {st['unit']} · clocks {', '.join(tsetup.jurisdictions())}")
+    _cache.update(rows=[], mtime=None)
+    return jsonify(ok=True, org=st["org"], unit=st["unit"], jurisdictions=tsetup.jurisdictions())
 
 
 # ---------------------------------------------------------------- plugins (settings)

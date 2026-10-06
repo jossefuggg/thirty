@@ -73,6 +73,14 @@ One row per processed complaint, written by `vigil.log()`; the console rewrites 
 
 Old files with fewer columns are upgraded on read (`parse_log`).
 
+### Compliance record files (Phase 8)
+
+* `decisions/<id>.json` — list of reportability decision records (answers, rationale, reviewer, awareness
+  date, outcome, clocks, 820.35 fields). Newest last. Read by the complaint page and the submission pack.
+* `audit.jsonl` — hash-chained audit entries (`seq, time, actor, action, id, detail, meaning, prev, hash`).
+  `GET /api/audit/verify` walks it; `/audit.jsonl` exports it.
+* `setup.json: jurisdictions` — reporting clocks enabled for the site.
+
 ### Other files
 * `reports/MDR_<id>.pdf` — drafted Form 3500A (fpdf2), one per REPORTABLE / NEEDS_INFO complaint.
 * `outbox.txt` — Telegram messages that could not be sent.
@@ -203,6 +211,16 @@ How it works (`desktop/`):
 ## 8. Decisions log
 
 Recorded per phase as they are made.
+
+* **Phase 8 (compliance record)** — Three model-free modules from the market research
+  (`docs/MARKET.md` §5, status in `docs/COMPLIANCE.md`): `thirty/jurisdictions.py` (US / EU / UK / CA
+  clocks from the awareness date; the row's `due_date` stays the US one), `thirty/decisions.py`
+  (deterministic 803 decision tree, record with rationale + reviewer + 820.35 fields in
+  `<data>/decisions/<id>.json`, which also rewrites the row's decision, category, deadline and due date
+  under the pipeline lock) and `thirty/audit.py` (`<data>/audit.jsonl`, SHA-256 hash chain, e-signature
+  meaning; `actions.csv` kept as the pipeline-facing log). Jurisdictions live in `setup.json`
+  (`jurisdictions`, US always on). Sample-data reset wipes the records and the chain. No per-user login:
+  one reviewer per desktop, name typed at the time of signing.
 
 * **Phase 7** — Licensing scaffold: `thirty/licensing.py` has a `LicenseCheck` interface and an
   offline implementation (`OfflineKeyFile`: one-line Ed25519-signed key in `<data>/licence.key`, verified

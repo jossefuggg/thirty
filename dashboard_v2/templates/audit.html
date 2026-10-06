@@ -12,9 +12,10 @@
   .actor.ai i { background: var(--text); } .actor.ai .i { width: 14px; height: 14px; }
   .act { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: .04em; background: var(--hover); color: var(--text); white-space: nowrap; border: 2px solid transparent; }
   .act.Approved { background: var(--text); color: var(--bg); } .act.Info { background: transparent; border-color: var(--t-amber); } .act.Undo { background: transparent; border-color: var(--border); }
-  td.det { max-width: 720px; } td.det div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; color: var(--text); }
+  td.det div { max-width: min(720px, 44vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; color: var(--text); }
   tr.open td.det div { white-space: normal; }
   .lock { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); } .lock .i { width: 14px; height: 14px; }
+  #chain { color: var(--text); font-weight: 700; } #chain.bad { color: var(--coral-text); }
 </style>
 {% endblock %}
 {% block body %}
@@ -22,7 +23,9 @@
   <div class="note">{{ icon('shield') }}Every decision, including Not reportable, is recorded with its reason.</div>
   <section class="card">
     <div class="toolbar"><span id="chips" style="display:flex;gap:6px;flex-wrap:wrap"></span><span class="grow"></span>
-      <span class="lock">{{ icon('shield') }}Append-only · <span id="count"></span></span>
+      <span class="lock" id="chain" title="Every reviewer action is also written to audit.jsonl, where each entry carries the hash of the previous one.">{{ icon('shield') }}<span id="chain-t">Checking chain…</span></span>
+      <a class="btn btn-secondary btn-sm" href="/audit.jsonl" download>{{ icon('download') }}Signed chain</a>
+      <span class="lock">Append-only · <span id="count"></span></span>
       <label class="tsearch">{{ icon('search') }}<input id="q" type="search" placeholder="Search actor, complaint, detail" aria-label="Search the audit log"></label></div>
     <div class="scroll"><table class="tbl"><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Complaint</th><th>Detail</th></tr></thead><tbody id="rows"><tr class="state"><td colspan="5"><div class="empty loading"><span class="spin"></span><b>Loading events…</b></div></td></tr></tbody></table></div>
   </section>
@@ -35,7 +38,7 @@
   function draw() {
     var counts = {}; ev.forEach(function (e) { counts[e.action] = (counts[e.action] || 0) + 1; });
     var nr = ev.filter(function (e) { return e.decision === "NOT_REPORTABLE"; }).length;
-    $("chips").innerHTML = [["", "All", ev.length]].concat(["Classified", "Alert sent", "PDF drafted", "Approved", "Info requested", "Undo"].map(function (a) { return [a, a, counts[a] || 0]; })).concat([["NR", "Not reportable", nr]])
+    $("chips").innerHTML = [["", "All", ev.length]].concat(["Classified", "Decision recorded", "Alert sent", "PDF drafted", "Approved", "Info requested", "Undo"].map(function (a) { return [a, a, counts[a] || 0]; })).concat([["NR", "Not reportable", nr]])
       .map(function (c) { return '<button class="fpill' + (f === c[0] ? " on" : "") + '" data-f="' + c[0] + '">' + c[1] + " <em>" + c[2] + "</em></button>"; }).join("");
     var q = $("q").value.trim().toLowerCase();
     var rows = ev.filter(function (e) { return (!f || (f === "NR" ? e.decision === "NOT_REPORTABLE" : e.action === f)) && (!q || (e.actor + " " + e.id + " " + e.detail + " " + e.action).toLowerCase().indexOf(q) >= 0); });
@@ -46,7 +49,7 @@
       return '<tr><td class="num muted" style="white-space:nowrap">' + (isNaN(d) ? esc(e.t) : d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })) + "</td>" +
         '<td><span class="actor' + (ai ? " ai" : "") + '"><i>' + (ai ? ICONS.cpu : esc(ini)) + "</i>" + esc(e.actor) + "</span></td>" +
         '<td><span class="act ' + esc(e.action.split(" ")[0]) + '">' + esc(e.action) + "</span></td>" +
-        '<td><a class="lnk mono" href="/complaint/' + encodeURIComponent(e.id) + '" data-open="' + esc(e.id) + '">#' + esc(e.id) + "</a></td>" +
+        "<td>" + (e.id ? '<a class="lnk mono" href="/complaint/' + encodeURIComponent(e.id) + '" data-open="' + esc(e.id) + '">#' + esc(e.id) + "</a>" : '<span class="mono" style="color:var(--muted)">—</span>') + "</td>" +
         '<td class="det"><div title="Click to expand">' + (e.decision ? '<span class="pill pill-sm d-' + esc(e.decision) + '" style="margin-right:8px">' + esc(V.label(e.decision)) + "</span>" : "") + esc(e.detail.replace(/^[A-Z_ ]+ · /, e.decision ? "" : "$&")) + "</div></td></tr>";
     }).join("") : "";
     if (!rows.length) V.stateRow($("rows"), 5, "empty", ev.length ? "No events match these filters" : "No events recorded yet", ev.length ? "Clear a filter or change the search." : "Events appear as soon as a complaint is processed.");
@@ -55,7 +58,10 @@
     .catch(function () { sig = ""; V.stateRow($("rows"), 5, "error", "Could not load the audit log", V.offline(), load); }); }
   $("chips").addEventListener("click", function (e) { var b = e.target.closest("[data-f]"); if (b) { f = b.dataset.f; draw(); } });
   $("rows").addEventListener("click", function (e) { var d = e.target.closest("td.det"); if (d) d.parentNode.classList.toggle("open"); });
-  $("q").oninput = draw; document.addEventListener("vigil:changed", load); load(); setInterval(load, 4000);
+  function chain() { fetch("/api/audit/verify", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (v) {
+    $("chain-t").textContent = v.ok ? "Chain verified · " + v.count + " signed entr" + (v.count === 1 ? "y" : "ies") : "CHAIN BROKEN at entry " + v.broken_at;
+    $("chain").classList.toggle("bad", !v.ok); }).catch(function () { $("chain-t").textContent = "Chain not checked"; }); }
+  $("q").oninput = draw; document.addEventListener("vigil:changed", function () { load(); chain(); }); load(); chain(); setInterval(load, 4000);
 })();
 </script>
 {% endblock %}

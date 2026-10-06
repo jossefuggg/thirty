@@ -67,8 +67,9 @@ img { display: block; max-width: 100%; }
 .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 
 /* ================================================================ shell */
-.app { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); min-height: 100vh; }
-.sidebar { position: sticky; top: 0; height: 100vh; background: var(--bg); border-right: 1px solid var(--border); color: var(--text); display: flex; flex-direction: column; padding: var(--s3) var(--s2); }
+.app { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; padding-left: var(--sidebar-w); }
+[hidden] { display: none !important; }
+.sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w); z-index: 30; overflow-y: auto; background: var(--bg); border-right: 1px solid var(--border); color: var(--text); display: flex; flex-direction: column; padding: var(--s3) var(--s2); }
 .logo { display: flex; align-items: center; padding: 4px var(--s1) var(--s3); min-height: 64px; flex: none; }
 .logo img { height: 30px; width: auto; }
 .logo .dark-only { display: none; } [data-theme="dark"] .logo .light-only { display: none; } [data-theme="dark"] .logo .dark-only { display: block; }
@@ -106,7 +107,7 @@ img { display: block; max-width: 100%; }
 .ph { display: flex; align-items: center; gap: 16px; margin-bottom: var(--s3); min-height: 44px; }
 .ph h1 { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-36); letter-spacing: -.015em; line-height: 1.1; }
 .ph-r { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-.search { position: relative; margin-left: auto; width: 400px; }
+.search { position: relative; margin-left: auto; flex: 0 1 400px; min-width: 150px; }
 .search > .i { position: absolute; left: 12px; top: 12px; color: var(--muted); }
 .search input { width: 100%; height: 44px; border: 2px solid var(--border); border-radius: var(--r-btn); background: var(--surface); color: var(--text); padding: 0 44px 0 40px; outline: none; font-weight: 500;
   transition: border-color var(--t-fast), box-shadow var(--t-fast); }
@@ -128,7 +129,11 @@ img { display: block; max-width: 100%; }
 .live.off { color: var(--coral-text); border-color: var(--coral-text); } .live.off i { background: var(--coral-text); }
 .live.on { color: var(--text); border-color: var(--text); }
 .live.on i { background: var(--text); animation: ping 1.2s var(--ease) infinite; }
-.now { text-align: right; line-height: 1.2; white-space: nowrap; min-width: 112px; }
+.now { text-align: right; line-height: 1.2; white-space: nowrap; min-width: 112px; flex: none; }
+.help { flex: none; }
+@media (max-width: 1500px) { .org span:not(.org-m), .org-unit { display: none; } .now span { display: none; } .now { min-width: 0; } .topbar { gap: var(--s2); } }
+@media (max-width: 1320px) { .sample { font-size: 0; gap: 0; width: 36px; padding: 0; justify-content: center; } .sample .i { width: 16px; height: 16px; } .env { letter-spacing: .04em; padding: 0 10px; } }
+@media (max-width: 1200px) { :root { --sidebar-w: 216px; } .topbar { padding: 0 var(--s3); } main.content { padding: var(--s3); } }
 .now b { display: block; font-size: var(--fs-16); font-weight: 800; font-variant-numeric: tabular-nums; }
 .now span { font-size: var(--fs-12); color: var(--muted); }
 .content { padding: var(--s3) var(--s4) var(--s4); flex: 1; min-width: 0; }
@@ -260,7 +265,7 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
   .app { display: block; } .main { display: block; }
   .topbar { position: static; height: auto; padding: 0 0 12px; border-bottom: 2px solid var(--text); background: none; margin-bottom: 16px; }
   .topbar::before { content: "THIRTY · Medical device complaint reporting"; font-weight: 800; letter-spacing: .12em; font-size: 11px; color: var(--text); margin-right: 16px; }
-  .content { padding: 0; }
+  main.content { padding: 0; }
   .card { border: 1px solid var(--border); break-inside: avoid; }
 }
 
@@ -305,7 +310,7 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
 
   <div class="main">
     <header class="topbar">
-      <div class="org"><span class="org-m">{{ WS.org[:1] }}</span>{{ WS.org }} <span>·</span> {{ WS.unit }}</div>
+      <div class="org"><span class="org-m">{{ WS.org[:1] }}</span>{{ WS.org }} <span>·</span> <span class="org-unit">{{ WS.unit }}</span></div>
       <div class="search">
         {{ icon('search') }}
         <input id="q" type="search" placeholder="Search complaints by ID, device or text" autocomplete="off" spellcheck="false" aria-label="Search complaints">
@@ -330,7 +335,7 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
 <aside class="drawer" id="drawer" aria-hidden="true"></aside>
 <div class="modal" id="modal"><div class="modal-c" role="dialog" aria-modal="true" aria-labelledby="modal-t">
   <h3 id="modal-t">Who is reviewing?</h3>
-  <p>Your name is written to decisions.csv and the audit trail with this decision.</p>
+  <p id="modal-meaning">Your name is written to decisions.csv and the audit trail with this decision.</p>
   <div class="field"><label for="modal-name">Reviewer name</label><input class="input" id="modal-name" maxlength="60" placeholder="e.g. A. Rivera, Regulatory Affairs" autocomplete="name"></div>
   <div class="acts"><button class="btn btn-secondary" id="modal-cancel">Cancel</button><button class="btn btn-primary" id="modal-ok">Confirm</button></div>
 </div></div>
@@ -427,10 +432,12 @@ V.toast = function (msg, err) {
   setTimeout(function () { t.style.transition = "opacity .25s"; t.style.opacity = 0; setTimeout(function () { t.remove(); }, 260); }, 3600);
 };
 /* reviewer name modal: resolves with the name, or null if cancelled */
-V.askName = function (title) {
+V.MEANINGS = { approve: "I approve this Form 3500A draft for submission to the regulator.", info: "I am requesting more information before a reporting decision.", undo: "I am reverting the previous decision to pending review." };
+V.askName = function (title, meaning) {
   var saved = ""; try { saved = localStorage.getItem("vigil-reviewer") || ""; } catch (e) {}
   return new Promise(function (resolve) {
     $("modal-t").textContent = title || "Who is reviewing?"; $("modal-name").value = saved;
+    $("modal-meaning").textContent = (meaning ? "Signature meaning: \u201c" + meaning + "\u201d " : "") + "Your name, this meaning and the time are written to the hash-chained audit trail.";
     var sync = function () { $("modal-ok").disabled = !$("modal-name").value.trim(); };  // never log an empty / anonymous reviewer
     $("modal-name").oninput = sync; sync();
     $("modal").classList.add("show"); setTimeout(function () { $("modal-name").focus(); $("modal-name").select(); }, 60);
@@ -444,10 +451,10 @@ V.askName = function (title) {
 };
 /* approve / request info -> decisions.csv (under the pipeline's lock) */
 V.act = function (cid, kind) {
-  return V.askName(kind === "approve" ? "Approve #" + cid : "Request info for #" + cid).then(function (name) {
+  return V.askName(kind === "approve" ? "Approve #" + cid : "Request info for #" + cid, V.MEANINGS[kind]).then(function (name) {
     if (!name) return null;
     return fetch("/api/complaint/" + encodeURIComponent(cid) + "/action", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: kind, name: name }) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      body: JSON.stringify({ kind: kind, name: name, meaning: V.MEANINGS[kind] }) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (x) { V.toast(x.ok ? "#" + cid + (kind === "approve" ? " approved by " : ": info requested by ") + name : x.j.error, !x.ok);
         document.dispatchEvent(new CustomEvent("vigil:changed")); return x; })
       .catch(function () { V.toast("Could not reach the console", true); });

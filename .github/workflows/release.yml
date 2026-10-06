@@ -99,7 +99,7 @@ jobs:
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --title "Thirty $VERSION" --notes "Installers built by the Release workflow." --target "$GITHUB_SHA"
           fi
           shopt -s nullglob
-          FILES=(desktop/dist/*.dmg desktop/dist/*.zip desktop/dist/*.exe desktop/dist/*.AppImage desktop/dist/*.deb desktop/dist/*.yml desktop/dist/*.blockmap)
+          FILES=(desktop/dist/*.dmg desktop/dist/*.zip desktop/dist/*.exe desktop/dist/*.AppImage desktop/dist/*.deb desktop/dist/latest*.yml desktop/dist/*.blockmap)
           gh release upload "$TAG" "${FILES[@]}" --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Upload build output

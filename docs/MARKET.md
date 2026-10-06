@@ -142,6 +142,8 @@ Medical Devices Regulations s.59–61.1: preliminary report **≤10 days** for d
 
 ## 5. Value-proposition recommendations
 
+Implementation status of the P0 rows is tracked in [`COMPLIANCE.md`](COMPLIANCE.md) §5.
+
 | P | Feature / change | Why (evidence) | Effort | Needs model? |
 |---|---|---|---|---|
 | **P0** | **Reportability decision tree with justification capture** (FDA 803 + EU Art. 87 + HC + MHRA branches; every "no" gets a rationale, reviewer, timestamp) | "did not document rationale" is the recurring 483/WL finding; Veeva/SmartSolve sell decision trees; 803.18 requires deliberations on file | M | No (model drafts the rationale text; tree is deterministic) |

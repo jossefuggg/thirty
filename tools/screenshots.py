@@ -82,6 +82,18 @@ def main():
                 page.wait_for_timeout(1200)  # pages poll their JSON once more after load
                 page.screenshot(path=os.path.join(a.out, name + ".png"), full_page=True)
                 print("wrote", name)
+            # reportability decision recorded (EU + UK clocks on) and the submission pack button
+            urllib.request.urlopen(urllib.request.Request(base + "/api/workspace", data=_json.dumps({"org": "Northwind Medical", "unit": "Quality", "jurisdictions": ["US", "EU", "UK"]}).encode(),
+                                                          headers={"Content-Type": "application/json"}), timeout=10).read()
+            urllib.request.urlopen(urllib.request.Request(base + f"/api/complaint/{ids[0]}/decision", data=_json.dumps({
+                "answers": {"death": "no", "serious_injury": "yes", "malfunction_likely": "no", "remedial": "no", "public_health_threat": "no", "unanticipated": "yes", "similar_investigated": "no"},
+                "rationale": "Loss of ventilation led to hospital treatment; intervention was needed to preclude permanent impairment.", "name": "A. Rivera",
+                "fields": {"udi": "(01)00812345000012(21)SN4471"}}).encode(), headers={"Content-Type": "application/json"}), timeout=10).read()
+            page.goto(base + f"/complaint/{ids[0]}", wait_until="networkidle"); page.wait_for_timeout(800)
+            page.evaluate("document.getElementById('f-decision').scrollIntoView()"); page.wait_for_timeout(300)
+            page.screenshot(path=os.path.join(a.out, "25-decision-record.png"), full_page=False); print("wrote 25-decision-record")
+            page.goto(base + "/audit", wait_until="networkidle"); page.wait_for_timeout(1200)
+            page.screenshot(path=os.path.join(a.out, "26-audit-chain.png"), full_page=False); print("wrote 26-audit-chain")
             # detail drawer open from the Command Center
             page.goto(base + "/", wait_until="networkidle"); page.wait_for_timeout(1000)
             page.click("#feed [data-open]"); page.wait_for_timeout(800)

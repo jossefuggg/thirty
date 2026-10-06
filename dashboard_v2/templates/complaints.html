@@ -4,6 +4,9 @@
   .pg-wrap { display: flex; flex-direction: column; height: calc(100vh - var(--topbar-h) - var(--s3) * 2 - 68px); min-height: 520px; }
   .pg-wrap .card { display: flex; flex-direction: column; min-height: 0; flex: 1; }
   .scroll { overflow: auto; flex: 1; min-height: 0; }
+  /* narrow windows: drop the columns the drawer shows anyway (category, source), then received */
+  @media (max-width: 1500px) { .tbl th:nth-child(5), .tbl td:nth-child(5), .tbl th:nth-child(11), .tbl td:nth-child(11) { display: none; } }
+  @media (max-width: 1320px) { .tbl th:nth-child(2), .tbl td:nth-child(2) { display: none; } }
   .fl { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 4px 0 8px; }
   .fl:first-child { margin-left: 0; }
   .tgl { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text); cursor: pointer; white-space: nowrap; }

@@ -45,6 +45,36 @@
   .model-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
   .model-line .i { width: 16px; height: 16px; color: var(--muted); }
 
+  /* ---------- reportability decision tree ---------- */
+  .dec { padding: var(--s3); display: grid; gap: var(--s2); }
+  .qs { display: grid; gap: 10px; }
+  .q { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 12px 14px; border-radius: var(--r-btn); background: var(--hover); }
+  .q.q-off { opacity: .55; }
+  .qt2 b { display: block; font-size: var(--fs-14); font-weight: 800; } .qt2 span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+  .qt2 em { display: block; font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+  .seg { display: inline-flex; border: 2px solid var(--border-2); border-radius: var(--r-pill); overflow: hidden; background: var(--surface); flex: none; }
+  .seg label { position: relative; } .seg input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+  .seg span { display: block; padding: 0 14px; height: 32px; line-height: 32px; font-size: 13px; font-weight: 800; color: var(--muted); cursor: pointer; }
+  .seg label + label span { border-left: 2px solid var(--border-2); }
+  .seg input:checked + span { background: var(--text); color: var(--bg); }
+  .seg input[value=yes]:checked + span { background: var(--t-coral); color: var(--t-ink); }
+  .seg input[value=unknown]:checked + span { background: var(--t-amber); color: var(--t-ink); }
+  .seg input:focus-visible + span { box-shadow: var(--t-focus); }
+  .dec-out { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 4px 16px; align-items: baseline; padding: 12px 16px; border: 2px solid var(--text); border-radius: var(--r-btn); }
+  .dec-out b { font-size: var(--fs-20); font-weight: 800; } .dec-out b.rep { color: var(--coral-text); } .dec-out span:last-child { font-size: 13px; color: var(--muted); }
+  .dec-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
+  .dec .field { display: grid; gap: 6px; } .dec .field label { font-size: 13px; font-weight: 700; } .dec .hint { font-size: 12px; color: var(--muted); }
+  .dec .req-mark { font-weight: 500; color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .dec textarea.input { resize: vertical; min-height: 96px; line-height: 1.5; padding: 12px 14px; height: auto; }
+  .rec-fields summary { cursor: pointer; font-weight: 700; font-size: var(--fs-14); list-style: none; display: inline-flex; gap: 6px; align-items: center; }
+  .rec-fields summary::-webkit-details-marker { display: none; } .rec-fields summary .i { width: 16px; height: 16px; transition: transform var(--t); } .rec-fields[open] summary .i { transform: rotate(90deg); }
+  .rec-fields .dec-grid { margin-top: var(--s2); }
+  .dec-acts { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; } .dec-acts .sig { font-size: 12px; color: var(--muted); max-width: 46ch; } .dec-acts .res { font-size: 13px; font-weight: 700; margin-left: auto; }
+  .clocks { padding: 0 var(--s3) var(--s3); } .clocks .k { margin-bottom: 10px; }
+  .ctbl { width: 100%; border-collapse: collapse; font-size: 13px; } .ctbl th { text-align: left; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  .ctbl td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; } .ctbl td span { display: block; font-size: 12px; color: var(--muted); } .ctbl td b { font-weight: 800; }
+  .ctbl tr.hot .left { color: var(--coral-text); font-weight: 800; } .ctbl .left { font-weight: 800; white-space: nowrap; }
+
   /* ---------- complaint text ---------- */
   .qt { font-size: var(--fs-16); line-height: 1.75; color: var(--text); padding: var(--s2) var(--s3); border-left: 4px solid var(--text); background: var(--hover); border-radius: 0 var(--r-btn) var(--r-btn) 0; white-space: pre-wrap; }
   .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s2); margin-top: var(--s2); }
@@ -204,6 +234,8 @@
       </div>
     </section>
 
+    <section class="card" id="f-decision">{% include "_detail_decision.html" %}</section>
+
     <section class="card">
       <div class="card-h"><h2>{{ icon('file') }}Complaint text</h2>{% if r.src %}<span class="aside">FDA MAUDE report {{ r.src.report_number }}</span>{% endif %}</div>
       <div class="cb">
@@ -317,15 +349,45 @@
     var a = e.target.closest("[data-act]");
     if (a && a.closest("#f-review")) { e.stopPropagation(); a.disabled = true; V.act(CID, a.dataset.act).then(function () { a.disabled = false; refresh(); }); return; }
     var u = e.target.closest("[data-undo]");
-    if (u) { V.askName("Undo decision on #" + CID).then(function (name) {  // the undo is attributed in the audit trail too
+    if (u) { V.askName("Undo decision on #" + CID, V.MEANINGS.undo).then(function (name) {  // the undo is attributed in the audit trail too
         if (!name) return;
         fetch("/api/complaint/" + encodeURIComponent(CID) + "/action", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ kind: "undo", name: name }) })
+          body: JSON.stringify({ kind: "undo", name: name, meaning: V.MEANINGS.undo }) })
           .then(function (r) { return r.json(); }).then(function (j) { V.toast(j.ok ? "#" + CID + " is back in the review queue" : j.error, !j.ok); refresh(); }); }); return; }
     if (e.target.closest("[data-pdf]")) { $("lb-frame").src = "/reports/" + encodeURIComponent(CID) + ".pdf#view=FitH"; $("lb").classList.add("show"); return; }
     if (e.target.closest("[data-lb-close]") || e.target === $("lb")) { $("lb").classList.remove("show"); }
   }, true);
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("lb").classList.contains("show")) { e.stopPropagation(); $("lb").classList.remove("show"); } }, true);
+  /* reportability decision: live outcome from the answers, then record it */
+  function decAnswers() { var a = {}; document.querySelectorAll("#dec-form .qs input:checked").forEach(function (i) { a[i.name] = i.value; }); return a; }
+  function decOutcome() {
+    var a = decAnswers(), out = $("dec-outcome"), basis = $("dec-basis"); if (!out) return;
+    var dec, cat, b;
+    if (a.death === "yes") { dec = "REPORTABLE"; cat = "Death"; b = "21 CFR 803.50(a)(1)"; }
+    else if (a.serious_injury === "yes") { dec = "REPORTABLE"; cat = "Serious injury"; b = "21 CFR 803.50(a)(1)"; }
+    else if (a.malfunction_likely === "yes") { dec = "REPORTABLE"; cat = "Malfunction"; b = "21 CFR 803.50(a)(2)"; }
+    else if ([a.death, a.serious_injury, a.malfunction_likely].indexOf("unknown") >= 0 || !a.death || !a.serious_injury || !a.malfunction_likely) { dec = "NEEDS_INFO"; cat = ""; b = "answer the first three questions, or mark what is unknown"; }
+    else { dec = "NOT_REPORTABLE"; cat = ""; b = "no MDR required · rationale still goes on file"; }
+    var five = dec === "REPORTABLE" && a.remedial === "yes";
+    out.textContent = V.label(dec) + (cat ? " · " + cat : "") + (five ? " · 5-day" : ""); out.className = dec === "REPORTABLE" ? "rep" : "";
+    basis.textContent = b + (five ? " · 803.53" : "") + (dec === "REPORTABLE" && a.public_health_threat === "yes" ? " · EU/UK 2-day" : "");
+  }
+  document.addEventListener("change", function (e) { if (e.target.closest("#dec-form .qs")) decOutcome(); });
+  decOutcome();
+  document.addEventListener("submit", function (e) {
+    var f = e.target.closest("#dec-form"); if (!f) return; e.preventDefault();
+    var name = $("dec-name").value.trim(); if (!name) { $("dec-name").focus(); V.toast("Enter your name first.", true); return; }
+    try { localStorage.setItem("vigil-reviewer", name); } catch (x) {}
+    var fields = {}; f.querySelectorAll("[data-field]").forEach(function (i) { fields[i.dataset.field] = i.value; });
+    $("dec-save").disabled = true; $("dec-res").textContent = "Recording…";
+    fetch("/api/complaint/" + encodeURIComponent(CID) + "/decision", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers: decAnswers(), rationale: $("dec-rationale").value, name: name, aware: $("dec-aware").value, fields: fields }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) { $("dec-save").disabled = false; $("dec-res").textContent = x.ok ? "Recorded" : x.j.error;
+        V.toast(x.ok ? "Decision recorded for #" + CID + " by " + name : x.j.error, !x.ok); if (x.ok) setTimeout(function () { location.reload(); }, 500); })
+      .catch(function () { $("dec-save").disabled = false; $("dec-res").textContent = "Could not reach the console"; });
+  }, true);
+  if (!$("dec-name").value) { try { $("dec-name").value = localStorage.getItem("vigil-reviewer") || ""; } catch (x) {} }
   document.addEventListener("vigil:changed", refresh);
   window.addEventListener("load", function () { if (!location.hash) window.scrollTo(0, 0); });  // a PDF iframe can steal scroll
   refresh(); setInterval(refresh, 3000);

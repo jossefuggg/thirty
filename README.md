@@ -20,9 +20,24 @@ at the Dell x NVIDIA AI Hackathon (Boston, 3 October 2026). Progress and plan:
 3. **Human:** approves every decision in the console (or in Telegram on the hackathon setup). Nothing
    is silently dropped; every decision is logged with its reason.
 
-Screens: Command Center, Complaints, complaint detail, Compliance Clock, Trends, Audit Log, Intake
-inbox, Integrations, Demo Control, Plugins, Licence & updates, first-run setup. Screenshots in
-[`docs/screenshots/`](docs/screenshots/).
+Screens: Command Center, Complaints, complaint detail (with the reportability decision record),
+Compliance Clock, Trends, Audit Log, Intake inbox, Integrations, Demo Control, Plugins, Licence &
+updates, first-run setup. Screenshots in [`docs/screenshots/`](docs/screenshots/).
+
+## Compliance record
+
+What an inspector asks for, built in and model-free ([`docs/COMPLIANCE.md`](docs/COMPLIANCE.md)):
+
+* **Reportability decision record** (21 CFR 803.18): a seven-question tree pre-filled by the agent,
+  confirmed by a named reviewer with a written rationale, also for "not reportable". Optional
+  21 CFR 820.35 complaint-record fields.
+* **Reporting clocks per jurisdiction** from the awareness date: US FDA 30 / 5 work days, EU MDR and
+  UK MHRA 2 / 10 / 15 days, Health Canada 10 / 30 days. Enabled per site under Licence & updates.
+* **Signed, hash-chained audit trail**: every approve, info request, undo and recorded decision is
+  written with the reviewer's name, the meaning of the signature and the time; the Audit Log verifies
+  the chain and exports it.
+* **Submission pack**: one zip per complaint with the drafted 3500A, the decision record, the clocks
+  and the signed audit entries. A human files it through the regulator's channel.
 
 ## Run it in development
 
