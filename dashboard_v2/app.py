@@ -987,6 +987,17 @@ def kpis(rows):
         out[k] = {"value": len(hits),
                   "delta5": sum(t >= now - dt.timedelta(minutes=5) for t in hits),
                   "spark": [sum(t <= e for t in hits) for e in edges]}
+    # one line of context under each number (the sparkline only shows while something is happening)
+    open_rows = [r for r in rows if is_open(r)]
+    lefts = sorted(days_left(r) for r in open_rows if days_left(r) is not None)
+    week = sum(1 for r in rows if status_kind(r.get("status")) == "appr" and r["id"] in appr_t and appr_t[r["id"]][:10] >= (today - dt.timedelta(days=7)).isoformat())
+    out["processed"]["caption"] = "since midnight"
+    out["reportable"]["caption"] = f"of {len(rows)} complaints"
+    out["needs_info"]["caption"] = "waiting on the reporter"
+    soon = [d for d in lefts if 0 <= d <= 7]
+    out["due7"]["caption"] = ("next one today" if soon and soon[0] == 0 else f"next in {soon[0]} day{'s' if soon[0] != 1 else ''}") if soon else "nothing due this week"
+    out["overdue"]["caption"] = f"oldest {-lefts[0]} day{'s' if lefts[0] != -1 else ''} over" if lefts and lefts[0] < 0 else "none overdue"
+    out["approved"]["caption"] = f"{week} in the last 7 days"
     return out
 
 
