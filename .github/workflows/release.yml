@@ -70,6 +70,10 @@ jobs:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: |
+          # An empty secret arrives as an empty variable, which electron-builder treats as a certificate path.
+          for v in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID WIN_CSC_LINK WIN_CSC_KEY_PASSWORD; do
+            if [ -z "${!v:-}" ]; then unset "$v"; fi
+          done
           ARGS="--publish always"
           case "${{ runner.os }}" in
             macOS)
