@@ -37,6 +37,7 @@ def main():
     from playwright.sync_api import sync_playwright
 
     data = tempfile.mkdtemp(prefix="thirty-shots-")
+    os.environ["VIGIL_DIR"] = data
     ids = sample_data.seed(data)
     port = free_port()
     env = {**os.environ, "VIGIL_DIR": data, "VIGIL_CONSOLE_PORT": str(port),
@@ -50,6 +51,23 @@ def main():
         if not wait_for(base + "/api/health"):
             sys.exit("console did not start")
         os.makedirs(a.out, exist_ok=True)
+        # first-run setup (no setup.json yet): the three steps, then complete it through the API
+        with sync_playwright() as p:
+            exe = os.environ.get("THIRTY_CHROMIUM")
+            browser = p.chromium.launch(executable_path=exe) if exe else p.chromium.launch()
+            page = browser.new_context(viewport={"width": 1440, "height": 900}, reduced_motion="reduce").new_page()
+            page.goto(base + "/", wait_until="networkidle"); page.wait_for_timeout(600)
+            page.screenshot(path=os.path.join(a.out, "20-setup-welcome.png"), full_page=True); print("wrote 20-setup-welcome")
+            page.click("[data-next]"); page.wait_for_timeout(300)
+            page.screenshot(path=os.path.join(a.out, "21-setup-data.png"), full_page=True); print("wrote 21-setup-data")
+            page.click(".step.on [data-next]"); page.wait_for_timeout(300); page.click("[data-agent='local']"); page.wait_for_timeout(300)
+            page.screenshot(path=os.path.join(a.out, "22-setup-agent.png"), full_page=True); print("wrote 22-setup-agent")
+            page.click("[data-agent='sample']"); page.click(".step.on [data-next]"); page.wait_for_timeout(300)
+            page.screenshot(path=os.path.join(a.out, "23-setup-done.png"), full_page=True); print("wrote 23-setup-done")
+            browser.close()
+        import json as _json
+        req = urllib.request.Request(base + "/api/setup", data=_json.dumps({"mode": "explore", "agent": "sample"}).encode(), headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=10).read()
         shots = [("01-command-center", "/"), ("02-complaints", "/complaints"), ("03-complaint-detail", f"/complaint/{ids[0]}"),
                  ("04-compliance-clock", "/clock"), ("05-trends", "/trends"), ("06-audit-log", "/audit"), ("07-intake-inbox", "/intake"),
                  ("08-integrations", "/integrations"), ("09-demo-control", "/demo"), ("10-not-found", "/complaint/missing-id"),

@@ -11,7 +11,7 @@ as phases land.
 - [x] Phase 2 — Demo mode with sample data, mock agent (reviewed)
 - [x] Phase 3 — The agent becomes a plugin
 - [x] Phase 4 — Desktop app
-- [ ] Phase 5 — First-run setup
+- [x] Phase 5 — First-run setup
 - [ ] Phase 6 — Installers
 - [ ] Phase 7 — Licensing and updates (scaffold only)
 - [ ] Finish — README, final PR summary

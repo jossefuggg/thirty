@@ -10,7 +10,7 @@ import copy, csv, datetime as dt, fcntl, io, json, os, re, secrets, shutil, sign
 from collections import defaultdict
 
 import requests
-from flask import Flask, abort, jsonify, render_template, request, send_from_directory
+from flask import Flask, abort, jsonify, redirect, render_template, request, send_from_directory
 
 if getattr(sys, "frozen", False):  # PyInstaller build (desktop app): everything is unpacked under _MEIPASS
     CODE_DIR = sys._MEIPASS
@@ -20,7 +20,7 @@ else:
     CODE_DIR = os.path.dirname(HERE)  # the repository / installed app: vigil.py, the thirty package, demo_set.csv
 if CODE_DIR not in sys.path:
     sys.path.insert(0, CODE_DIR)
-from thirty import config as tconfig, plugins, sample_data  # noqa: E402
+from thirty import config as tconfig, plugins, sample_data, setup as tsetup  # noqa: E402
 from thirty.agents import get_agent  # noqa: E402
 
 VIGIL_DIR = tconfig.data_dir()  # the data folder (VIGIL_DIR env; defaults to the repository root)
@@ -43,7 +43,10 @@ try:
     from thirty import __version__ as VERSION  # single source of truth: thirty/__init__.py
 except Exception:
     pass
-WORKSPACE = {"org": "Northwind Medical", "unit": "Quality", "env": "ON-PREM · PRODUCTION", "env_short": "ON-PREM"}
+def workspace():
+    """Top-bar identity: the site chosen at first-run setup, or the sample company."""
+    ws = tsetup.workspace()
+    return {"org": ws["org"], "unit": ws["unit"], "mode": ws["mode"], "env": "ON-PREM · PRODUCTION", "env_short": "ON-PREM"}
 
 app = Flask(__name__, template_folder=os.path.join(HERE, "templates"), static_folder=os.path.join(HERE, "static"))
 import logging; logging.getLogger("werkzeug").setLevel(logging.WARNING)  # polling would flood console.log
@@ -672,9 +675,46 @@ NAV = [("home", "/", "Command Center", "grid"), ("intake", "/intake", "Intake in
 @app.context_processor
 def _globals():
     from markupsafe import Markup
-    return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": WORKSPACE, "SOURCES": SOURCES,
+    return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": workspace(), "SOURCES": SOURCES,
             "DEMO_MODE": demo_mode(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name},
             "icon": lambda name: Markup(ICONS.get(name, ""))}
+
+
+SETUP_FREE = ("/setup", "/api/setup", "/api/plugins", "/api/health", "/static/")
+
+
+@app.before_request
+def _first_run():
+    """Until first-run setup is complete, every page goes to /setup (API calls answer 409)."""
+    if tsetup.required() and not request.path.startswith(SETUP_FREE):
+        if request.path.startswith("/api/"):
+            return jsonify(error="setup required", setup="/setup"), 409
+        return redirect("/setup")
+
+
+@app.route("/setup")
+def setup_page():
+    if not tsetup.required() and request.args.get("again") != "1":
+        return redirect("/")
+    return render_template("setup.html", data_dir=VIGIL_DIR, version=VERSION)
+
+
+@app.post("/api/setup")
+def api_setup():
+    d = request.get_json(silent=True) or {}
+    mode, agent = d.get("mode") or "explore", d.get("agent") or "sample"
+    try:
+        if agent == "local":
+            plugins.update_plugin("local", enabled=True, settings=d.get("local") or {})
+        if not plugins.forced_by_env():
+            plugins.set_active(agent)
+    except plugins.PluginError as e:
+        return jsonify(error=str(e)), 400
+    st = tsetup.complete(mode, d.get("org"), d.get("unit"), agent)
+    if mode == "explore" and not os.path.exists(LOG):
+        sample_data.seed(VIGIL_DIR); _cache.update(rows=[], mtime=None)
+    HEALTH.update(model=_check_model(), agent={"id": tconfig.agent_id(), "name": get_agent().name}, demo_mode=demo_mode())
+    return jsonify(ok=True, setup=st, agent=get_agent().name)
 
 
 @app.route("/")
@@ -1398,7 +1438,7 @@ def demo():
 
 def ensure_sample_data():
     """Demo mode: seed on first run, and reseed once a day so the deadlines stay relative to today."""
-    if demo_mode() and (not os.path.exists(LOG) or sample_data.seed_date(VIGIL_DIR) != dt.date.today()):
+    if demo_mode() and tsetup.wants_sample_data() and (not os.path.exists(LOG) or sample_data.seed_date(VIGIL_DIR) != dt.date.today()):
         print(f"Demo mode: writing sample data to {VIGIL_DIR}", flush=True)
         sample_data.seed(VIGIL_DIR)
         _cache.update(rows=[], mtime=None)

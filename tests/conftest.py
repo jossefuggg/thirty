@@ -7,13 +7,15 @@ sys.path.insert(0, ROOT)
 os.environ.setdefault("THIRTY_AGENT", "sample")      # tests never need a model
 os.environ.setdefault("THIRTY_SAMPLE_DELAY", "0")    # no fake latency in tests
 os.environ.setdefault("THIRTY_DEMO_DELAY", "0")
-from thirty import sample_data  # noqa: E402
+from thirty import sample_data, setup  # noqa: E402
 
 
 @pytest.fixture(scope="session")
 def data_dir(tmp_path_factory):
     d = str(tmp_path_factory.mktemp("thirty-data"))
+    os.environ["VIGIL_DIR"] = d
     sample_data.seed(d)
+    setup.complete("explore")  # first-run setup done; test_setup.py covers the flow itself
     return d
 
 
