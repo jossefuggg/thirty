@@ -68,7 +68,7 @@ Nothing to sign. Optionally publish a GPG-signed checksum file.
 ### GitHub
 `GITHUB_TOKEN` is provided automatically; the workflow has `contents: write` to create the release.
 `publish.owner/repo` in `desktop/electron-builder.yml` must point at the repository that hosts the
-releases (currently `jossefuggg/vigil`; change it if the repo is renamed).
+releases (`jossefuggg/thirty`; change it if the repo moves).
 
 ## 3. Auto-update (Phase 7 scaffold)
 

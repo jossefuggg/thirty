@@ -23,7 +23,7 @@ artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
 publish:
   provider: github
   owner: jossefuggg
-  repo: vigil
+  repo: thirty
 mac:
   category: public.app-category.medical
   target:
