@@ -66,6 +66,6 @@ def workspace():
 
 
 def wants_sample_data():
-    """Seed sample data when the user chose to explore, or before setup ran at all (demo mode default)."""
+    """Seed sample data only once the user has chosen to explore; before setup nothing is written."""
     st = load()
-    return st is None or st.get("mode") == "explore"
+    return st is not None and st.get("mode") == "explore"

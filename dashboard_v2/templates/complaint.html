@@ -174,7 +174,7 @@
 </div>
 <div class="meta">
   <span>Processed <b>{{ r.processed }}</b></span>
-  {% if r.received_d %}<span>FDA receipt <b>{{ r.received_d.strftime('%-d %b %Y') }}</b></span>{% endif %}
+  {% if r.received_d %}<span>FDA receipt <b>{{ fmt_day(r.received_d) }}</b></span>{% endif %}
   {% if r.product_code %}<span>Product code <b>{{ r.product_code }}</b></span>{% endif %}
   <span>Device family <b>{{ r.family }}</b></span>
   {% set sc = SOURCES.get(r.source, (r.source, 'inbox')) %}<span>Source <span class="src" style="vertical-align:-6px">{{ icon(sc[1]) }}{{ sc[0] }}</span></span>
@@ -200,7 +200,7 @@
         <div class="conf-row"><span class="k">Confidence</span>
           <div class="track {{ 'low' if r.conf < 70 }}" role="meter" aria-label="Confidence" aria-valuenow="{{ r.conf }}" aria-valuemin="0" aria-valuemax="100"><i style="width:{{ r.conf }}%"></i></div>
           <b>{{ r.conf }}%</b></div>
-        <div class="model-line">{{ icon('cpu') }}Classified on the local model · 0 bytes sent to cloud AI</div>
+        <div class="model-line">{{ icon('cpu') }}Classified by {{ AGENT.name }} on this machine · 0 bytes sent to cloud AI</div>
       </div>
     </section>
 

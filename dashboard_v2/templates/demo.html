@@ -38,7 +38,7 @@
 
 {% block body %}
 <h1>Demo Control</h1>
-{% if DEMO_MODE %}
+{% if SAMPLE_DATA %}
 <p class="lede">Sample data is on: no model is configured, so the <b>{{ AGENT.name }}</b> answers with pre-written results. Reset the sample data, or replay {{ commands.replay.split('·')[1].split('incoming')[0].strip() }} incoming complaints through the pipeline and watch them arrive on the Command Center.</p>
 {% else %}
 <p class="lede">Reset to a clean slate, replay the curated complaints through the pipeline, and watch the agent's output. Open the Command Center on a second screen to see complaints arrive.</p>
@@ -46,11 +46,11 @@
 
 <div class="grid3">
   <section class="card ctl">
-    <h3>{{ icon('reset') }}{{ 'Reset sample data' if DEMO_MODE else 'Reset' }}</h3>
-    {% if DEMO_MODE %}<p>Rewrites the 40 sample complaints, their drafted Form 3500A PDFs and the device history with dates relative to today. Reviewer actions made on sample data are discarded.{% if seeded %} Last reset: {{ seeded.strftime('%-d %b %Y') }}.{% endif %}</p>
-    {% else %}<p>Clean slate for a rehearsal or a live demo: deletes decisions.csv, all draft PDFs and outbox.txt, and clears the sandbox copies.</p>{% endif %}
+    <h3>{{ icon('reset') }}{{ 'Reset sample data' if SAMPLE_DATA else 'Reset' }}</h3>
+    {% if SAMPLE_DATA %}<p>Rewrites the 40 sample complaints, their drafted Form 3500A PDFs and the device history with dates relative to today. Reviewer actions made on sample data are discarded.{% if seeded %} Last reset: {{ fmt_day(seeded) }}.{% endif %}</p>
+    {% else %}<p>Clean slate: deletes every complaint, draft PDF and queued intake item in the data folder. Settings, plugins and the licence stay.</p>{% endif %}
     <code>{{ commands.reset }}</code>
-    <button class="btn btn-danger" id="b-reset" data-action="reset">{{ 'Reset sample data' if DEMO_MODE else 'Reset' }}</button>
+    <button class="btn btn-danger" id="b-reset" data-action="reset">{{ 'Reset sample data' if SAMPLE_DATA else 'Reset' }}</button>
   </section>
   <section class="card ctl">
     <h3>{{ icon('play') }}Start demo replay</h3>
@@ -77,7 +77,7 @@
 <section class="term">
   <div class="term-h"><i></i><i></i><i></i><span>pipeline output</span>
     <label><input type="checkbox" id="follow" checked> Follow output</label></div>
-  <pre class="out" id="out"><span class="idle">{{ 'No run yet. Press Start demo replay to feed new complaints in, or Reset sample data to start over.' if DEMO_MODE else 'No run yet. Press Reset, then Start demo replay.' }}</span></pre>
+  <pre class="out" id="out"><span class="idle">{{ 'No run yet. Press Start demo replay to feed new complaints in, or Reset sample data to start over.' if SAMPLE_DATA else 'No run yet. Start demo replay feeds six sample complaints through the pipeline; Reset clears the data folder.' }}</span></pre>
 </section>
 {% endblock %}
 
@@ -115,7 +115,7 @@
   document.querySelectorAll("[data-action]").forEach(function (b) {
     b.addEventListener("click", function () {
       var a = b.dataset.action;
-      if (a === "reset" && !confirm({{ ("Reset the sample data? The 40 sample complaints are rewritten for today and reviewer actions on them are discarded.\n\nContinue?" if DEMO_MODE else "Reset deletes decisions.csv, every draft PDF, outbox.txt and the sandbox copies.\n\nContinue?")|tojson }})) return;
+      if (a === "reset" && !confirm({{ ("Reset the sample data? The 40 sample complaints are rewritten for today and reviewer actions on them are discarded.\n\nContinue?" if SAMPLE_DATA else "Reset deletes every complaint, draft PDF and queued intake item. This cannot be undone.\n\nContinue?")|tojson }})) return;
       $("err").textContent = ""; b.disabled = true;
       fetch("/api/demo/" + a, { method: "POST" }).then(function (r) { return r.json(); })
         .then(function (j) { if (j.error) $("err").textContent = j.error; }).finally(function () { setTimeout(poll, 150); });

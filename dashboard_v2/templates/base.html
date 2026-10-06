@@ -295,8 +295,9 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
     <div class="sys">
       <h4>System</h4>
       <div class="sys-row"><i class="led" id="sy-model"></i><span class="lbl" id="sy-model-l">{{ 'Agent' if DEMO_MODE else 'Local model' }}</span><span class="val" id="sy-model-v">Checking…</span></div>
-      <div class="sys-row"><i class="led" id="sy-tg"></i><span class="lbl">Telegram agent</span><span class="val" id="sy-tg-v">Checking…</span></div>
-      <div class="sys-row"><i class="led" id="sy-sync"></i><span class="lbl">Sandbox sync</span><span class="val" id="sy-sync-v">Checking…</span></div>
+      <div class="sys-row" id="row-tg" {% if not LOCAL_AGENT %}hidden{% endif %}><i class="led" id="sy-tg"></i><span class="lbl">Telegram agent</span><span class="val" id="sy-tg-v">Checking…</span></div>
+      <div class="sys-row" id="row-sync" {% if not LOCAL_AGENT %}hidden{% endif %}><i class="led" id="sy-sync"></i><span class="lbl">Sandbox sync</span><span class="val" id="sy-sync-v">Checking…</span></div>
+      <div class="sys-row"><i class="led ok"></i><span class="lbl">Data folder</span><span class="val" title="{{ DATA_DIR }}">Local <small>app data</small></span></div>
       <div class="cloud0"><span class="badge-local">0 bytes to cloud AI</span></div>
       <button class="theme" id="theme" type="button" aria-pressed="false">{{ icon('moon') }}<span id="theme-l">Dark mode</span></button>
     </div>
@@ -312,7 +313,7 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
         <div class="results" id="results"></div>
       </div>
       <div class="live" id="live" role="status"><i></i>LIVE</div>
-      {% if DEMO_MODE %}<a class="sample" href="/demo" title="Sample agent on invented complaints. No model is configured.">{{ icon('play') }}Sample data</a>{% endif %}
+      {% if DEMO_MODE %}<a class="sample" href="/demo" title="{{ 'Sample agent on invented complaints. No model is configured.' if WS.mode == 'explore' else 'The sample agent answers with rule-based results. Choose a real agent under Plugins.' }}">{{ icon('play') }}{{ 'Sample data' if WS.mode == 'explore' else 'Sample agent' }}</a>{% endif %}
       {% if LICENCE.state != 'licensed' %}<a class="sample" href="/settings/licence" title="{{ LICENCE.label }}">{{ icon('key') }}{{ 'Evaluation' if LICENCE.state == 'evaluation' else 'Licence' }}</a>{% endif %}
       <span class="env"><i></i>{{ WS.env_short }}</span>
       <div class="now"><b id="clock-t">--:--:--</b><span id="clock-d"></span></div>
@@ -554,6 +555,7 @@ $("help").onclick = function () { V.toast("Shortcuts: / search · Esc close pane
       var t = h.telegram || {}; set("sy-tg", t.off ? "warn" : /checking/i.test(t.label || "") ? undefined : t.ok,
         t.off ? "Not configured" : t.ok ? "Online <small>" + esc((t.label || "").replace(/^reachable · /, "")) + "</small>" : /checking/i.test(t.label || "") ? "Checking…" : "Offline <small>alerts queue</small>");
       var s = h.sync || {}; set("sy-sync", /checking/i.test(s.label || "") ? undefined : s.ok || "warn", s.ok ? "Running" : /checking/i.test(s.label || "") ? "Checking…" : "Stopped");
+      var local = h.agent && h.agent.id === "local"; $("row-tg").hidden = !local; $("row-sync").hidden = !local;
       var fresh = (h.log_changed && (h.now - h.log_changed) < 10) || Date.now() < V.liveUntil;
       $("live").classList.remove("off"); $("live").classList.toggle("on", !!fresh); $("live").title = fresh ? "New data in the last 10 s" : "Connected · watching for new complaints";
     }).catch(function () { set("sy-model", false, "Console offline"); $("live").classList.remove("on"); $("live").classList.add("off"); });

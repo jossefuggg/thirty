@@ -74,9 +74,9 @@
     </div>
     <div class="form" id="local-form" hidden>
       <div class="req"><b>What the local model needs</b>
-        <ul><li>An OpenAI-compatible server reachable from this machine, e.g. <code>http://localhost:8000/v1</code> (vLLM), <code>http://localhost:11434/v1</code> (Ollama).</li>
-            <li>A model that follows JSON instructions well; 8B parameters or larger is recommended. The hackathon ran on a 30B-class model on a workstation GPU.</li>
-            <li>About 2 model calls per complaint (classification and the Form 3500A draft), 1–30 s each depending on the hardware.</li></ul></div>
+        <ul><li>An OpenAI-compatible server on this machine or your network: <code>http://localhost:11434/v1</code> (Ollama, easiest on a laptop), <code>http://localhost:8080/v1</code> (llama.cpp), <code>http://localhost:8000/v1</code> (vLLM on a GPU server).</li>
+            <li>A model that follows JSON instructions well. On a laptop (16 GB RAM, Apple Silicon or a recent CPU): an 8B-class instruct model, about 5 GB. On a GPU workstation: 30B-class gives better reasoning.</li>
+            <li>About 2 model calls per complaint (classification and the Form 3500A draft): 5–60 s on a laptop, 1–10 s on a GPU. Complaints queue; nothing is lost while it works.</li></ul></div>
       <div class="field"><label class="label" for="base_url">Server URL</label><input class="input" id="base_url" placeholder="http://localhost:8000/v1"></div>
       <div class="field"><label class="label" for="model">Model (optional)</label><input class="input" id="model" placeholder="leave blank to use the first model the server lists"></div>
       <div class="field"><label class="label" for="api_key">API key (optional)</label><input class="input" id="api_key" type="password" autocomplete="off"></div>

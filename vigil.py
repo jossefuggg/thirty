@@ -18,7 +18,7 @@ Usage:
   python3 vigil.py reset                     # clean slate: decisions.csv, reports/, outbox.txt, sandbox copies, group session
   python3 vigil.py listen                    # standalone Telegram commands (only if OpenClaw is NOT running)
 """
-import argparse, contextlib, csv, datetime as dt, fcntl, json, os, re, shutil, subprocess, sys, tempfile, time
+import argparse, contextlib, csv, datetime as dt, json, os, re, shutil, subprocess, sys, tempfile, time
 from collections import Counter, defaultdict, deque
 
 import requests
@@ -57,6 +57,7 @@ LLM_MODEL = os.environ.get("VIGIL_LLM_MODEL", "")
 # the repository root must be importable for the thirty package (vigil.py may be run from another cwd)
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
+from thirty.filelock import lock as _flock, unlock as _funlock, LockBusy  # noqa: E402  (POSIX + Windows)
 
 # ---------------------------------------------------------------- layer 1: rules
 RED_FLAGS = {
@@ -503,7 +504,14 @@ def make_mdr(c, row):
     if FPDF is None:
         print("fpdf2 not installed - skipping MDR PDF")
         return None
-    return render_mdr_pdf(c, row, mdr_fields(c, row))
+    f = mdr_fields(c, row)
+    path = render_mdr_pdf(c, row, f)
+    try:  # the drafted fields next to the PDF: the console reads follow-up questions from here
+        with open(os.path.splitext(path)[0] + ".json", "w", encoding="utf-8") as fh:
+            json.dump(f, fh, indent=1)
+    except Exception as e:
+        print(f"WARNING: could not write draft fields for #{c['id']}: {e}")
+    return path
 
 # ---------------------------------------------------------------- log
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
@@ -519,15 +527,15 @@ _lock_depth, _lock_fd = 0, None
 def log_lock():
     global _lock_depth, _lock_fd
     if _lock_depth == 0:
-        _lock_fd = open(LOG + ".lock", "w")
-        fcntl.flock(_lock_fd, fcntl.LOCK_EX)
+        _lock_fd = open(LOG + ".lock", "a+")
+        _flock(_lock_fd, exclusive=True, blocking=True)
     _lock_depth += 1
     try:
         yield
     finally:
         _lock_depth -= 1
         if _lock_depth == 0:
-            fcntl.flock(_lock_fd, fcntl.LOCK_UN)
+            _funlock(_lock_fd)
             _lock_fd.close()
 
 def log(row):
@@ -578,8 +586,8 @@ def _nemoclaw(*args):
             end = time.time() + NEMOCLAW_WAIT
             while True:
                 try:
-                    fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB); break
-                except BlockingIOError:
+                    _flock(lk, exclusive=True, blocking=False); break
+                except LockBusy:
                     if time.time() > end:
                         raise TimeoutError(f"waited {NEMOCLAW_WAIT}s for {NEMOCLAW_LOCK}")
                     time.sleep(0.2)

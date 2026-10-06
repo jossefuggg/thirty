@@ -67,7 +67,7 @@
         "<td>" + link + "</td></tr>";
     }).join("") : "";
     if (!rows.length) V.stateRow($("rows"), 6, "empty", all ? "No items match the filters" : "No items received yet", all ? "Clear a filter or change the search." : "Send a complaint to the REST API or upload a file on Integrations.");
-    $("working").innerHTML = data.working ? '<span class="spin"></span>Classifying on the local model' : "";
+    $("working").innerHTML = data.working ? '<span class="spin"></span>Classifying with the agent' : "";
   }
   function poll() {
     fetch("/api/intake", { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (j) {

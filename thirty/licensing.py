@@ -251,10 +251,10 @@ class OfflineKeyFile(LicenseCheck):
         if left < 0:
             return base | info | {"state": "grace", "label": f"{word} expired · {grace + left} days of grace left", "days_left": left}
         if demo:
-            return base | info | {"state": "expiring" if left <= 7 else "licensed", "label": f"Demo for {info['site']} · {left} day{'s' * (left != 1)} left · ends {exp:%-d %b %Y}", "days_left": left}
+            return base | info | {"state": "expiring" if left <= 7 else "licensed", "label": f"Demo for {info['site']} · {left} day{'s' * (left != 1)} left · ends {exp.day} {exp:%b %Y}", "days_left": left}
         if left <= 30:
             return base | info | {"state": "expiring", "label": f"Licensed to {info['site']} · renews in {left} days", "days_left": left}
-        return base | info | {"state": "licensed", "label": f"Licensed to {info['site']} · until {exp:%-d %b %Y}", "days_left": left}
+        return base | info | {"state": "licensed", "label": f"Licensed to {info['site']} · until {exp.day} {exp:%b %Y}", "days_left": left}
 
 
 def check():

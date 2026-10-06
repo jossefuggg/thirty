@@ -159,7 +159,7 @@
   $("test").onclick = function () {
     var b = this; b.disabled = true; $("test-res").className = "result"; $("test-res").textContent = "Queuing…";
     fetch("/api/integrations/rest/test", { method: "POST" }).then(function (r) { return r.json(); }).then(function (j) {
-      var it = j.items[0]; $("test-res").innerHTML = 'Queued <a class="lnk" href="/intake" style="color:var(--accent-600);font-weight:600">#' + esc(it.id) + "</a> · processing on the local model";
+      var it = j.items[0]; $("test-res").innerHTML = 'Queued <a class="lnk" href="/intake" style="color:var(--accent-600);font-weight:600">#' + esc(it.id) + "</a> · processing";
       status();
     }).finally(function () { b.disabled = false; });
   };

@@ -4,9 +4,9 @@ Reads ../decisions.csv (written by vigil.py), serves the draft 3500A PDFs from .
 replays/resets of vigil.py in a subprocess, and shows live system health. vigil.py is never edited.
 Everything is local: no CDNs, no external fonts.
 
-Run in the background:  ~/hackathon/vigil/dashboard_v2/start_console.sh   ->  http://localhost:5001
+Run:  python3 dashboard_v2/app.py  ->  http://localhost:5001   (the desktop app spawns this itself)
 """
-import copy, csv, datetime as dt, fcntl, io, json, os, re, secrets, shutil, signal, subprocess, sys, tempfile, threading, time, uuid
+import copy, csv, datetime as dt, io, json, os, re, secrets, shutil, signal, subprocess, sys, tempfile, threading, time, uuid
 from collections import defaultdict
 
 import requests
@@ -22,15 +22,20 @@ if CODE_DIR not in sys.path:
     sys.path.insert(0, CODE_DIR)
 from thirty import config as tconfig, licensing, plugins, sample_data, setup as tsetup  # noqa: E402
 from thirty.agents import get_agent  # noqa: E402
+from thirty.filelock import lock as _flock, unlock as _funlock, LockBusy  # noqa: E402
 
 VIGIL_DIR = tconfig.data_dir()  # the data folder (VIGIL_DIR env; defaults to the repository root)
-demo_mode = tconfig.demo_mode  # sample agent + sample data: on automatically when no model is configured; can change at runtime
+demo_mode = tconfig.demo_mode  # the sample agent is active (no model configured); can change at runtime
+
+
+def sample_data_mode():
+    """Sample agent AND the user chose to explore with sample data (not their own site)."""
+    return demo_mode() and tsetup.wants_sample_data()
 LOG = os.path.join(VIGIL_DIR, "decisions.csv")
 LOCK = LOG + ".lock"  # the same lock file vigil.py's log_lock() uses
 REPORTS = os.path.join(VIGIL_DIR, "reports")
 OUTBOX = os.path.join(VIGIL_DIR, "outbox.txt")
 DEMO_CSV = os.path.join(CODE_DIR, "demo_set.csv")
-CHART = os.path.join(CODE_DIR, "philips_chart.png")
 HISTORY = os.path.join(VIGIL_DIR, "history.csv")  # past FDA MAUDE reports (vigil.py import-history)
 ACTIONS = os.environ.get("VIGIL_CONSOLE_ACTIONS", os.path.join(VIGIL_DIR, "actions.csv"))  # who/when for console actions
 VENV_BIN = os.path.expanduser(os.environ.get("VIGIL_VENV_BIN", "~/hackathon/venv/bin"))
@@ -77,12 +82,12 @@ def read_rows():
     if not os.path.exists(LOG):
         _cache.update(rows=[], mtime=None)
         return []
-    lockf = open(LOCK, "a")
+    lockf = open(LOCK, "a+")
     try:
         try:
-            fcntl.flock(lockf, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            _flock(lockf, exclusive=False, blocking=False)
             locked = True
-        except BlockingIOError:
+        except LockBusy:
             locked = False
         try:
             with open(LOG, newline="", encoding="utf-8") as f:
@@ -94,18 +99,20 @@ def read_rows():
         _cache["rows"] = rows
         return rows
     finally:
-        lockf.close()  # releases the flock
+        if locked:
+            _funlock(lockf)
+        lockf.close()
 
 
 def set_status(cid, status, guard):
     """Read-modify-write under vigil.py's exclusive lock. guard(old_status) -> bool decides if a row changes.
     The new file is written next to the old one and swapped in atomically, so unlocked readers never see it torn."""
-    with open(LOCK, "a") as lockf:
+    with open(LOCK, "a+") as lockf:
         deadline = time.time() + 90  # vigil.py may hold the lock through a sandbox upload (<= 60 s)
         while True:
             try:
-                fcntl.flock(lockf, fcntl.LOCK_EX | fcntl.LOCK_NB); break
-            except BlockingIOError:
+                _flock(lockf, exclusive=True, blocking=False); break
+            except LockBusy:
                 if time.time() > deadline:
                     raise TimeoutError("decisions.csv is busy, try again")
                 time.sleep(0.2)
@@ -124,6 +131,7 @@ def set_status(cid, status, guard):
                 w.writeheader(); w.writerows(rows)
             shutil.copymode(LOG, tmp)
             os.replace(tmp, LOG)
+        _funlock(lockf)
     if changed:
         threading.Thread(target=push_to_sandbox, daemon=True).start()
     return bool(changed)
@@ -177,7 +185,7 @@ def demo_commands():
     if not in_process():
         return DEMO_COMMANDS
     return {"replay": f"{get_agent().name} · {len(sample_data.INCOMING)} incoming complaints through the pipeline",
-            "reset": "reset sample data · 40 complaints, history and drafts rewritten for today" if demo_mode() else "clear decisions.csv, drafted PDFs and the intake queue"}
+            "reset": "reset sample data · 40 complaints, history and drafts rewritten for today" if sample_data_mode() else "clear decisions.csv, drafted PDFs and the intake queue"}
 
 
 class DemoRunner:
@@ -238,7 +246,7 @@ class DemoRunner:
         reseed the sample data. Same output lines as the subprocess path, so the Demo page needs no changes."""
         rc = 0
         try:
-            if kind == "reset" and demo_mode():
+            if kind == "reset" and sample_data_mode():
                 self._emit("Rewriting sample data for today…")
                 ids = sample_data.seed(VIGIL_DIR)
                 _cache.update(rows=[], mtime=None)
@@ -280,6 +288,8 @@ class DemoRunner:
             self._stop.set()
             return None
         pgid = self.proc.pid  # start_new_session: the group id is the shell's pid
+        if not hasattr(os, "killpg"):  # Windows: no process groups
+            self.proc.terminate(); return None
         for sig, wait in ((signal.SIGTERM, 4), (signal.SIGKILL, 2)):
             try:
                 os.killpg(pgid, sig)
@@ -609,15 +619,26 @@ def _check_telegram():
 
 
 def _check_sync():
-    r = subprocess.run(["pgrep", "-f", r"vigil\.py sync"], capture_output=True, text=True)
-    pids = r.stdout.split()
+    if tconfig.agent_id() != "local" or os.name != "posix":
+        return {"ok": False, "label": "not configured", "off": True}
+    try:
+        r = subprocess.run(["pgrep", "-f", r"vigil\.py sync"], capture_output=True, text=True)
+        pids = r.stdout.split()
+    except Exception:
+        pids = []
     return {"ok": bool(pids), "label": "running" if pids else "not running"}
 
 
 def health_loop():
+    last_model = 0
     while True:
-        HEALTH.update(model=_check_model(), telegram=_check_telegram(), sync=_check_sync(),
-                      checked=dt.datetime.now().strftime("%H:%M:%S"), agent={"id": tconfig.agent_id(), "name": get_agent().name}, demo_mode=demo_mode())
+        try:
+            if time.time() - last_model >= (60 if tconfig.agent_id() == "local" else 10):
+                HEALTH["model"] = _check_model(); last_model = time.time()
+            HEALTH.update(telegram=_check_telegram(), sync=_check_sync(), checked=dt.datetime.now().strftime("%H:%M:%S"),
+                          agent={"id": tconfig.agent_id(), "name": get_agent().name}, demo_mode=demo_mode())
+        except Exception as e:  # never let the health thread die
+            print("health check failed:", type(e).__name__, e, flush=True)
         time.sleep(10)
 
 # ---------------------------------------------------------------- pages / API
@@ -676,7 +697,8 @@ NAV = [("home", "/", "Command Center", "grid"), ("intake", "/intake", "Intake in
 def _globals():
     from markupsafe import Markup
     return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": workspace(), "SOURCES": SOURCES,
-            "DEMO_MODE": demo_mode(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name}, "LICENCE": licensing.check().status(),
+            "DEMO_MODE": demo_mode(), "SAMPLE_DATA": sample_data_mode(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name}, "LICENCE": licensing.check().status(),
+            "fmt_day": fmt_day, "LOCAL_AGENT": tconfig.agent_id() == "local", "DATA_DIR": VIGIL_DIR,
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 
@@ -1236,6 +1258,15 @@ def follow_up_questions(cid):
         return []
     key = (path, os.path.getmtime(path))
     if key not in _fq_cache:
+        side = os.path.join(REPORTS, f"MDR_{cid}.json")
+        if os.path.exists(side):  # written next to the PDF by vigil.make_mdr()
+            try:
+                with open(side, encoding="utf-8") as f:
+                    qs = [str(q).strip() for q in (json.load(f).get("follow_up_questions") or []) if str(q).strip()][:5]
+                _fq_cache[key] = qs
+                return qs
+            except (OSError, ValueError):
+                pass
         try:
             txt = subprocess.run(["pdftotext", "-raw", path, "-"], capture_output=True, text=True, timeout=10).stdout
         except Exception:
@@ -1280,6 +1311,11 @@ def alert_state(cid):
         return "sent"
 
 
+def fmt_day(d):
+    """'6 Oct 2026' on every OS (strftime %-d is POSIX-only)."""
+    return f"{d.day} {d:%b %Y}" if d else ""
+
+
 def fmt_time(iso):
     try:
         return dt.datetime.fromisoformat(iso).strftime("%d %b %Y, %H:%M:%S")
@@ -1305,7 +1341,7 @@ def short_time(iso):
         t = dt.datetime.fromisoformat(iso)
     except Exception:
         return ""
-    return t.strftime("%H:%M:%S") if t.date() == dt.date.today() else t.strftime("%-d %b, %H:%M")
+    return t.strftime("%H:%M:%S") if t.date() == dt.date.today() else f"{t.day} {t:%b, %H:%M}"
 
 
 def device_history(r, rows, days=90):
@@ -1340,7 +1376,7 @@ def detail(r, rows=None):
 
     # timeline: (state, title, detail, time) with state done | current | future | skip | warn
     steps = [
-        ["done", "Received", "Original FDA receipt " + rec_d.strftime("%-d %b %Y") if rec_d else "Complaint taken in", t],
+        ["done", "Received", "Original FDA receipt " + fmt_day(rec_d) if rec_d else "Complaint taken in", t],
         ["done", "Priority scored", f"{r.get('priority')} · score {r.get('score')} · distress {r.get('distress')}/5", t],
         ["done", "AI classified", f"{(r.get('decision') or '').replace('_', ' ')} · {r.get('category')} · {r.get('confidence')}% confidence", t],
         ["done" if alert == "sent" else "warn", "Telegram alert sent" if alert == "sent" else "Telegram alert queued",
@@ -1379,7 +1415,7 @@ def detail(r, rows=None):
             "history": device_history(r, rows), "family": device_family(r.get("device")), "source": source_of(cid),
             "full_text": src.get("event_description") or r.get("text") or "",
             "narrative": src.get("manufacturer_narrative") or "", "src": src,
-            "due_label": dt.date.fromisoformat(r["due_date"]).strftime("%-d %b %Y") if r.get("due_date") else ""}
+            "due_label": fmt_day(dt.date.fromisoformat(r["due_date"])) if r.get("due_date") else ""}
 
 
 @app.route("/complaint/<cid>")
@@ -1435,7 +1471,7 @@ def api_action(cid):
 @app.route("/demo")
 def demo():
     return render_template("demo.html", page="demo", commands=demo_commands(), title="Demo Control", in_process=in_process(),
-                           seeded=sample_data.seed_date(VIGIL_DIR) if demo_mode() else None, data_dir=VIGIL_DIR)
+                           seeded=sample_data.seed_date(VIGIL_DIR) if sample_data_mode() else None, data_dir=VIGIL_DIR)
 
 
 def ensure_sample_data():
@@ -1711,9 +1747,6 @@ def pdf(cid):
     return send_from_directory(REPORTS, f"MDR_{cid}.pdf", max_age=0)
 
 
-@app.route("/chart.png")
-def chart():
-    return send_from_directory(VIGIL_DIR, "philips_chart.png", max_age=0)
 
 
 def _shutdown(*_):
@@ -1725,6 +1758,7 @@ def _shutdown(*_):
 if __name__ == "__main__":
     signal.signal(signal.SIGTERM, _shutdown)
     ensure_sample_data()
+    vigil()  # point vigil.py at the data folder before any worker (console or intake.py) can process a complaint
     threading.Thread(target=health_loop, daemon=True).start()
     start_intake_worker(recover=True)  # resume anything left queued or interrupted
     if intake_mod():
