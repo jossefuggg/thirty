@@ -3,6 +3,8 @@
 
     python3 tools/make_licence.py keygen                     # prints a public key; writes the secret key file
     python3 tools/make_licence.py issue --site "Harbor Medical Devices" --org "Harbor Medical" --days 365
+    python3 tools/make_licence.py issue --site "Harbor Medical Devices" --demo --days 14      # 14-day demo
+    python3 tools/make_licence.py issue --site "Harbor Medical Devices" --expires 2027-03-31  # fixed end date
     python3 tools/make_licence.py verify <key or file>
 
 The secret key lives in THIRTY_LICENCE_SECRET (hex) or the file given by --secret (default
@@ -29,7 +31,10 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     k = sub.add_parser("keygen"); k.add_argument("--secret", default=DEFAULT_SECRET)
     i = sub.add_parser("issue"); i.add_argument("--site", required=True); i.add_argument("--org", default="")
-    i.add_argument("--days", type=int, default=365); i.add_argument("--seats", type=int, default=0); i.add_argument("--notes", default="")
+    i.add_argument("--days", type=int, default=365, help="licence length in days (any number: 7, 14, 30, 365…)")
+    i.add_argument("--expires", help="fixed end date YYYY-MM-DD (overrides --days)")
+    i.add_argument("--demo", action="store_true", help="mark the key as a demo licence (shown as Demo in the app)")
+    i.add_argument("--seats", type=int, default=0); i.add_argument("--notes", default="")
     i.add_argument("--secret", default=DEFAULT_SECRET); i.add_argument("--out", help="write the key to this file")
     v = sub.add_parser("verify"); v.add_argument("key")
     a = ap.parse_args()
@@ -45,8 +50,13 @@ def main():
         print("PUBLIC_KEY =", repr(licensing.publickey(sk).hex()), " # paste into thirty/licensing.py")
     elif a.cmd == "issue":
         today = dt.date.today()
-        payload = {"id": "LIC-" + uuid.uuid4().hex[:12].upper(), "site": a.site, "org": a.org or a.site, "issued": today.isoformat(),
-                   "expires": (today + dt.timedelta(days=a.days)).isoformat(), "seats": a.seats or None, "notes": a.notes}
+        expires = dt.date.fromisoformat(a.expires) if a.expires else today + dt.timedelta(days=a.days)
+        if expires <= today:
+            sys.exit("expiry must be in the future")
+        payload = {"id": ("DEMO-" if a.demo else "LIC-") + uuid.uuid4().hex[:12].upper(), "site": a.site, "org": a.org or a.site,
+                   "issued": today.isoformat(), "expires": expires.isoformat(), "seats": a.seats or None, "notes": a.notes,
+                   "kind": "demo" if a.demo else "site"}
+        print(f"{'demo' if a.demo else 'site'} licence for {a.site}, {(expires - today).days} days, expires {expires}", file=sys.stderr)
         key = licensing.make_key(payload, load_secret(a.secret))
         if a.out:
             with open(a.out, "w") as f:

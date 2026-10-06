@@ -6,7 +6,8 @@ and verified offline with an Ed25519 public key. Without a valid key Thirty keep
 
 Key file format (one line, <data>/licence.key):
     thirty1.<base64url payload>.<base64url signature>
-payload = canonical JSON {"id", "site", "org", "issued", "expires", "seats", "notes"}
+payload = canonical JSON {"id", "site", "org", "issued", "expires", "seats", "notes", "kind": "site"|"demo"}
+Any length works (issue --days 7 / 14 / 30 / 365 or --expires DATE); demo keys show as "Demo" and have no grace period.
 
 PUBLIC_KEY is the owner's Ed25519 public key (generated with `tools/make_licence.py keygen`); the matching
 secret key is kept outside the repository. THIRTY_LICENCE_PUBKEY overrides it (tests).
@@ -234,7 +235,9 @@ class OfflineKeyFile(LicenseCheck):
         payload, err = parse(key)
         if payload is None:
             return base | {"state": "invalid", "label": "Licence key invalid", "reason": err}
-        info = {"site": payload.get("site", ""), "org": payload.get("org", ""), "expires": payload.get("expires", ""), "id": payload.get("id", "")}
+        demo = payload.get("kind") == "demo"
+        info = {"site": payload.get("site", ""), "org": payload.get("org", ""), "expires": payload.get("expires", ""), "id": payload.get("id", ""), "demo": demo}
+        word = "Demo licence" if demo else "Licence"
         if err:
             return base | info | {"state": "invalid", "label": "Licence key not verified", "reason": err}
         try:
@@ -242,10 +245,13 @@ class OfflineKeyFile(LicenseCheck):
         except ValueError:
             return base | info | {"state": "invalid", "label": "Licence key invalid", "reason": "bad expiry date"}
         left = (exp - today).days
-        if left < -GRACE_DAYS:
-            return base | info | {"state": "expired", "label": f"Licence expired {-left} days ago", "days_left": left}
+        grace = 0 if demo else GRACE_DAYS  # demos end on the day; site licences get a grace period
+        if left < -grace:
+            return base | info | {"state": "expired", "label": f"{word} expired {-left} days ago", "days_left": left}
         if left < 0:
-            return base | info | {"state": "grace", "label": f"Licence expired · {GRACE_DAYS + left} days of grace left", "days_left": left}
+            return base | info | {"state": "grace", "label": f"{word} expired · {grace + left} days of grace left", "days_left": left}
+        if demo:
+            return base | info | {"state": "expiring" if left <= 7 else "licensed", "label": f"Demo for {info['site']} · {left} day{'s' * (left != 1)} left · ends {exp:%-d %b %Y}", "days_left": left}
         if left <= 30:
             return base | info | {"state": "expiring", "label": f"Licensed to {info['site']} · renews in {left} days", "days_left": left}
         return base | info | {"state": "licensed", "label": f"Licensed to {info['site']} · until {exp:%-d %b %Y}", "days_left": left}

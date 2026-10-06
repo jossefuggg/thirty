@@ -101,3 +101,17 @@ def test_shipped_public_key_verifies_keys_made_by_the_owner_tool(monkeypatch):
     assert len(bytes.fromhex(licensing.PUBLIC_KEY)) == 32
     other = licensing.make_key({"id": "X", "site": "Y", "expires": "2099-01-01"}, secrets.token_bytes(32).hex())
     assert licensing.parse(other)[1] == "signature does not match"
+
+
+def test_demo_keys_any_length_no_grace(tmp_path, keypair):
+    sk, _ = keypair
+    chk = licensing.OfflineKeyFile(str(tmp_path / "d.key"))
+    today = dt.date.today()
+    for days in (7, 14, 30):
+        key = licensing.make_key({"id": "DEMO-1", "site": "Harbor", "org": "Harbor", "issued": today.isoformat(),
+                                  "expires": (today + dt.timedelta(days=days)).isoformat(), "seats": None, "notes": "", "kind": "demo"}, sk)
+        st = chk.install(key)
+        assert st["demo"] and st["days_left"] == days and f"{days} days left" in st["label"] and st["state"] == ("expiring" if days <= 7 else "licensed")
+    key = licensing.make_key({"id": "DEMO-2", "site": "Harbor", "org": "Harbor", "issued": today.isoformat(),
+                              "expires": (today - dt.timedelta(days=1)).isoformat(), "seats": None, "notes": "", "kind": "demo"}, sk)
+    assert chk.install(key)["state"] == "expired", "a demo has no grace period"

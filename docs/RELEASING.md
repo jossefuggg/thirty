@@ -93,12 +93,17 @@ manager and at `~/.thirty/licence-secret.key` (mode 0600) on the machine that is
 lost or leaked, run `python3 tools/make_licence.py keygen` again, replace `PUBLIC_KEY`, ship a new
 release, and reissue every customer key (old keys stop verifying).
 
-Issue a key for a customer:
+Issue keys (any length; `--days N` or a fixed `--expires YYYY-MM-DD`):
 
 ```bash
 python3 tools/make_licence.py issue --site "Harbor Medical Devices" --org "Harbor Medical" --days 365 --out harbor.key
+python3 tools/make_licence.py issue --site "Harbor Medical Devices" --demo --days 14 --out harbor-demo.key   # demo
+python3 tools/make_licence.py issue --site "Harbor Medical Devices" --expires 2027-03-31                     # end date
 python3 tools/make_licence.py verify harbor.key
 ```
+
+Demo keys (`--demo`) show as "Demo for <site> · N days left", turn to "renews soon" at 7 days, and have
+**no grace period**: the day after they end, reviews are read-only. Site licences get 14 days of grace.
 
 The customer pastes the key (or chooses the file) under **Settings → Licence & updates**. It is stored
 as `<data>/licence.key` and never leaves the machine. States: **Licensed**, **Renews soon** (≤ 30 days),
