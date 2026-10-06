@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thirty</title>
+<style>
+  :root { --paper: #F7F5F0; --ink: #15181D; --coral: #FF5A3C; --slate: #5B6470; --stone: #DDD8CE; --amber: #F2B134; }
+  html, body { margin: 0; min-height: 100%; background: var(--paper); color: var(--ink); font: 500 15px/1.5 -apple-system, "Segoe UI", Arial, sans-serif; }
+  .c { max-width: 760px; margin: 64px auto; padding: 0 24px; }
+  h1 { font: 400 40px/1.1 Georgia, "Times New Roman", serif; letter-spacing: -.015em; margin: 0 0 12px; }
+  .m { padding: 14px 16px; border: 2px solid var(--amber); border-radius: 14px; font-weight: 700; margin: 0 0 20px; }
+  p { color: var(--slate); }
+  pre { background: var(--ink); color: var(--paper); padding: 16px; border-radius: 10px; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; max-height: 360px; overflow: auto; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; }
+</style>
+</head>
+<body><div class="c">
+  <h1>Thirty could not start</h1>
+  <div class="m">{{message}}</div>
+  <p>Quit and open Thirty again. If it happens again, send the log file to support: <code>{{logfile}}</code>. Your data is unchanged.</p>
+  <pre>{{log}}</pre>
+</div></body>
+</html>

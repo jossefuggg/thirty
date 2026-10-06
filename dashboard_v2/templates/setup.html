@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set up · Thirty</title>
+<link rel="icon" type="image/svg+xml" href="/static/thirty/logo/favicon.svg">
+<link rel="stylesheet" href="/static/thirty/css/thirty.css">
+<script>try{if(localStorage.getItem("thirty-theme")==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}</script>
+<style>
+  body { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 24px 32px; }
+  .top img { height: 30px; } [data-theme="dark"] .top .light { display: none; } :root:not([data-theme="dark"]) .top .dark { display: none; }
+  .steps { display: flex; gap: 16px; font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--t-fg-2); }
+  .steps span.on { color: var(--t-fg); } .steps span.done::before { content: "✓ "; }
+  main { width: min(760px, calc(100% - 48px)); margin: 0 auto; padding: 24px 0 48px; }
+  .step { display: none; } .step.on { display: block; }
+  h1 { font-size: 56px; margin-bottom: 16px; } @media (max-width: 720px) { h1 { font-size: 40px; } }
+  .lead { font-size: 18px; color: var(--t-fg-2); max-width: 60ch; margin: 0 0 32px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .opt { display: grid; gap: 8px; padding: 20px; border: 2px solid var(--t-line); border-radius: var(--t-radius-lg); background: var(--t-card); cursor: pointer; text-align: left; color: inherit; font: inherit; }
+  .opt:hover { border-color: var(--t-fg); } .opt.on { border-color: var(--t-fg); background: var(--t-panel); } .opt:focus-visible { outline: none; box-shadow: var(--t-focus); }
+  .opt b { font-size: 18px; font-weight: 800; } .opt p { margin: 0; font-size: 14px; color: var(--t-fg-2); }
+  .opt .tag { justify-self: start; }
+  .form { display: grid; gap: 16px; max-width: 520px; margin-bottom: 32px; }
+  .req { padding: 16px 20px; border-radius: var(--t-radius-lg); background: var(--t-panel); font-size: 14px; display: grid; gap: 6px; }
+  .req b { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--t-fg-2); }
+  .req ul { margin: 0; padding-left: 20px; } .req code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; } .row .right { margin-left: auto; }
+  .res { font-size: 14px; font-weight: 700; } .res.ok::before { content: "✓ "; } .res.bad { color: var(--t-coral-text); }
+  .foot { padding: 24px 32px; color: var(--t-fg-2); font-size: 13px; display: flex; gap: 12px; align-items: center; }
+  .badge-local { height: 32px; font-size: 13px; }
+  .spin { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--t-line); border-top-color: var(--t-fg); animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .summary { display: grid; gap: 10px; padding: 20px; border: 1px solid var(--t-line); border-radius: var(--t-radius-lg); background: var(--t-card); margin-bottom: 32px; }
+  .summary div { display: grid; grid-template-columns: 160px 1fr; gap: 12px; font-size: 15px; } .summary span { color: var(--t-fg-2); }
+</style>
+</head>
+<body>
+<header class="top">
+  <a href="/setup"><img class="light" src="/static/thirty/logo/thirty-lockup.svg" alt="Thirty"><img class="dark" src="/static/thirty/logo/thirty-lockup-reverse.svg" alt="Thirty"></a>
+  <nav class="steps" aria-label="Setup steps"><span data-s="0" class="on">Welcome</span><span data-s="1">Data</span><span data-s="2">Agent</span><span data-s="3">Done</span></nav>
+</header>
+<main>
+  <section class="step on" data-step="0">
+    <h1>Every complaint, on the clock.</h1>
+    <p class="lead">Thirty reads each medical device complaint the minute it arrives, scores it, decides what the FDA must be told under 21 CFR 803, and drafts the Form 3500A. A named person reviews, approves and files. Thirty drafts; a human files.</p>
+    <div class="req" style="margin-bottom:32px"><b>What happens on this machine</b>
+      <ul><li>All data stays in your app-data folder: <code>{{ data_dir }}</code></li><li>The agent runs locally. 0 bytes to cloud AI.</li><li>Everything you choose here can be changed later in Settings.</li></ul></div>
+    <div class="row"><button class="btn btn-accent btn-lg" data-next>Get started</button></div>
+  </section>
+
+  <section class="step" data-step="1">
+    <h1>How do you want to start?</h1>
+    <p class="lead">Explore with 40 invented complaints and a sample agent, or start empty with your own site name and connect your intake channels.</p>
+    <div class="cards">
+      <button class="opt on" data-mode="explore"><span class="pill pill-neutral tag">Recommended first</span><b>Explore with sample data</b><p>Northwind Medical, eight invented devices, every state of the 30-day clock. Reset or replace it any time.</p></button>
+      <button class="opt" data-mode="site"><b>Start with my site</b><p>An empty workspace named after your company. Complaints come in through the REST API, file upload or email.</p></button>
+    </div>
+    <div class="form" id="site-form" hidden>
+      <div class="field"><label class="label" for="org">Company or site name</label><input class="input" id="org" placeholder="e.g. Harbor Medical Devices" maxlength="80"></div>
+      <div class="field"><label class="label" for="unit">Team</label><input class="input" id="unit" value="Quality" maxlength="80"></div>
+    </div>
+    <div class="row"><button class="btn btn-secondary" data-back>Back</button><button class="btn btn-primary right" data-next>Continue</button></div>
+  </section>
+
+  <section class="step" data-step="2">
+    <h1>Which agent should draft?</h1>
+    <p class="lead">The agent classifies each complaint and drafts the report. You can switch agents or install plugins later under Settings → Plugins.</p>
+    <div class="cards">
+      <button class="opt on" data-agent="sample"><b>Sample agent</b><p>Pre-written results for the sample complaints, simple rules for anything else. No model needed.</p></button>
+      <button class="opt" data-agent="local"><b>Local model</b><p>A model server on this machine or your network, OpenAI-compatible API (vLLM, llama.cpp, Ollama).</p></button>
+      <button class="opt" data-agent="none"><b>No agent</b><p>Manual review only: every complaint waits for a reviewer; nothing is drafted.</p></button>
+    </div>
+    <div class="form" id="local-form" hidden>
+      <div class="req"><b>What the local model needs</b>
+        <ul><li>An OpenAI-compatible server on this machine or your network: <code>http://localhost:11434/v1</code> (Ollama, easiest on a laptop), <code>http://localhost:8080/v1</code> (llama.cpp), <code>http://localhost:8000/v1</code> (vLLM on a GPU server).</li>
+            <li>A model that follows JSON instructions well. On a laptop (16 GB RAM, Apple Silicon or a recent CPU): an 8B-class instruct model, about 5 GB. On a GPU workstation: 30B-class gives better reasoning.</li>
+            <li>About 2 model calls per complaint (classification and the Form 3500A draft): 5–60 s on a laptop, 1–10 s on a GPU. Complaints queue; nothing is lost while it works.</li></ul></div>
+      <div class="field"><label class="label" for="base_url">Server URL</label><input class="input" id="base_url" placeholder="http://localhost:8000/v1"></div>
+      <div class="field"><label class="label" for="model">Model (optional)</label><input class="input" id="model" placeholder="leave blank to use the first model the server lists"></div>
+      <div class="field"><label class="label" for="api_key">API key (optional)</label><input class="input" id="api_key" type="password" autocomplete="off"></div>
+      <div class="row"><button class="btn btn-secondary" id="test" type="button">Test connection</button><span class="res" id="test-res"></span></div>
+    </div>
+    <div class="row"><button class="btn btn-secondary" data-back>Back</button><button class="btn btn-primary right" data-next>Continue</button></div>
+  </section>
+
+  <section class="step" data-step="3">
+    <h1>Ready.</h1>
+    <p class="lead">Here is what Thirty will do. Change any of it later in Settings.</p>
+    <div class="summary" id="summary"></div>
+    <div class="row"><button class="btn btn-secondary" data-back>Back</button><button class="btn btn-accent btn-lg right" id="finish">Open Thirty</button><span class="res" id="finish-res"></span></div>
+  </section>
+</main>
+<footer class="foot"><span class="badge-local">0 bytes to cloud AI</span><span>Thirty {{ version }} · data folder {{ data_dir }}</span></footer>
+<script>
+(function () {
+  var $ = function (s, r) { return (r || document).querySelector(s); }, all = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var st = { step: 0, mode: "explore", agent: "sample" };
+  function show(n) {
+    st.step = n; all(".step").forEach(function (s) { s.classList.toggle("on", +s.dataset.step === n); });
+    all(".steps span").forEach(function (s) { var i = +s.dataset.s; s.className = i === n ? "on" : i < n ? "done" : ""; });
+    window.scrollTo(0, 0); var f = $(".step.on .btn"); if (f) f.focus();
+    if (n === 3) summary();
+  }
+  function summary() {
+    var org = st.mode === "site" ? ($("#org").value.trim() || "My site") : "Northwind Medical (sample)";
+    var agent = { sample: "Sample agent", local: "Local model at " + ($("#base_url").value.trim() || "(no URL yet: not configured)"), none: "No agent · manual review" }[st.agent];
+    $("#summary").innerHTML = ["Data", st.mode === "site" ? "Empty workspace" : "40 sample complaints, history and drafts", "Workspace", org + " · " + ($("#unit").value.trim() || "Quality"), "Agent", agent]
+      .reduce(function (h, v, i, a) { return i % 2 ? h : h + "<div><span>" + esc(v) + "</span><b>" + esc(a[i + 1]) + "</b></div>"; }, "");
+  }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function post(url, body) { return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }); }
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("[data-next]")) { if (st.step === 1 && st.mode === "site" && !$("#org").value.trim()) { $("#org").focus(); return; } show(st.step + 1); }
+    if (e.target.closest("[data-back]")) show(st.step - 1);
+    var m = e.target.closest("[data-mode]"); if (m) { st.mode = m.dataset.mode; all("[data-mode]").forEach(function (b) { b.classList.toggle("on", b === m); }); $("#site-form").hidden = st.mode !== "site"; if (st.mode === "site") $("#org").focus(); }
+    var a = e.target.closest("[data-agent]"); if (a) { st.agent = a.dataset.agent; all("[data-agent]").forEach(function (b) { b.classList.toggle("on", b === a); }); $("#local-form").hidden = st.agent !== "local"; if (st.agent === "local") $("#base_url").focus(); }
+  });
+  function localSettings() { return { base_url: $("#base_url").value.trim(), model: $("#model").value.trim(), api_key: $("#api_key").value }; }
+  $("#test").onclick = function () {
+    var res = $("#test-res"); res.className = "res"; res.innerHTML = '<span class="spin"></span>Testing…';
+    if (!$("#base_url").value.trim()) { res.className = "res bad"; res.textContent = "Enter the server URL first."; return; }
+    post("/api/plugins/local", { settings: localSettings() }).then(function () { return post("/api/plugins/local/test", {}); }).then(function (x) {
+      var s = x.j.status || {}; res.className = "res " + (s.state === "ready" ? "ok" : "bad"); res.textContent = s.state === "ready" ? "Connected · " + s.label : (s.state === "not-configured" ? s.label : "Not reachable · " + s.label);
+    }).catch(function () { res.className = "res bad"; res.textContent = "Could not reach the console."; });
+  };
+  $("#finish").onclick = function () {
+    var b = this, res = $("#finish-res"); b.disabled = true; res.className = "res"; res.innerHTML = '<span class="spin"></span>Setting up…';
+    post("/api/setup", { mode: st.mode, org: $("#org").value, unit: $("#unit").value, agent: st.agent, local: localSettings() }).then(function (x) {
+      if (!x.ok) { b.disabled = false; res.className = "res bad"; res.textContent = x.j.error || "Setup failed"; return; }
+      location.href = "/";
+    }).catch(function () { b.disabled = false; res.className = "res bad"; res.textContent = "Could not reach the console."; });
+  };
+  show(0);
+})();
+</script>
+</body>
+</html>

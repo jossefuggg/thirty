@@ -2,37 +2,39 @@
 {% block head %}
 <style>
   .sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s3); margin-bottom: var(--s3); }
-  .sm { padding: 20px; position: relative; overflow: hidden; } .sm::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--c); }
-  .sm span { font-size: 13px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .sm b { display: block; font-size: 36px; font-weight: 760; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .sm { padding: 20px; position: relative; overflow: hidden; border-top: 4px solid var(--text); }
+  .sm.urgent { border-top-color: var(--t-coral); }
+  .sm span { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .sm b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 48px; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+  .sm.urgent b.hot { color: var(--t-coral); }
   .sm small { font-size: 13px; color: var(--muted); }
   .ck { display: grid; grid-template-columns: 250px minmax(0, 1fr) 170px 150px; gap: 20px; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--border); color: inherit; transition: background var(--t-fast); }
   .ck:last-child { border-bottom: 0; } .ck:hover { background: var(--zebra); }
-  .ck .who b { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ck .who span { display: flex; gap: 6px; align-items: center; margin-top: 4px; } .ck .who .mono { font-size: 12px; color: var(--muted); }
-  .track { height: 14px; border-radius: 999px; background: #EEF2F6; overflow: hidden; position: relative; }
-  .track i { display: block; height: 100%; border-radius: 999px; background: var(--u); transition: width .6s var(--ease); }
-  .track.over i { background: repeating-linear-gradient(135deg, #7F1D1D 0 8px, #991B1B 8px 16px); width: 100% !important; }
-  .ck.green { --u: #16A34A; } .ck.orange { --u: #D97706; } .ck.red { --u: #DC2626; } .ck.over { --u: #7F1D1D; }
-  .ck .left { font-size: var(--fs-20); font-weight: 760; font-variant-numeric: tabular-nums; color: var(--u); white-space: nowrap; }
+  .ck .who b { display: block; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ck .who span { display: flex; gap: 6px; align-items: center; margin-top: 4px; flex-wrap: wrap; } .ck .who .mono { font-size: 12px; color: var(--muted); }
+  /* deadline bar: full width = 30 days; ink on stone, coral under 7 days or on a 5-day report */
+  .track { height: 10px; border-radius: 999px; background: var(--track); overflow: hidden; position: relative; }
+  .track i { display: block; height: 100%; border-radius: 999px; background: var(--text); transition: width .6s var(--ease); }
+  .ck.red .track i, .ck.five .track i { background: var(--t-coral); }
+  .track.over i { background: repeating-linear-gradient(135deg, var(--t-coral) 0 8px, var(--t-coral-hover) 8px 16px); width: 100% !important; }
+  .ck .left { font-size: var(--fs-20); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+  .ck.red .left, .ck.over .left, .ck.five .left { color: var(--coral-text); }
   .ck .due { font-size: 13px; color: var(--muted); } .ck .due b { color: var(--text); display: block; font-size: 14px; }
-  .five { display: inline-flex; align-items: center; gap: 4px; height: 22px; white-space: nowrap; flex: none; padding: 0 8px; border-radius: 999px; background: #7F1D1D; color: #fff; font-size: 11px; font-weight: 750; letter-spacing: .05em; }
-  .five .i { width: 12px; height: 12px; }
-  .scale { display: grid; grid-template-columns: 250px minmax(0, 1fr) 170px 150px; gap: 20px; padding: 10px 20px; border-bottom: 1px solid var(--border); background: #F8FAFC; font-size: 12px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-  .scale .ax { display: flex; justify-content: space-between; text-transform: none; letter-spacing: 0; font-weight: 600; }
+  .scale { display: grid; grid-template-columns: 250px minmax(0, 1fr) 170px 150px; gap: 20px; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--hover); font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .scale .ax { display: flex; justify-content: space-between; text-transform: none; letter-spacing: 0; font-weight: 700; }
 </style>
 {% endblock %}
 {% block body %}
 <div class="sum">
-  <div class="card sm lift" style="--c:#7F1D1D"><span>Overdue</span><b id="s-over">0</b><small>Past the FDA deadline</small></div>
-  <div class="card sm lift" style="--c:#DC2626"><span>Due this week</span><b id="s-week">0</b><small>7 days or less</small></div>
-  <div class="card sm lift" style="--c:#D97706"><span>Due in 8–14 days</span><b id="s-mid">0</b><small>Schedule review</small></div>
-  <div class="card sm lift" style="--c:#16A34A"><span>On track</span><b id="s-ok">0</b><small>More than 14 days</small></div>
+  <div class="card sm urgent"><span>Overdue</span><b id="s-over">0</b><small>Past the FDA deadline</small></div>
+  <div class="card sm urgent"><span>Due in 7 days</span><b id="s-week">0</b><small>7 days or less</small></div>
+  <div class="card sm"><span>Due in 8–14 days</span><b id="s-mid">0</b><small>Schedule review</small></div>
+  <div class="card sm"><span>On track</span><b id="s-ok">0</b><small>More than 14 days</small></div>
 </div>
 <section class="card">
   <div class="card-h"><h2>{{ icon('clock') }}Open reports</h2><span class="count-badge" id="n">0</span><span class="aside">Sorted by time remaining · bar full = 30 days</span></div>
   <div class="scale"><span>Complaint</span><span class="ax"><span>Due now</span><span>15 days</span><span>30 days</span></span><span>Time remaining</span><span>Due date</span></div>
-  <div id="list"></div>
+  <div id="list"><div class="empty loading"><span class="spin"></span><b>Loading open reports…</b></div></div>
 </section>
 {% endblock %}
 {% block scripts %}
@@ -44,15 +46,19 @@
     rows = rows.map(function (r) { r.ms = V.dueEnd(r.due_date) - now; return r; }).sort(function (a, b) { return a.ms - b.ms; });
     $("list").innerHTML = rows.length ? rows.map(function (r) {
       var u = r.ms < 0 ? "over" : r.ms <= 7 * V.DAY ? "red" : r.ms <= 14 * V.DAY ? "orange" : "green"; c[u === "over" ? "over" : u === "red" ? "week" : u === "orange" ? "mid" : "ok"]++;
+      var five = String(r.deadline_days) === "5";
       var pct = Math.max(2, Math.min(100, r.ms / (30 * V.DAY) * 100)), d = new Date(r.due_date + "T00:00:00");
-      return '<a class="ck ' + u + '" href="/complaint/' + encodeURIComponent(r.id) + '" data-open="' + esc(r.id) + '"><div class="who"><b>' + esc(r.device || "Device not specified") + '</b><span><span class="mono">#' + esc(r.id) + "</span>" +
-        '<span class="pill d-' + esc(r.decision) + '">' + esc(V.label(r.decision)) + "</span>" + (String(r.deadline_days) === "5" ? '<span class="five">' + ICONS.zap + "5-DAY</span>" : "") + "</span></div>" +
+      return '<a class="ck ' + u + (five ? " five" : "") + '" href="/complaint/' + encodeURIComponent(r.id) + '" data-open="' + esc(r.id) + '"><div class="who"><b>' + esc(r.device || "Device not specified") + '</b><span><span class="mono">#' + esc(r.id) + "</span>" +
+        '<span class="pill pill-sm d-' + esc(r.decision) + '">' + esc(V.label(r.decision)) + "</span>" + (five ? '<span class="pill pill-sm pill-five-day">5-day</span>' : "") + "</span></div>" +
         '<div class="track' + (u === "over" ? " over" : "") + '"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
         '<div class="left">' + V.dueShort(r.ms) + '</div><div class="due"><b>' + d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + "</b>" + esc(r.deadline_days) + "-day report · " + V.statusPill(r).replace(/<[^>]+>/g, "") + "</div></a>";
-    }).join("") : '<div class="empty" style="padding:32px 20px;justify-items:start;text-align:left"><b>No open reports</b><p>Reportable and needs-info complaints appear here until they are approved.</p></div>';
+    }).join("") : "";
+    if (!rows.length) V.state($("list"), "empty", "No open reports", "Reportable and needs-info complaints appear here until they are approved.");
     $("n").textContent = rows.length; $("s-over").textContent = c.over; $("s-week").textContent = c.week; $("s-mid").textContent = c.mid; $("s-ok").textContent = c.ok;
+    $("s-over").classList.toggle("hot", c.over > 0); $("s-week").classList.toggle("hot", c.week > 0);
   }
-  function load() { fetch("/api/state", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (s) { var g = JSON.stringify(s.clock) + Math.floor(Date.now() / 60000); if (g !== sig) { sig = g; draw(s.clock); } }); }
+  function load() { fetch("/api/state", { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (s) { var g = JSON.stringify(s.clock) + Math.floor(Date.now() / 60000); if (g !== sig) { sig = g; draw(s.clock); } })
+    .catch(function () { sig = ""; V.state($("list"), "error", "Could not load the clock", V.offline(), load); }); }
   document.addEventListener("vigil:changed", load); load(); setInterval(load, 3000);
 })();
 </script>

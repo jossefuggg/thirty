@@ -1,21 +1,22 @@
 {% extends "base.html" %}
 {% block actions %}
-<a class="btn btn-ghost" href="/integrations">{{ icon('plug') }}Integrations</a>
+<a class="btn btn-secondary" href="/integrations">{{ icon('plug') }}Integrations</a>
 <a class="btn btn-primary" href="/integrations#upload">{{ icon('upload') }}Upload file</a>
 {% endblock %}
 {% block head %}
 <style>
-  .ib-wrap { display: flex; flex-direction: column; min-height: 0; height: calc(100vh - var(--topbar-h) - 16px - 58px - 24px); }
+  .ib-wrap { display: flex; flex-direction: column; min-height: 0; height: calc(100vh - var(--topbar-h) - var(--s3) * 2 - 68px); }
   .ib-wrap .card { display: flex; flex-direction: column; min-height: 0; flex: 1; }
   .ib-scroll { overflow: auto; flex: 1; min-height: 0; }
-  .st-processed { background: var(--f-approved); } .st-queued { background: var(--f-pending); } .st-processing { background: var(--accent-600); }
-  .st-duplicate { background: var(--f-logged); } .st-error { background: var(--f-urgent); } .st-rejected { background: var(--f-urgent); }
+  /* intake item states: ink = done, outline = waiting, amber outline = needs attention */
+  .st-processed { background: var(--text); color: var(--bg); } .st-queued { background: var(--hover); color: var(--muted); } .st-processing { background: transparent; color: var(--text); border-color: var(--text); }
+  .st-duplicate { background: transparent; color: var(--muted); border-color: var(--border); } .st-error, .st-rejected { background: transparent; color: var(--text); border-color: var(--t-amber); }
   .tbl td.ex { max-width: 420px; }
-  .tbl td.ex b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tbl td.ex b { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tbl td.ex span { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lnk { color: var(--accent-600); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; } .lnk:hover { text-decoration: underline; }
-  .lnk .i { width: 14px; height: 14px; }
+  .lnk { display: inline-flex; align-items: center; gap: 4px; } .lnk .i { width: 14px; height: 14px; }
   .working { font-size: 12px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+  .select-sm { height: 36px; width: auto; font-size: 13px; padding: 0 10px; }
 </style>
 {% endblock %}
 {% block body %}
@@ -25,15 +26,15 @@
       <span id="filters" style="display:flex;gap:6px;flex-wrap:wrap"></span>
       <span class="grow"></span>
       <span class="working" id="working"></span>
-      <select class="input" id="f-src" style="height:26px;width:auto;font-size:12px;padding:0 6px">
+      <select class="input select-sm" id="f-src" aria-label="Source">
         <option value="">All sources</option>{% for k, v in SOURCES.items() %}<option value="{{ k }}">{{ v[0] }}</option>{% endfor %}
       </select>
-      <label class="tsearch">{{ icon('search') }}<input id="f-q" placeholder="Filter by ID, reporter, device"></label>
+      <label class="tsearch">{{ icon('search') }}<input id="f-q" placeholder="Filter by ID, reporter, device" aria-label="Filter intake items"></label>
     </div>
     <div class="ib-scroll">
       <table class="tbl">
         <thead><tr><th>Source</th><th>Item</th><th>Reporter</th><th>Received</th><th>Status</th><th>Complaint</th></tr></thead>
-        <tbody id="rows"></tbody>
+        <tbody id="rows"><tr class="state"><td colspan="6"><div class="empty loading"><span class="spin"></span><b>Loading intake items…</b></div></td></tr></tbody>
       </table>
     </div>
   </section>
@@ -58,19 +59,20 @@
     $("rows").innerHTML = rows.length ? rows.map(function (it) {
       var link = it.status === "processed" || it.status === "duplicate"
         ? '<a class="lnk" href="/complaint/' + encodeURIComponent(it.cid) + '" data-open="' + esc(it.cid) + '">#' + esc(it.cid) + ICONS.chevron + "</a>"
-        : it.status === "error" ? '<span style="color:var(--f-urgent);font-size:12px">' + esc(it.error || "failed") + "</span>"
+        : it.status === "error" ? '<span style="color:var(--muted);font-size:12px">' + esc(it.error || "failed") + "</span>"
         : '<span class="muted mono">#' + esc(it.cid) + "</span>";
       return "<tr><td>" + V.srcChip(it.source) + '</td><td class="ex"><b>' + esc(it.device || "Device not specified") + "</b><span>" + esc(it.excerpt) + "</span></td>" +
         "<td>" + (esc(it.reporter) || '<span class="muted">Not provided</span>') + '</td><td class="num muted">' + fmt(it.received) + "</td>" +
-        '<td><span class="pill st-' + esc(it.status) + '">' + (it.status === "processing" ? '<span class="spin" style="border-color:rgba(255,255,255,.4);border-top-color:#fff;width:10px;height:10px"></span>' : "") + esc(LABEL[it.status] || it.status) + "</span></td>" +
+        '<td><span class="pill pill-sm st-' + esc(it.status) + '">' + (it.status === "processing" ? '<span class="spin" style="width:10px;height:10px"></span>' : "") + esc(LABEL[it.status] || it.status) + "</span></td>" +
         "<td>" + link + "</td></tr>";
-    }).join("") : '<tr><td colspan="6" class="muted" style="padding:14px 12px">' + (all ? "No items match the filters." : 'No items received yet. Send a complaint to the REST API or upload a file on <a class="lnk" href="/integrations">Integrations</a>.') + "</td></tr>";
-    $("working").innerHTML = data.working ? '<span class="spin"></span>Classifying on the local model' : "";
+    }).join("") : "";
+    if (!rows.length) V.stateRow($("rows"), 6, "empty", all ? "No items match the filters" : "No items received yet", all ? "Clear a filter or change the search." : "Send a complaint to the REST API or upload a file on Integrations.");
+    $("working").innerHTML = data.working ? '<span class="spin"></span>Classifying with the agent' : "";
   }
   function poll() {
-    fetch("/api/intake", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+    fetch("/api/intake", { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (j) {
       var s = JSON.stringify(j); if (s === sig) return; sig = s; data = j; render();
-    }).catch(function () {});
+    }).catch(function () { sig = ""; V.stateRow($("rows"), 6, "error", "Could not load the inbox", V.offline(), poll); });
   }
   $("filters").addEventListener("click", function (e) { var b = e.target.closest("[data-s]"); if (b) { status = b.dataset.s; render(); } });
   $("f-src").onchange = render; $("f-q").oninput = render;

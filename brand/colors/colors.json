@@ -1,0 +1,46 @@
+{
+  "paper": {
+    "hex": "#F7F5F0",
+    "role": "Ground. Page and card background in light mode."
+  },
+  "ink": {
+    "hex": "#15181D",
+    "role": "Text, primary buttons, the mark. Ground in dark mode."
+  },
+  "coral": {
+    "hex": "#FF5A3C",
+    "role": "The accent. The five-day window in the mark, the one key action per screen, deadlines, REPORTABLE, cost-of-failure numbers. Never for body text."
+  },
+  "slate": {
+    "hex": "#5B6470",
+    "role": "Secondary text, captions, sources, placeholders (light mode)."
+  },
+  "stone": {
+    "hex": "#DDD8CE",
+    "role": "Lines, dividers, disabled fills, ring track (light mode)."
+  },
+  "amber": {
+    "hex": "#F2B134",
+    "role": "NEEDS INFO only. Nothing else."
+  },
+  "slate-dark": {
+    "hex": "#B9BEC6",
+    "role": "Secondary text on ink."
+  },
+  "line-dark": {
+    "hex": "#3A414B",
+    "role": "Lines and dividers on ink."
+  },
+  "ink-hover": {
+    "hex": "#2A2F37",
+    "role": "Primary button hover."
+  },
+  "coral-hover": {
+    "hex": "#E84E31",
+    "role": "Accent button hover."
+  },
+  "stone-light": {
+    "hex": "#EDEAE3",
+    "role": "Secondary button hover, table stripes, subtle panels (light mode)."
+  }
+}

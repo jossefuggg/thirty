@@ -1,5 +1,5 @@
 {% if r.due_date and r.open %}
-        <div class="cd {{ 'over' if r.days_left < 0 else 'red' if r.days_left <= 7 else 'orange' if r.days_left <= 14 else 'green' }}" id="cd" data-due="{{ r.due_date }}">
+        <div class="cd {{ 'over' if r.days_left < 0 else 'red' if r.days_left <= 7 else 'orange' if r.days_left <= 14 else 'green' }}{{ ' five' if r.deadline_days|string == '5' }}" id="cd" data-due="{{ r.due_date }}" data-five="{{ '1' if r.deadline_days|string == '5' else '0' }}">
           <div class="n"></div>
           <div class="d">due {{ r.due_label }} · {{ r.deadline_days }}-day report</div>
         </div>

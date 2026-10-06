@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thirty — brand sheet</title>
+<link rel="icon" href="logo/svg/favicon.svg">
+<link rel="stylesheet" href="css/thirty.css">
+<style>
+  body { padding: 0; }
+  .sheet { width: 1600px; margin: 0 auto; padding: 72px 80px 80px; box-sizing: border-box; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 4px solid var(--t-ink); padding-bottom: 24px; margin-bottom: 48px; }
+  .block { margin-bottom: 56px; }
+  .block > .t-eyebrow { margin-bottom: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .tile { border-radius: 14px; border: 1px solid var(--t-stone); display: flex; align-items: center; justify-content: center; height: 200px; padding: 28px; box-sizing: border-box; }
+  .tile img { max-width: 100%; max-height: 100%; }
+  .tile-ink { background: var(--t-ink); border-color: var(--t-ink); }
+  .tile-coral { background: var(--t-coral); border-color: var(--t-coral); }
+  .cap { font-size: 13px; color: var(--t-slate); margin-top: 8px; }
+  .wide { grid-column: span 2; }
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 20px; }
+  .sw { border-radius: 14px; height: 150px; padding: 18px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; border: 1px solid var(--t-stone); }
+  .sw b { font-size: 18px; font-weight: 800; }
+  .sw span { font-size: 13px; font-weight: 700; opacity: .8; }
+  .roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 32px; margin-top: 20px; font-size: 14px; }
+  .roles b { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; border: 1px solid rgba(0,0,0,.1); }
+  .typo { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .typo .line { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--t-stone); padding: 10px 0; }
+  .typo .line small { font-size: 12px; color: var(--t-slate); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+  .donts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .dont { border-radius: 14px; border: 1px solid var(--t-stone); height: 140px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .dont::after { content: ""; position: absolute; left: 12px; top: 12px; width: 18px; height: 18px; border-radius: 50%; background: var(--t-coral); }
+  .dont img { height: 70px; }
+  .clear { position: relative; display: inline-block; padding: 36px; border: 1px dashed var(--t-slate); border-radius: 8px; }
+  .clear img { height: 100px; display: block; }
+  .clear i { position: absolute; font-style: normal; font-size: 12px; color: var(--t-slate); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="head">
+    <img src="logo/svg/thirty-lockup-descriptor.svg" alt="Thirty — Medical device complaint reporting, on the clock." style="height:64px">
+    <div style="text-align:right">
+      <p class="t-eyebrow">Brand sheet · v1 · October 2026</p>
+      <p class="t-small">Paper &amp; Coral · Instrument Serif + Manrope</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <p class="t-eyebrow">1 · Logo</p>
+    <div class="tiles">
+      <div><div class="tile"><img src="logo/svg/thirty-mark.svg" alt=""></div><p class="cap">Mark on paper · thirty-mark.svg</p></div>
+      <div><div class="tile tile-ink"><img src="logo/svg/thirty-mark-reverse.svg" alt=""></div><p class="cap">Mark reversed · thirty-mark-reverse.svg</p></div>
+      <div><div class="tile tile-coral"><img src="logo/svg/thirty-mark-on-coral.svg" alt=""></div><p class="cap">Mark on coral: window turns ink · thirty-mark-on-coral.svg</p></div>
+      <div><div class="tile"><img src="logo/svg/thirty-app-icon.svg" alt="" style="height:120px;border-radius:26px"></div><p class="cap">App icon / favicon · thirty-app-icon.svg</p></div>
+      <div class="wide"><div class="tile"><img src="logo/svg/thirty-lockup.svg" alt="" style="height:88px"></div><p class="cap">Horizontal lockup · thirty-lockup.svg (default for nav, documents, slides)</p></div>
+      <div class="wide"><div class="tile tile-ink"><img src="logo/svg/thirty-lockup-reverse.svg" alt="" style="height:88px"></div><p class="cap">Horizontal lockup reversed · thirty-lockup-reverse.svg</p></div>
+      <div class="wide"><div class="tile"><img src="logo/svg/thirty-lockup-descriptor.svg" alt="" style="height:52px"></div><p class="cap">Lockup with descriptor · thirty-lockup-descriptor.svg (website header, footers, covers)</p></div>
+      <div><div class="tile"><img src="logo/svg/thirty-lockup-stacked.svg" alt="" style="height:140px"></div><p class="cap">Stacked · thirty-lockup-stacked.svg (social avatars, square spaces)</p></div>
+      <div><div class="tile"><img src="logo/svg/thirty-mark-mono-ink.svg" alt="" style="height:100px"></div><p class="cap">One colour · thirty-mark-mono-ink.svg (print, embroidery, stamps)</p></div>
+    </div>
+  </div>
+
+  <div class="block two">
+    <div>
+      <p class="t-eyebrow">2 · Clear space and minimum size</p>
+      <div class="clear">
+        <img src="logo/svg/thirty-lockup.svg" alt="">
+        <i style="left:8px;top:8px">x</i><i style="right:8px;bottom:8px">x</i>
+      </div>
+      <p class="t-small" style="margin-top:12px;max-width:560px">Keep a clear space of x on every side, where x is the height of the coral window (the stroke of the ring, 12% of the mark's height). Minimum size: mark 24px tall on screen, 6mm in print; horizontal lockup 120px wide; descriptor lockup 360px wide, below that use the plain lockup.</p>
+    </div>
+    <div>
+      <p class="t-eyebrow">3 · The idea</p>
+      <p class="t-small" style="max-width:600px">The mark is the number 30, the FDA's 30-day reporting clock. The 0 is a ring: a clock face. The coral segment is the first five days, the window for the most serious reports. Thirty keeps every complaint on that clock. The wordmark is Manrope 800, tracked tight (−0.04em). The descriptor, "Medical device complaint reporting, on the clock.", explains the business; the tagline, "Every complaint, on the clock.", is for covers and campaigns. Use one, never both in the same lockup.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <p class="t-eyebrow">4 · Don't</p>
+    <div class="donts">
+      <div class="dont"><img src="logo/svg/thirty-mark.svg" alt="" style="transform:rotate(-14deg)"></div>
+      <div class="dont"><img src="logo/svg/thirty-mark.svg" alt="" style="transform:scaleX(1.5)"></div>
+      <div class="dont" style="background:#5B6470"><img src="logo/svg/thirty-mark.svg" alt=""></div>
+      <div class="dont"><svg viewBox="0 0 320 200" style="height:70px"><path d="M 42 50 A 34 34 0 1 1 70 100 A 34 34 0 1 1 42 150" fill="none" stroke="#1F6FB5" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/><path d="M 265.69 69 A 62 62 0 1 1 212 38" fill="none" stroke="#1F6FB5" stroke-width="24"/><path d="M 212 38 A 62 62 0 0 1 265.69 69" fill="none" stroke="#12A08F" stroke-width="24"/><circle cx="212" cy="38" r="12" fill="#12A08F"/><circle cx="265.69" cy="69" r="12" fill="#12A08F"/></svg><span style="position:absolute;right:14px;bottom:10px;font-size:12px;color:var(--t-slate);font-weight:700">other colours</span></div>
+    </div>
+    <p class="cap">No rotation. No stretching. No ink mark on dark or busy grounds (use the reverse). No colours outside ink, paper and coral; the window is only ever coral (or ink, on coral). No outlines, shadows or gradients. Never redraw the 3 or close the ring.</p>
+  </div>
+
+  <div class="block">
+    <p class="t-eyebrow">5 · Colour</p>
+    <div class="swatches">
+      <div class="sw" style="background:#F7F5F0;color:#15181D"><b>Paper</b><span>#F7F5F0</span></div>
+      <div class="sw" style="background:#15181D;color:#F7F5F0"><b>Ink</b><span>#15181D</span></div>
+      <div class="sw" style="background:#FF5A3C;color:#15181D"><b>Coral</b><span>#FF5A3C</span></div>
+      <div class="sw" style="background:#5B6470;color:#F7F5F0"><b>Slate</b><span>#5B6470</span></div>
+      <div class="sw" style="background:#DDD8CE;color:#15181D"><b>Stone</b><span>#DDD8CE</span></div>
+      <div class="sw" style="background:#F2B134;color:#15181D"><b>Amber</b><span>#F2B134</span></div>
+    </div>
+    <div class="roles">
+      <p><b style="background:#F7F5F0"></b>Paper: the ground. Pages, cards, slides. Dark mode flips paper and ink.</p>
+      <p><b style="background:#15181D"></b>Ink: all text, primary buttons, the mark, chart bars.</p>
+      <p><b style="background:#FF5A3C"></b>Coral: the accent. The five-day window, one key action per screen, deadlines under 7 days, REPORTABLE, cost-of-failure numbers. Never body text, never backgrounds for text blocks.</p>
+      <p><b style="background:#5B6470"></b>Slate: secondary text, captions, sources, placeholders.</p>
+      <p><b style="background:#DDD8CE"></b>Stone: lines, dividers, disabled fills, the ring track. Stone-light #EDEAE3 for hover panels.</p>
+      <p><b style="background:#F2B134"></b>Amber: NEEDS INFO only. Nothing else, ever.</p>
+    </div>
+    <p class="cap" style="margin-top:16px">Hover states: ink → #2A2F37, coral → #E84E31. Coral for small text on paper: #C2381A (5.0:1). On ink: secondary text #B9BEC6, lines #3A414B. Contrast: ink on paper 16.3:1, ink on coral 5.7:1 (AA), ink on amber 9.4:1, slate on paper 5.5:1 (AA), paper on coral 2.8:1 (fails: never put paper text on coral, and never coral text on paper below 48px; coral on paper is for big numbers, the window and the ring only).</p>
+  </div>
+
+  <div class="block">
+    <p class="t-eyebrow">6 · Type</p>
+    <div class="typo">
+      <div>
+        <div class="line"><span class="t-display" style="font-size:56px;margin:0">Every complaint, on the clock.</span><small>Instrument Serif 400 · display 72/48</small></div>
+        <div class="line"><span class="t-number" style="font-size:64px">222,000+</span><small>Instrument Serif 400 · numbers</small></div>
+        <div class="line"><span class="t-h3" style="margin:0">Pre-decided, with the clause and a confidence.</span><small>Manrope 800 · h3 24</small></div>
+      </div>
+      <div>
+        <div class="line"><span class="t-lead">Offline AI that reads every complaint the minute it arrives.</span><small>Manrope 500 · lead 20</small></div>
+        <div class="line"><span class="t-body">A named person approves, asks for more information, or overrides. Thirty drafts the FDA form; it never files it.</span><small>Manrope 500 · body 16</small></div>
+        <div class="line"><span class="t-eyebrow">Section label · 12 · +0.18em</span><small>Manrope 800 · eyebrow</small></div>
+        <div class="line"><span class="t-small">Source: 21 CFR 803.50; MDDI survey</span><small>Manrope 500 · small 14 · slate</small></div>
+      </div>
+    </div>
+    <p class="cap" style="margin-top:12px">Serif for headlines and big numbers only, never for UI or body. Sans for everything else. Weights: 500 body, 700 buttons and labels, 800 wordmark, pills and h3. Headlines state the takeaway in one sentence; numbers first, no drama.</p>
+  </div>
+
+  <div class="block two">
+    <div>
+      <p class="t-eyebrow">7 · Buttons</p>
+      <div class="row">
+        <button class="btn btn-primary">Primary</button>
+        <button class="btn btn-accent">Accent · Approve</button>
+        <button class="btn btn-secondary">Secondary</button>
+        <button class="btn btn-ghost">Ghost</button>
+        <button class="btn btn-danger">Override</button>
+        <button class="btn btn-primary" disabled>Disabled</button>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn btn-primary btn-sm">Small 36</button>
+        <button class="btn btn-primary">Default 44</button>
+        <button class="btn btn-primary btn-lg">Large 56</button>
+      </div>
+      <p class="cap">Radius 10px · Manrope 700 15px · 2px border · hover darkens · focus ring coral. One accent button per screen. Accent is coral with ink text; paper text on coral fails contrast.</p>
+    </div>
+    <div>
+      <p class="t-eyebrow">8 · Status pills and badges</p>
+      <div class="row">
+        <span class="pill pill-reportable">Reportable</span>
+        <span class="pill pill-needs-info">Needs info</span>
+        <span class="pill pill-not-reportable">Not reportable</span>
+        <span class="pill pill-approved">Approved</span>
+        <span class="pill pill-five-day">5-day</span>
+        <span class="pill pill-neutral">Pending review</span>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <span class="badge-local">0 bytes to cloud AI</span>
+        <div class="ring" style="width:72px;height:72px">
+          <svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="70" fill="none" stroke="var(--t-track)" stroke-width="16"/><circle cx="80" cy="80" r="70" fill="none" stroke="var(--t-fg)" stroke-width="16" stroke-dasharray="102.6 439.8"/><circle cx="80" cy="80" r="70" fill="none" stroke="var(--t-coral)" stroke-width="16" stroke-dasharray="73.3 439.8"/></svg>
+          <div class="ring-label" style="font-size:24px">23</div>
+        </div>
+      </div>
+      <p class="cap">Pills: 28px, fully round, Manrope 800 12px uppercase. Coral = reportable, amber = needs info, outlined = not reportable, filled ink = approved. The ring: track stone, elapsed ink, first five days coral. All in css/thirty.css; live examples in components.html.</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

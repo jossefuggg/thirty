@@ -1,0 +1,23 @@
+{
+  "name": "thirty",
+  "productName": "Thirty",
+  "version": "1.1.0",
+  "description": "Medical device complaint reporting. Thirty drafts; a human files.",
+  "main": "main.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "author": "Thirty",
+  "scripts": {
+    "start": "electron .",
+    "backend": "python3 ../tools/build_backend.py",
+    "dist": "npm run backend && electron-builder",
+    "dist:dir": "npm run backend && electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.0"
+  }
+}

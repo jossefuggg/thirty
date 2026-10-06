@@ -1,0 +1,12 @@
+{
+  "id": "keyword-agent",
+  "name": "Keyword agent (example)",
+  "version": "0.1.0",
+  "description": "The smallest possible agent plugin: a word list decides reportability. Copy this folder into <data folder>/plugins/ to install it.",
+  "capabilities": ["agent"],
+  "settings": [
+    {"key": "words", "label": "Reportable words", "type": "string", "default": "death, injury, hospital, fire, smoke",
+     "help": "Comma-separated. A complaint containing any of them is REPORTABLE."},
+    {"key": "strict", "label": "Treat short complaints as needs-info", "type": "bool", "default": true}
+  ]
+}

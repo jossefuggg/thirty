@@ -18,7 +18,7 @@ Usage:
   python3 vigil.py reset                     # clean slate: decisions.csv, reports/, outbox.txt, sandbox copies, group session
   python3 vigil.py listen                    # standalone Telegram commands (only if OpenClaw is NOT running)
 """
-import argparse, contextlib, csv, datetime as dt, fcntl, json, os, re, shutil, subprocess, sys, tempfile, time
+import argparse, contextlib, csv, datetime as dt, json, os, re, shutil, subprocess, sys, tempfile, time
 from collections import Counter, defaultdict, deque
 
 import requests
@@ -35,7 +35,7 @@ except Exception:
         os.execv(_venv_py, [_venv_py, *sys.argv])
     print("WARNING: fpdf2 not installed - MDR PDFs will NOT be generated (pip install fpdf2 in ~/hackathon/venv)")
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = sys._MEIPASS if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)  # ~/hackathon
 DATA = os.path.join(ROOT, "hackathon_data")
 LOG = os.path.join(HERE, "decisions.csv")
@@ -52,8 +52,12 @@ def load_env():
 load_env()
 TG_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TG_CHAT = os.environ.get("TELEGRAM_CHAT_ID", "")
-LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "http://localhost:8000/v1")  # local vLLM (OpenAI-compatible)
-LLM_MODEL = os.environ.get("VIGIL_LLM_MODEL", "")  # auto-detected if empty
+LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "http://localhost:8000/v1")  # see thirty/agents/local_model.py
+LLM_MODEL = os.environ.get("VIGIL_LLM_MODEL", "")
+# the repository root must be importable for the thirty package (vigil.py may be run from another cwd)
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+from thirty.filelock import lock as _flock, unlock as _funlock, LockBusy  # noqa: E402  (POSIX + Windows)
 
 # ---------------------------------------------------------------- layer 1: rules
 RED_FLAGS = {
@@ -225,63 +229,31 @@ def spike(c):
         return f"{key}: {len(last30)} complaints in 30 days (previous 30 days: {len(prev30)})"
     return None
 
-# ---------------------------------------------------------------- layer 2/3: local AI
-CLASSIFY = """You are Vigil, a medical device complaint analyst for a manufacturer's quality team.
-Apply FDA 21 CFR 803 (Medical Device Reporting).
-This is a MANUFACTURER report: cite 21 CFR 803.50 (manufacturer reporting) — never 803.30 (user facilities).
-A complaint is REPORTABLE if the information reasonably suggests the device:
-- may have caused or contributed to a DEATH, or
-- may have caused or contributed to a SERIOUS INJURY (life-threatening, permanent impairment, or needing medical/surgical intervention to prevent permanent damage), or
-- MALFUNCTIONED and the malfunction would be likely to cause death or serious injury if it recurred.
-Deadlines (Vigil computes them from your answer): 30 calendar days from awareness by default; 5 work days only
-when remedial action is needed to prevent an unreasonable risk of substantial harm to the public.
-Set "remedial_action_needed" to true ONLY if the complaint shows such a risk that needs action now (e.g. a defect
-likely to recur in other units and seriously harm patients); otherwise false.
-When unsure, lean toward REPORTABLE or NEEDS_INFO and say what is missing. Never discard a complaint.
-Each "missing_info" item must be 2-4 words (e.g. "patient age", "lot number", "autopsy findings").
-The examples only show the length: list the gaps that are actually missing from THIS complaint, and do not
-list anything the complaint already states.
-
-Complaint: {text}
-Device: {device}   Event date: {event_date}   Received: {received}
-
-Prior history for this device (long-term memory):
-{memory}
-Use history only to judge patterns and priority; base the decision on this complaint's facts.
-
-Answer ONLY with JSON:
-{{"decision": "REPORTABLE|NOT_REPORTABLE|NEEDS_INFO", "category": "DEATH|SERIOUS_INJURY|MALFUNCTION|NONE",
- "reason": "one sentence citing the rule", "remedial_action_needed": true or false, "missing_info": [], "confidence": 0-100}}"""
-
-
-def model_name():
-    global LLM_MODEL
-    if not LLM_MODEL:
-        r = requests.get(f"{LLM_BASE}/models", timeout=10)
-        LLM_MODEL = r.json()["data"][0]["id"]
-    return LLM_MODEL
+# ---------------------------------------------------------------- layer 2/3: the agent
+# The prompts and model calls live in thirty/agents/local_model.py; the sample agent (demo mode) and any
+# plugin implement the same interface (thirty/agents/base.py). Which one runs comes from thirty.config.
+def agent():
+    from thirty.agents import get_agent
+    return get_agent()
 
 
 def llm(prompt, max_tokens=600, temperature=0.1):
-    r = requests.post(f"{LLM_BASE}/chat/completions", timeout=180, json={
-        "model": model_name(), "temperature": temperature, "max_tokens": max_tokens,
-        "messages": [{"role": "user", "content": prompt}],
-        "chat_template_kwargs": {"enable_thinking": False},
-    })
-    r.raise_for_status()
-    out = r.json()["choices"][0]["message"]["content"] or ""
-    return re.sub(r"<think>.*?</think>", "", out, flags=re.S).strip()
+    """Direct model call (kept for `vigil.py test`); the pipeline itself goes through agent()."""
+    from thirty.agents.local_model import llm as _llm
+    return _llm(prompt, max_tokens, temperature)
+
+
+def model_name():
+    from thirty.agents.local_model import model_name as _model_name
+    return _model_name()
 
 
 def classify(c, memory=""):
-    raw = llm(CLASSIFY.format(memory=memory or "No prior complaints on this device family.", **c), 400,
-              temperature=0)  # same complaint -> same decision and deadline on every run
-    m = re.search(r"\{.*\}", raw, re.S)
-    try:
-        return json.loads(m.group(0))
-    except Exception:
-        return {"decision": "NEEDS_INFO", "category": "NONE", "reason": "model output unreadable - human review",
+    res = agent().classify(c, memory)
+    if not isinstance(res, dict) or res.get("decision") not in ("REPORTABLE", "NOT_REPORTABLE", "NEEDS_INFO"):
+        return {"decision": "NEEDS_INFO", "category": "NONE", "reason": "agent output unreadable - human review",
                 "deadline_days": 30, "missing_info": [], "confidence": 0}
+    return res
 
 # 5-day trigger words: fire, smoke, explosion, electrical shock to a patient (21 CFR 803.53 remedial-action cases).
 _FIVE_DAY = re.compile(r"\b(?:fire|flames?|caught fire|smok(?:e|ed|ing)|explo(?:de|ded|des|ding|sion|sions)|"
@@ -369,39 +341,11 @@ def tg_doc(path, caption=""):
         _outbox("sendDocument", f"file: {path}\ncaption: {caption}")
 
 # ---------------------------------------------------------------- MDR PDF (FDA Form 3500A draft)
-MDR_FIELDS = """You are Vigil. Fill the FDA MedWatch Form 3500A (mandatory reporting) fields for this medical device complaint.
-STRICT RULE: never invent facts. Use only what the complaint states. Write "UNKNOWN" for anything not stated.
-Only use company and device names that appear in the complaint data below. Never add or guess any other manufacturer, brand or model.
-Deadline rule (21 CFR 803): 5 work days only when urgent remedial action is needed to prevent substantial harm to the public; otherwise 30 calendar days. Use the deadline given below; do not recalculate it.
-Dates as YYYY-MM-DD.
-
-Complaint: {text}
-Device: {device}   Common name: {generic_name}   Product code: {product_code}
-Manufacturer: {manufacturer}   Event date: {event_date}   Date received: {received}
-Manufacturer narrative: {manufacturer_narrative}
-Vigil decision: {decision} ({category})   Deadline: {deadline}   Missing information: {missing}
-
-Extract D4 model, lot and serial numbers from the complaint AND the manufacturer narrative when present
-(e.g. "MODEL #CAX500T12" -> D4_model "CAX500T12"). FDA redaction codes such as (B)(4) or (B)(6) mean the value
-was redacted: write "REDACTED" for that field, never guess it.
-
-Answer ONLY with JSON, all values strings except where a list is shown:
-{{"A1_patient_identifier": "", "A2_age": "", "A3_sex": "", "A4_weight": "",
- "B1_event_type": "ADVERSE_EVENT|PRODUCT_PROBLEM|BOTH",
- "B2_outcomes": ["any of: Death, Life-threatening, Hospitalization (initial or prolonged), Disability or permanent damage, Congenital anomaly/birth defect, Required intervention to prevent permanent impairment/damage, Other serious (important medical event)"],
- "B3_date_of_event": "", "B5_event_description": "factual summary of the complaint",
- "D1_brand_name": "", "D2_common_device_name": "", "D2b_product_code": "", "D3_manufacturer": "",
- "D4_model": "", "D4_lot": "", "D4_serial": "",
- "G4_date_received_by_manufacturer": "",
- "H1_type_of_reportable_event": "DEATH|SERIOUS_INJURY|MALFUNCTION",
- "H3_device_evaluated": "YES|NO|UNKNOWN",
- "H10_manufacturer_narrative": "factual narrative, no speculation",
- "follow_up_questions": ["at most 5 specific questions, most important first, to close the gaps, e.g. patient age, serial number, treatment given, device available for return"]}}"""
-
 B2_OPTIONS = ["Death", "Life-threatening", "Hospitalization (initial or prolonged)", "Disability or permanent damage",
               "Congenital anomaly/birth defect", "Required intervention to prevent permanent impairment/damage",
               "Other serious (important medical event)"]
-FONT_DIR = "/usr/share/fonts/truetype/dejavu"
+FONT_DIR = next((d for d in (os.path.join(HERE, "thirty", "fonts"), "/usr/share/fonts/truetype/dejavu") if os.path.exists(os.path.join(d, "DejaVuSans.ttf"))),
+                os.path.join(HERE, "thirty", "fonts"))  # bundled with the app; system DejaVu as a fallback
 
 
 def deadline_text(days):
@@ -409,15 +353,12 @@ def deadline_text(days):
 
 
 def mdr_fields(c, row):
-    raw = llm(MDR_FIELDS.format(decision=row["decision"], category=row["category"],
-                                deadline=deadline_text(row.get("deadline_days")), missing=row["missing"] or "none listed",
-                                **{"generic_name": "", "product_code": "", "manufacturer": "",
-                                   "manufacturer_narrative": "none", **c}), 1500)
-    m = re.search(r"\{.*\}", raw, re.S)
     try:
-        f = json.loads(m.group(0))
+        f = agent().draft_report(c, row)
+        if not isinstance(f, dict):
+            raise ValueError("not a dict")
     except Exception:
-        f = {"H10_manufacturer_narrative": "Model output unreadable - complete all fields manually."}
+        f = {"H10_manufacturer_narrative": "Agent output unreadable - complete all fields manually."}
     # Set by Vigil, not the model: today's date and the report type that matches the computed deadline.
     f["B4_date_of_report"] = dt.date.today().isoformat()
     f["G7_report_type"] = "5-day" if str(row.get("deadline_days")) == "5" else "30-day"
@@ -468,7 +409,7 @@ def render_mdr_pdf(c, row, f):
         def header(self):
             self.set_font(FONT, "B", 9)
             self.set_text_color(90)
-            self.cell(0, 5, f"VIGIL   |   Complaint #{c['id']}   |   Due: {due}", align="L")
+            self.cell(0, 5, f"THIRTY   |   Complaint #{c['id']}   |   Due: {due}", align="L")
             self.cell(0, 5, f"Page {self.page_no()}/{{nb}}", align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             self.set_draw_color(0); self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
             self.ln(2); self.set_text_color(0)
@@ -477,7 +418,7 @@ def render_mdr_pdf(c, row, f):
             self.set_y(-12)
             self.set_font(FONT, "", 8)
             self.set_text_color(90)
-            self.cell(0, 5, "Generated locally on Dell Pro Max GB10, no data left the device", align="C")
+            self.cell(0, 5, "Thirty drafts; a human files. Generated on the local model: no data left this machine.", align="C")
 
     pdf = PDF(format="Letter")
     if os.path.exists(f"{FONT_DIR}/DejaVuSans.ttf"):
@@ -497,7 +438,7 @@ def render_mdr_pdf(c, row, f):
     pdf.cell(0, 6, "DRAFT for human review", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0)
     pdf.set_font(FONT, "", 8)
-    pdf.cell(0, 5, f"Vigil decision: {row['decision']} ({row['category']}), confidence {row['confidence']}%   "
+    pdf.cell(0, 5, f"Thirty decision: {row['decision']} ({row['category']}), confidence {row['confidence']}%   "
                    f"|   Priority: {row['priority']}", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
 
@@ -563,7 +504,14 @@ def make_mdr(c, row):
     if FPDF is None:
         print("fpdf2 not installed - skipping MDR PDF")
         return None
-    return render_mdr_pdf(c, row, mdr_fields(c, row))
+    f = mdr_fields(c, row)
+    path = render_mdr_pdf(c, row, f)
+    try:  # the drafted fields next to the PDF: the console reads follow-up questions from here
+        with open(os.path.splitext(path)[0] + ".json", "w", encoding="utf-8") as fh:
+            json.dump(f, fh, indent=1)
+    except Exception as e:
+        print(f"WARNING: could not write draft fields for #{c['id']}: {e}")
+    return path
 
 # ---------------------------------------------------------------- log
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
@@ -579,15 +527,15 @@ _lock_depth, _lock_fd = 0, None
 def log_lock():
     global _lock_depth, _lock_fd
     if _lock_depth == 0:
-        _lock_fd = open(LOG + ".lock", "w")
-        fcntl.flock(_lock_fd, fcntl.LOCK_EX)
+        _lock_fd = open(LOG + ".lock", "a+")
+        _flock(_lock_fd, exclusive=True, blocking=True)
     _lock_depth += 1
     try:
         yield
     finally:
         _lock_depth -= 1
         if _lock_depth == 0:
-            fcntl.flock(_lock_fd, fcntl.LOCK_UN)
+            _funlock(_lock_fd)
             _lock_fd.close()
 
 def log(row):
@@ -638,8 +586,8 @@ def _nemoclaw(*args):
             end = time.time() + NEMOCLAW_WAIT
             while True:
                 try:
-                    fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB); break
-                except BlockingIOError:
+                    _flock(lk, exclusive=True, blocking=False); break
+                except LockBusy:
                     if time.time() > end:
                         raise TimeoutError(f"waited {NEMOCLAW_WAIT}s for {NEMOCLAW_LOCK}")
                     time.sleep(0.2)
@@ -745,7 +693,7 @@ def device_memory(c):
     except Exception:
         last_txt = last or "unknown"
     n = len(prior)
-    summary = (f"{n} prior complaints on {fam} ({len(hist)} in FDA history, {len(live)} processed by Vigil). "
+    summary = (f"{n} prior complaints on {fam} ({len(hist)} in FDA history, {len(live)} processed by Thirty). "
                f"Events: {', '.join(f'{e} {k}' for e, k in events.most_common(4)) or 'unknown'}.\n"
                f"Top failure modes: {', '.join(f'{m} ({modes[m]})' for m in top) or 'unknown'}.\n"
                f"Most recent: {', '.join(f'#{i} ({d})' for d, i, _, _ in recent)}.")
@@ -890,9 +838,11 @@ def load_txt(path):
 
 # ---------------------------------------------------------------- commands
 def cmd_test(_):
-    print("Model:", model_name(), "at", LLM_BASE)
-    print("Model says:", llm("Reply with exactly: Vigil online.", 20))
-    tg("Vigil is online. Watching complaints.")
+    print("Agent:", agent().name, "·", agent().health().get("label"))
+    if agent().id == "local":
+        print("Model:", model_name(), "at", LLM_BASE)
+        print("Model says:", llm("Reply with exactly: Thirty online.", 20))
+    tg("Thirty is online. Watching complaints.")
     print("Telegram message sent (check the group).")
 
 

@@ -20,3 +20,15 @@ history.csv
 settings.json
 intake/
 *.log
+# desktop app build output
+desktop/node_modules/
+desktop/dist/
+desktop/build/backend/
+desktop/build/pyinstaller-work/
+desktop/build/check-data/
+# signing material and licence keys: never commit
+*.p12
+*.pfx
+licence-secret.key
+*.key
+!dashboard_v2/static/**

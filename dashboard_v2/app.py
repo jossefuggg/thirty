@@ -1,37 +1,59 @@
-"""Vigil Console v2 - live, demo-ready command center for the Vigil complaint agent.
+"""Thirty console - live command center for the Thirty complaint agent (formerly "Vigil Console v2").
 
 Reads ../decisions.csv (written by vigil.py), serves the draft 3500A PDFs from ../reports, drives demo
 replays/resets of vigil.py in a subprocess, and shows live system health. vigil.py is never edited.
 Everything is local: no CDNs, no external fonts.
 
-Run in the background:  ~/hackathon/vigil/dashboard_v2/start_console.sh   ->  http://localhost:5001
+Run:  python3 dashboard_v2/app.py  ->  http://localhost:5001   (the desktop app spawns this itself)
 """
-import copy, csv, datetime as dt, fcntl, io, json, os, re, secrets, shutil, signal, subprocess, sys, tempfile, threading, time, uuid
+import copy, csv, datetime as dt, io, json, os, re, secrets, shutil, signal, subprocess, sys, tempfile, threading, time, uuid
 from collections import defaultdict
 
 import requests
-from flask import Flask, abort, jsonify, render_template, request, send_from_directory
+from flask import Flask, abort, jsonify, redirect, render_template, request, send_from_directory
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-VIGIL_DIR = os.environ.get("VIGIL_DIR", os.path.dirname(HERE))  # override only for testing on a scratch copy
+if getattr(sys, "frozen", False):  # PyInstaller build (desktop app): everything is unpacked under _MEIPASS
+    CODE_DIR = sys._MEIPASS
+    HERE = os.path.join(CODE_DIR, "dashboard_v2")
+else:
+    HERE = os.path.dirname(os.path.abspath(__file__))
+    CODE_DIR = os.path.dirname(HERE)  # the repository / installed app: vigil.py, the thirty package, demo_set.csv
+if CODE_DIR not in sys.path:
+    sys.path.insert(0, CODE_DIR)
+from thirty import config as tconfig, licensing, plugins, sample_data, setup as tsetup  # noqa: E402
+from thirty.agents import get_agent  # noqa: E402
+from thirty.filelock import lock as _flock, unlock as _funlock, LockBusy  # noqa: E402
+
+VIGIL_DIR = tconfig.data_dir()  # the data folder (VIGIL_DIR env; defaults to the repository root)
+demo_mode = tconfig.demo_mode  # the sample agent is active (no model configured); can change at runtime
+
+
+def sample_data_mode():
+    """Sample agent AND the user chose to explore with sample data (not their own site)."""
+    return demo_mode() and tsetup.wants_sample_data()
 LOG = os.path.join(VIGIL_DIR, "decisions.csv")
 LOCK = LOG + ".lock"  # the same lock file vigil.py's log_lock() uses
 REPORTS = os.path.join(VIGIL_DIR, "reports")
 OUTBOX = os.path.join(VIGIL_DIR, "outbox.txt")
-DEMO_CSV = os.path.join(VIGIL_DIR, "demo_set.csv")
-CHART = os.path.join(VIGIL_DIR, "philips_chart.png")
+DEMO_CSV = os.path.join(CODE_DIR, "demo_set.csv")
 HISTORY = os.path.join(VIGIL_DIR, "history.csv")  # past FDA MAUDE reports (vigil.py import-history)
-ACTIONS = os.environ.get("VIGIL_CONSOLE_ACTIONS", os.path.join(HERE, "actions.csv"))  # who/when for console actions
+ACTIONS = os.environ.get("VIGIL_CONSOLE_ACTIONS", os.path.join(VIGIL_DIR, "actions.csv"))  # who/when for console actions
 VENV_BIN = os.path.expanduser(os.environ.get("VIGIL_VENV_BIN", "~/hackathon/venv/bin"))
-LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "http://localhost:8000/v1")
 FIELDS = ["time", "id", "received", "device", "priority", "score", "distress", "decision", "category",
           "reason", "deadline_days", "due_date", "confidence", "missing", "duplicate_of", "status", "text",
           "product_code", "memory", "failure_mode", "source"]  # same order as vigil.FIELDS; older files stop earlier
 
-VERSION = "1.0.0"
-WORKSPACE = {"org": "Acme Medical", "unit": "Quality", "env": "ON-PREM · GB10 · PRODUCTION"}
+VERSION = "1.1.0"
+try:
+    from thirty import __version__ as VERSION  # single source of truth: thirty/__init__.py
+except Exception:
+    pass
+def workspace():
+    """Top-bar identity: the site chosen at first-run setup, or the sample company."""
+    ws = tsetup.workspace()
+    return {"org": ws["org"], "unit": ws["unit"], "mode": ws["mode"], "env": "ON-PREM · PRODUCTION", "env_short": "ON-PREM"}
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=os.path.join(HERE, "templates"), static_folder=os.path.join(HERE, "static"))
 import logging; logging.getLogger("werkzeug").setLevel(logging.WARNING)  # polling would flood console.log
 
 # ---------------------------------------------------------------- decisions.csv
@@ -60,12 +82,12 @@ def read_rows():
     if not os.path.exists(LOG):
         _cache.update(rows=[], mtime=None)
         return []
-    lockf = open(LOCK, "a")
+    lockf = open(LOCK, "a+")
     try:
         try:
-            fcntl.flock(lockf, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            _flock(lockf, exclusive=False, blocking=False)
             locked = True
-        except BlockingIOError:
+        except LockBusy:
             locked = False
         try:
             with open(LOG, newline="", encoding="utf-8") as f:
@@ -77,18 +99,20 @@ def read_rows():
         _cache["rows"] = rows
         return rows
     finally:
-        lockf.close()  # releases the flock
+        if locked:
+            _funlock(lockf)
+        lockf.close()
 
 
 def set_status(cid, status, guard):
     """Read-modify-write under vigil.py's exclusive lock. guard(old_status) -> bool decides if a row changes.
     The new file is written next to the old one and swapped in atomically, so unlocked readers never see it torn."""
-    with open(LOCK, "a") as lockf:
+    with open(LOCK, "a+") as lockf:
         deadline = time.time() + 90  # vigil.py may hold the lock through a sandbox upload (<= 60 s)
         while True:
             try:
-                fcntl.flock(lockf, fcntl.LOCK_EX | fcntl.LOCK_NB); break
-            except BlockingIOError:
+                _flock(lockf, exclusive=True, blocking=False); break
+            except LockBusy:
                 if time.time() > deadline:
                     raise TimeoutError("decisions.csv is busy, try again")
                 time.sleep(0.2)
@@ -107,6 +131,7 @@ def set_status(cid, status, guard):
                 w.writeheader(); w.writerows(rows)
             shutil.copymode(LOG, tmp)
             os.replace(tmp, LOG)
+        _funlock(lockf)
     if changed:
         threading.Thread(target=push_to_sandbox, daemon=True).start()
     return bool(changed)
@@ -125,8 +150,10 @@ def vigil():
     global _vigil
     with _vigil_lock:
         if _vigil is None:
-            sys.path.insert(0, VIGIL_DIR)
-            import vigil as v
+            import vigil as v  # from CODE_DIR
+            v.LOG, v.REPORTS, v.OUTBOX, v.HISTORY = LOG, REPORTS, OUTBOX, HISTORY
+            if tconfig.agent_id() != "local":
+                v.SANDBOX = ""  # the OpenClaw sandbox only exists next to the hackathon's local model
             _vigil = v
         return _vigil
 
@@ -135,7 +162,6 @@ def push_to_sandbox():
     """Keep the OpenClaw sandbox copy in sync after a console approval, like vigil.write_log does."""
     try:
         v = vigil()
-        v.LOG = LOG
         v.push_log()
     except Exception as e:
         print("sandbox push skipped:", e, flush=True)
@@ -146,22 +172,40 @@ DEMO_COMMANDS = {
     "replay": 'sg docker -c "python3 vigil.py replay --csv demo_set.csv --delay 8"',
     "reset": 'sg docker -c "python3 vigil.py reset"',
 }
+DEMO_DELAY = float(os.environ.get("THIRTY_DEMO_DELAY", "2.5"))  # seconds between replayed complaints in demo mode
 PROCESSED_LINE = re.compile(r"^\S+ (URGENT|HIGH|NORMAL) (REPORTABLE|NEEDS_INFO|NOT_REPORTABLE|None)\b")  # cmd_replay's per-complaint line
+
+
+def in_process():
+    """Run demo actions inside the console (no subprocess, no sandbox) unless the hackathon local model is active."""
+    return tconfig.agent_id() != "local"
+
+
+def demo_commands():
+    if not in_process():
+        return DEMO_COMMANDS
+    return {"replay": f"{get_agent().name} · {len(sample_data.INCOMING)} incoming complaints through the pipeline",
+            "reset": "reset sample data · 40 complaints, history and drafts rewritten for today" if sample_data_mode() else "clear decisions.csv, drafted PDFs and the intake queue"}
 
 
 class DemoRunner:
     def __init__(self):
         self.lock = threading.Lock()
         self.proc, self.kind, self.cmd = None, None, None
+        self.thread, self._stop = None, threading.Event()
         self.lines, self.seq = [], 0
         self.started = self.ended = None
         self.rc, self.stopped, self.processed = None, False, 0
 
     @property
     def running(self):
+        if self.thread is not None and self.thread.is_alive():
+            return True
         return self.proc is not None and self.proc.poll() is None
 
     def _emit(self, text, tag=""):
+        if not tag and PROCESSED_LINE.match(text):  # one per processed complaint, subprocess or in-process
+            self.processed += 1
         with self.lock:
             self.seq += 1
             self.lines.append((self.seq, tag, text))
@@ -171,10 +215,15 @@ class DemoRunner:
         with self.lock:
             if self.running:
                 return f"A {self.kind} is already running. Stop it first."
-            self.lines, self.kind, self.cmd = [], kind, DEMO_COMMANDS[kind]
+            self.lines, self.kind, self.cmd = [], kind, demo_commands()[kind]
             self.started, self.ended, self.rc, self.stopped, self.processed = time.time(), None, None, False, 0
-        env = {**os.environ, "PATH": f"{VENV_BIN}:{os.environ.get('PATH', '')}", "PYTHONUNBUFFERED": "1"}
         self._emit(f"$ {self.cmd}", "cmd")
+        if in_process():
+            self._stop.clear(); self.proc = None
+            self.thread = threading.Thread(target=self._run_inprocess, args=(kind,), daemon=True)
+            self.thread.start()
+            return None
+        env = {**os.environ, "PATH": f"{VENV_BIN}:{os.environ.get('PATH', '')}", "PYTHONUNBUFFERED": "1"}
         self.proc = subprocess.Popen(self.cmd, shell=True, cwd=VIGIL_DIR, env=env, stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True, bufsize=1,
                                      start_new_session=True)  # own process group, so Stop kills sg -> sh -> python
@@ -184,8 +233,6 @@ class DemoRunner:
     def _pump(self, proc):
         for line in proc.stdout:
             line = line.rstrip("\n")
-            if PROCESSED_LINE.match(line):
-                self.processed += 1
             self._emit(line, "warn" if re.search(r"WARNING|failed|FAILED|Traceback|Error", line) else "")
         rc = proc.wait()
         self.rc, self.ended = rc, time.time()
@@ -194,11 +241,55 @@ class DemoRunner:
         else:
             self._emit(f"■ {self.kind} finished (exit code {rc})", "ok" if rc == 0 else "warn")
 
+    def _run_inprocess(self, kind):
+        """Demo mode: replay the sample incoming complaints through vigil.process() with the sample agent, or
+        reseed the sample data. Same output lines as the subprocess path, so the Demo page needs no changes."""
+        rc = 0
+        try:
+            if kind == "reset" and sample_data_mode():
+                self._emit("Rewriting sample data for today…")
+                ids = sample_data.seed(VIGIL_DIR)
+                _cache.update(rows=[], mtime=None)
+                self._emit(f"{len(ids)} complaints, {len(sample_data.history_rows())} history rows, drafted PDFs written to {VIGIL_DIR}")
+            elif kind == "reset":
+                for name in ("decisions.csv", "outbox.txt", "intake.json", ".push_pending"):
+                    try: os.remove(os.path.join(VIGIL_DIR, name)); self._emit(f"removed {name}")
+                    except OSError: pass
+                shutil.rmtree(REPORTS, ignore_errors=True); self._emit("removed reports/")
+                _cache.update(rows=[], mtime=None)
+            else:
+                items = sample_data.incoming_complaints()
+                self._emit(f"Replay started: {len(items)} complaints · agent: {get_agent().name}")
+                for n, c in enumerate(items, 1):
+                    if self._stop.is_set():
+                        break
+                    self._emit(f"→ #{c['id']} {c['device']}")
+                    with _process_lock:
+                        row = vigil().process(dict(c))
+                    self._emit(f"{row['id']} {row['priority']} {row['decision']} {row['due_date']}")
+                    if n < len(items):
+                        self._stop.wait(DEMO_DELAY)
+                if not self._stop.is_set():
+                    self._emit("Replay finished.")
+        except Exception as e:
+            rc = 1
+            self._emit(f"Error: {type(e).__name__}: {e}", "warn")
+        self.rc, self.ended = rc, time.time()
+        if self.stopped:
+            self._emit("■ stopped from the console", "warn")
+        else:
+            self._emit(f"■ {kind} finished (exit code {rc})", "ok" if rc == 0 else "warn")
+
     def stop(self):
         if not self.running:
             return "Nothing is running."
         self.stopped = True
+        if self.proc is None:  # in-process demo run
+            self._stop.set()
+            return None
         pgid = self.proc.pid  # start_new_session: the group id is the shell's pid
+        if not hasattr(os, "killpg"):  # Windows: no process groups
+            self.proc.terminate(); return None
         for sig, wait in ((signal.SIGTERM, 4), (signal.SIGKILL, 2)):
             try:
                 os.killpg(pgid, sig)
@@ -225,7 +316,9 @@ DEMO = DemoRunner()
 
 
 def demo_total():
-    """Complaints a replay of demo_set.csv will process (rows with a description, like vigil.load_csv)."""
+    """Complaints a replay will process: the sample incoming set in demo mode, else demo_set.csv rows with text."""
+    if in_process():
+        return len(sample_data.INCOMING)
     try:
         with open(DEMO_CSV, newline="", encoding="utf-8") as f:
             return sum(1 for r in csv.DictReader(f) if (r.get("event_description") or r.get("manufacturer_narrative") or "").strip())
@@ -233,8 +326,8 @@ def demo_total():
         return 0
 
 # ---------------------------------------------------------------- settings.json (console configuration)
-SETTINGS = os.environ.get("VIGIL_CONSOLE_SETTINGS", os.path.join(HERE, "settings.json"))
-INTAKE = os.environ.get("VIGIL_CONSOLE_INTAKE", os.path.join(HERE, "intake.json"))
+SETTINGS = os.environ.get("VIGIL_CONSOLE_SETTINGS", os.path.join(VIGIL_DIR, "settings.json"))
+INTAKE = os.environ.get("VIGIL_CONSOLE_INTAKE", os.path.join(VIGIL_DIR, "intake.json"))
 VIGIL_FIELDS = [("id", "Complaint ID"), ("text", "Complaint text"), ("device", "Device / brand"), ("received", "Date received"),
                 ("event_date", "Event date"), ("event_type", "Event type"), ("outcomes", "Patient outcome"),
                 ("manufacturer", "Manufacturer"), ("product_code", "Product code"), ("product_problems", "Product problems"),
@@ -333,8 +426,9 @@ def intake_mod():
     if not _intake_mod["tried"]:
         _intake_mod["tried"] = True
         try:
-            sys.path.insert(0, VIGIL_DIR)
-            import intake as m
+            import intake as m  # from CODE_DIR; its files go to the data folder
+            m.SETTINGS = os.path.join(VIGIL_DIR, "intake-settings.json")
+            m.INTAKE = os.path.join(VIGIL_DIR, "intake"); m.RAW = os.path.join(m.INTAKE, "raw"); m.INDEX = os.path.join(m.INTAKE, "index.csv")
             _intake_mod["m"] = m
         except Exception as e:
             print("intake.py not available:", type(e).__name__, e, flush=True)
@@ -489,20 +583,17 @@ def read_upload(f):
 
 # ---------------------------------------------------------------- system health (refreshed in the background)
 HEALTH = {"model": {"ok": False, "label": "checking…"}, "telegram": {"ok": False, "label": "checking…"},
-          "sync": {"ok": False, "label": "checking…"}, "checked": None}
+          "sync": {"ok": False, "label": "checking…"}, "checked": None,
+          "agent": {"id": tconfig.agent_id(), "name": get_agent().name}, "demo_mode": demo_mode()}
 
 def _check_model():
+    """The active agent's own health check (local model: ping the server; sample agent: always ready)."""
     try:
-        name = requests.get(f"{LLM_BASE}/models", timeout=3).json()["data"][0]["id"]
-        t0 = time.perf_counter()
-        r = requests.post(f"{LLM_BASE}/chat/completions", timeout=15, json={
-            "model": name, "max_tokens": 1, "temperature": 0, "messages": [{"role": "user", "content": "ping"}],
-            "chat_template_kwargs": {"enable_thinking": False}})
-        r.raise_for_status()
-        ms = (time.perf_counter() - t0) * 1000
-        return {"ok": True, "name": name.split("/")[-1], "ms": round(ms), "label": f"{name.split('/')[-1]} · {ms:.0f} ms"}
+        a = get_agent()
+        h = a.health()
+        return {"ok": bool(h.get("ok")), "name": h.get("name") or a.name, "ms": h.get("ms"), "label": h.get("label") or ""}
     except Exception as e:
-        return {"ok": False, "label": f"offline ({type(e).__name__})"}
+        return {"ok": False, "label": f"error ({type(e).__name__})"}
 
 
 _tg_fails = {"n": 0, "last_ok": None}
@@ -511,6 +602,8 @@ def _check_telegram():
     """Reachability of api.telegram.org, debounced: one slow or failed probe must not flip the badge.
     Reported offline only after 3 consecutive failures."""
     now = dt.datetime.now().strftime("%H:%M:%S")
+    if tconfig.agent_id() != "local":
+        return {"ok": False, "label": "not configured", "checked": now, "fails": 0, "off": True}
     try:
         t0 = time.perf_counter()
         requests.get("https://api.telegram.org", timeout=4, allow_redirects=False)
@@ -526,15 +619,26 @@ def _check_telegram():
 
 
 def _check_sync():
-    r = subprocess.run(["pgrep", "-f", r"vigil\.py sync"], capture_output=True, text=True)
-    pids = r.stdout.split()
+    if tconfig.agent_id() != "local" or os.name != "posix":
+        return {"ok": False, "label": "not configured", "off": True}
+    try:
+        r = subprocess.run(["pgrep", "-f", r"vigil\.py sync"], capture_output=True, text=True)
+        pids = r.stdout.split()
+    except Exception:
+        pids = []
     return {"ok": bool(pids), "label": "running" if pids else "not running"}
 
 
 def health_loop():
+    last_model = 0
     while True:
-        HEALTH.update(model=_check_model(), telegram=_check_telegram(), sync=_check_sync(),
-                      checked=dt.datetime.now().strftime("%H:%M:%S"))
+        try:
+            if time.time() - last_model >= (60 if tconfig.agent_id() == "local" else 10):
+                HEALTH["model"] = _check_model(); last_model = time.time()
+            HEALTH.update(telegram=_check_telegram(), sync=_check_sync(), checked=dt.datetime.now().strftime("%H:%M:%S"),
+                          agent={"id": tconfig.agent_id(), "name": get_agent().name}, demo_mode=demo_mode())
+        except Exception as e:  # never let the health thread die
+            print("health check failed:", type(e).__name__, e, flush=True)
         time.sleep(10)
 
 # ---------------------------------------------------------------- pages / API
@@ -578,19 +682,61 @@ ICONS = {k: _svg(v) for k, v in {
     "copy": '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
     "bell": '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
     "book": '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
+    "moon": '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 }.items()}
 STEP_ICONS = {"done": ICONS["check"], "info": ICONS["help"], "todo": _svg('<circle cx="12" cy="12" r="3"/>')}
 
 NAV = [("home", "/", "Command Center", "grid"), ("intake", "/intake", "Intake inbox", "download"), ("complaints", "/complaints", "Complaints", "inbox"),
        ("clock", "/clock", "Compliance Clock", "clock"), ("trends", "/trends", "Trends", "trend"),
-       ("audit", "/audit", "Audit Log", "file"), ("integrations", "/integrations", "Integrations", "plug"), ("demo", "/demo", "Demo Control", "play")]
+       ("audit", "/audit", "Audit Log", "file"), ("integrations", "/integrations", "Integrations", "plug"), ("demo", "/demo", "Demo Control", "play"),
+       ("plugins", "/settings/plugins", "Plugins", "cpu"), ("licence", "/settings/licence", "Licence & updates", "key")]
 
 
 @app.context_processor
 def _globals():
     from markupsafe import Markup
-    return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": WORKSPACE, "SOURCES": SOURCES,
+    return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": workspace(), "SOURCES": SOURCES,
+            "DEMO_MODE": demo_mode(), "SAMPLE_DATA": sample_data_mode(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name}, "LICENCE": licensing.check().status(),
+            "fmt_day": fmt_day, "LOCAL_AGENT": tconfig.agent_id() == "local", "DATA_DIR": VIGIL_DIR,
             "icon": lambda name: Markup(ICONS.get(name, ""))}
+
+
+SETUP_FREE = ("/setup", "/api/setup", "/api/plugins", "/api/health", "/static/")
+
+
+@app.before_request
+def _first_run():
+    """Until first-run setup is complete, every page goes to /setup (API calls answer 409)."""
+    if tsetup.required() and not request.path.startswith(SETUP_FREE):
+        if request.path.startswith("/api/"):
+            return jsonify(error="setup required", setup="/setup"), 409
+        return redirect("/setup")
+
+
+@app.route("/setup")
+def setup_page():
+    if not tsetup.required() and request.args.get("again") != "1":
+        return redirect("/")
+    return render_template("setup.html", data_dir=VIGIL_DIR, version=VERSION)
+
+
+@app.post("/api/setup")
+def api_setup():
+    d = request.get_json(silent=True) or {}
+    mode, agent = d.get("mode") or "explore", d.get("agent") or "sample"
+    try:
+        if agent == "local":
+            plugins.update_plugin("local", enabled=True, settings=d.get("local") or {})
+        if not plugins.forced_by_env():
+            plugins.set_active(agent)
+    except plugins.PluginError as e:
+        return jsonify(error=str(e)), 400
+    st = tsetup.complete(mode, d.get("org"), d.get("unit"), agent)
+    if mode == "explore" and not os.path.exists(LOG):
+        sample_data.seed(VIGIL_DIR); _cache.update(rows=[], mtime=None)
+    HEALTH.update(model=_check_model(), agent={"id": tconfig.agent_id(), "name": get_agent().name}, demo_mode=demo_mode())
+    return jsonify(ok=True, setup=st, agent=get_agent().name)
 
 
 @app.route("/")
@@ -658,13 +804,13 @@ def audit_events():
     for r in all_rows():
         t, cid = r.get("time") or "", r["id"]
         dec = (r.get("decision") or "").replace("_", " ")
-        ev.append({"t": t, "actor": "Vigil AI", "action": "Classified", "id": cid, "decision": r.get("decision") or "",
+        ev.append({"t": t, "actor": "Thirty agent", "action": "Classified", "id": cid, "decision": r.get("decision") or "",
                    "detail": f"{dec} · {r.get('category')} · {r.get('confidence')}% · {r.get('reason') or ''}"})
-        ev.append({"t": t, "actor": "Vigil AI", "action": "Alert sent", "id": cid, "decision": "",
+        ev.append({"t": t, "actor": "Thirty agent", "action": "Alert sent", "id": cid, "decision": "",
                    "detail": f"Telegram alert · {r.get('priority')} priority" + (" · queued in outbox" if alert_state(cid) != "sent" else "")})
         pdf = os.path.join(REPORTS, f"MDR_{cid}.pdf")
         if os.path.exists(pdf):
-            ev.append({"t": dt.datetime.fromtimestamp(os.path.getmtime(pdf)).isoformat(timespec="seconds"), "actor": "Vigil AI",
+            ev.append({"t": dt.datetime.fromtimestamp(os.path.getmtime(pdf)).isoformat(timespec="seconds"), "actor": "Thirty agent",
                        "action": "PDF drafted", "id": cid, "decision": "", "detail": f"Form 3500A draft MDR_{cid}.pdf · due {r.get('due_date') or 'n/a'}"})
         if owner_of(r) and not last_action(cid, t):  # decided in Telegram: no console timestamp
             ev.append({"t": t, "actor": owner_of(r), "action": "Approved" if status_kind(r.get("status")) == "appr" else "Info requested",
@@ -696,7 +842,7 @@ def audit_csv():
     for e in audit_events():
         w.writerow([e["t"], e["actor"], e["action"], e["id"], e["detail"]])
     return app.response_class(out.getvalue(), mimetype="text/csv",
-                              headers={"Content-Disposition": f"attachment; filename=vigil_audit_{dt.date.today():%Y%m%d}.csv"})
+                              headers={"Content-Disposition": f"attachment; filename=thirty_audit_{dt.date.today():%Y%m%d}.csv"})
 
 
 def status_kind(s):
@@ -930,16 +1076,19 @@ def history_context():
     if not hist:
         return {"rows": 0}
     if _hx["mtime"] != _hist["mtime"]:
-        fam, modes, months = defaultdict(int), defaultdict(int), defaultdict(int)
+        fam, months = defaultdict(int), defaultdict(int)
         for d, f, m, _, _ in hist:
             fam[f] += 1; months[d.strftime("%Y-%m")] += 1
-            if f == "DREAMSTATION" and m != "other": modes[m] += 1
+        top_family = max(fam, key=fam.get)
+        modes = defaultdict(int)
+        for _, f, m, _, _ in hist:  # failure modes of the family with the most history
+            if f == top_family and m != "other": modes[m] += 1
         if not modes:
             for _, _, m, _, _ in hist:
                 if m != "other": modes[m] += 1
         keys = sorted(months)[-36:]
-        _hx.update(mtime=_hist["mtime"], data={"rows": len(hist), "dream": fam.get("DREAMSTATION", 0),
-                   "top_family": max(fam, key=fam.get), "top_mode": max(modes, key=modes.get).split("/")[0] if modes else "n/a",
+        _hx.update(mtime=_hist["mtime"], data={"rows": len(hist), "dream": fam.get(top_family, 0),
+                   "top_family": top_family, "top_mode": max(modes, key=modes.get).split("/")[0] if modes else "n/a",
                    "spark": [months[k] for k in keys]})
     return _hx["data"]
 
@@ -954,7 +1103,7 @@ def api_state():
     clock = sorted((r for r in rows if is_open(r)), key=lambda r: (r["due_date"], -int(r.get("score") or 0)))
     return jsonify(history=history_context(), kpi=kpis(rows), feed=[brief(r) for r in feed], queue=[brief(r) for r in queue],
                    alerts=pattern_alerts(rows), pipeline=pipeline(rows), clock=[brief(r) for r in clock],
-                   demo={k: v for k, v in DEMO.public(since=10**12).items() if k in ("running", "kind", "processed", "total")})
+                   demo={**{k: v for k, v in DEMO.public(since=10**12).items() if k in ("running", "kind", "processed", "total")}, "demo_mode": demo_mode()})
 
 
 RECALL = ("2021-06", "Philips recall · 14 Jun 2021")
@@ -962,7 +1111,7 @@ RECALL = ("2021-06", "Philips recall · 14 Jun 2021")
 
 @app.route("/trends")
 def trends():
-    return render_template("trends.html", page="trends", title="Trends", chart=os.path.exists(CHART))
+    return render_template("trends.html", page="trends", title="Trends")
 
 
 @app.route("/api/trends")
@@ -1109,6 +1258,15 @@ def follow_up_questions(cid):
         return []
     key = (path, os.path.getmtime(path))
     if key not in _fq_cache:
+        side = os.path.join(REPORTS, f"MDR_{cid}.json")
+        if os.path.exists(side):  # written next to the PDF by vigil.make_mdr()
+            try:
+                with open(side, encoding="utf-8") as f:
+                    qs = [str(q).strip() for q in (json.load(f).get("follow_up_questions") or []) if str(q).strip()][:5]
+                _fq_cache[key] = qs
+                return qs
+            except (OSError, ValueError):
+                pass
         try:
             txt = subprocess.run(["pdftotext", "-raw", path, "-"], capture_output=True, text=True, timeout=10).stdout
         except Exception:
@@ -1153,6 +1311,11 @@ def alert_state(cid):
         return "sent"
 
 
+def fmt_day(d):
+    """'6 Oct 2026' on every OS (strftime %-d is POSIX-only)."""
+    return f"{d.day} {d:%b %Y}" if d else ""
+
+
 def fmt_time(iso):
     try:
         return dt.datetime.fromisoformat(iso).strftime("%d %b %Y, %H:%M:%S")
@@ -1178,7 +1341,7 @@ def short_time(iso):
         t = dt.datetime.fromisoformat(iso)
     except Exception:
         return ""
-    return t.strftime("%H:%M:%S") if t.date() == dt.date.today() else t.strftime("%-d %b, %H:%M")
+    return t.strftime("%H:%M:%S") if t.date() == dt.date.today() else f"{t.day} {t:%b, %H:%M}"
 
 
 def device_history(r, rows, days=90):
@@ -1213,7 +1376,7 @@ def detail(r, rows=None):
 
     # timeline: (state, title, detail, time) with state done | current | future | skip | warn
     steps = [
-        ["done", "Received", "Original FDA receipt " + rec_d.strftime("%-d %b %Y") if rec_d else "Complaint taken in", t],
+        ["done", "Received", "Original FDA receipt " + fmt_day(rec_d) if rec_d else "Complaint taken in", t],
         ["done", "Priority scored", f"{r.get('priority')} · score {r.get('score')} · distress {r.get('distress')}/5", t],
         ["done", "AI classified", f"{(r.get('decision') or '').replace('_', ' ')} · {r.get('category')} · {r.get('confidence')}% confidence", t],
         ["done" if alert == "sent" else "warn", "Telegram alert sent" if alert == "sent" else "Telegram alert queued",
@@ -1238,7 +1401,8 @@ def detail(r, rows=None):
     missing = [m.strip() for m in (r.get("missing") or "").split(";") if m.strip()]
     questions = follow_up_questions(cid)
     if not questions and missing and reportable:
-        questions = [f"Can you provide the {re.sub(r'\s*\(.*?\)', '', m).strip().rstrip('.').lower()}?" for m in missing[:5]]
+        _PAREN = re.compile(r"\s*\(.*?\)")  # Python 3.11: no backslashes inside an f-string expression
+        questions = [f"Can you provide the {_PAREN.sub('', m).strip().rstrip('.').lower()}?" for m in missing[:5]]
     src = source_complaint(cid) or {}
     try:
         conf = max(0, min(100, int(float(r.get("confidence") or 0))))
@@ -1251,7 +1415,7 @@ def detail(r, rows=None):
             "history": device_history(r, rows), "family": device_family(r.get("device")), "source": source_of(cid),
             "full_text": src.get("event_description") or r.get("text") or "",
             "narrative": src.get("manufacturer_narrative") or "", "src": src,
-            "due_label": dt.date.fromisoformat(r["due_date"]).strftime("%-d %b %Y") if r.get("due_date") else ""}
+            "due_label": fmt_day(dt.date.fromisoformat(r["due_date"])) if r.get("due_date") else ""}
 
 
 @app.route("/complaint/<cid>")
@@ -1284,6 +1448,8 @@ def api_action(cid):
         return jsonify(error="unknown action"), 400
     if not name:
         return jsonify(error="Enter your name first."), 400
+    if licensing.blocks_decisions():
+        return jsonify(error="The licence has expired. Install a renewed key under Licence & updates to approve or request info."), 403
     if kind == "undo":  # back to the review queue (only from an approval or info request)
         status, guard = "PENDING_REVIEW", lambda s: s.startswith(("APPROVED", "INFO REQUESTED"))
     elif kind == "approve":
@@ -1304,7 +1470,16 @@ def api_action(cid):
 
 @app.route("/demo")
 def demo():
-    return render_template("demo.html", page="demo", commands=DEMO_COMMANDS, title="Demo Control")
+    return render_template("demo.html", page="demo", commands=demo_commands(), title="Demo Control", in_process=in_process(),
+                           seeded=sample_data.seed_date(VIGIL_DIR) if sample_data_mode() else None, data_dir=VIGIL_DIR)
+
+
+def ensure_sample_data():
+    """Demo mode: seed on first run, and reseed once a day so the deadlines stay relative to today."""
+    if demo_mode() and tsetup.wants_sample_data() and (not os.path.exists(LOG) or sample_data.seed_date(VIGIL_DIR) != dt.date.today()):
+        print(f"Demo mode: writing sample data to {VIGIL_DIR}", flush=True)
+        sample_data.seed(VIGIL_DIR)
+        _cache.update(rows=[], mtime=None)
 
 
 @app.route("/api/demo")
@@ -1324,9 +1499,9 @@ def api_demo_action(action):
 
 
 # ---------------------------------------------------------------- integrations + intake inbox
-SAMPLE_COMPLAINT = {"text": "Customer reports the DreamStation Auto CPAP stopped delivering pressure overnight and black particles were found "
+SAMPLE_COMPLAINT = {"text": "Customer reports the AeroFlow A200 CPAP stopped delivering pressure overnight and black particles were found "
                             "in the humidifier chamber. The patient woke up short of breath and visited urgent care the next morning.",
-                    "device": "DREAMSTATION AUTO CPAP", "event_type": "Injury", "reporter": "Integration test"}
+                    "device": "AeroFlow A200 CPAP", "event_type": "Injury", "reporter": "Integration test"}
 
 
 def api_key_ok():
@@ -1447,6 +1622,115 @@ def api_rotate_key():
     return jsonify(api_key=st["api_key"])
 
 
+# ---------------------------------------------------------------- licence, updates, workspace (settings)
+DESKTOP_FILE = os.path.join(VIGIL_DIR, "desktop.json")  # read by the Electron shell: {"auto_update": bool}
+
+
+def desktop_settings():
+    try:
+        with open(DESKTOP_FILE, encoding="utf-8") as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        d = {}
+    d.setdefault("auto_update", False)
+    d["in_desktop"] = bool(os.environ.get("THIRTY_DESKTOP"))
+    d["app_version"] = os.environ.get("THIRTY_APP_VERSION") or ""
+    return d
+
+
+@app.route("/settings/licence")
+def licence_page():
+    return render_template("licence.html", page="licence", title="Licence & updates", data_dir=VIGIL_DIR,
+                           app_version=os.environ.get("THIRTY_APP_VERSION") or "")
+
+
+@app.route("/api/licence")
+def api_licence():
+    return jsonify(licence=licensing.check().status(), desktop=desktop_settings())
+
+
+@app.post("/api/licence")
+def api_licence_install():
+    key = (request.get_json(silent=True) or {}).get("key") or ""
+    try:
+        st = licensing.check().install(key)
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    if st["state"] == "invalid":
+        licensing.check().remove()
+        return jsonify(error=st["reason"] or st["label"]), 400
+    return jsonify(ok=True, licence=st)
+
+
+@app.post("/api/licence/remove")
+def api_licence_remove():
+    licensing.check().remove()
+    return jsonify(ok=True, licence=licensing.check().status())
+
+
+@app.post("/api/desktop")
+def api_desktop():
+    d = request.get_json(silent=True) or {}
+    cur = {k: v for k, v in desktop_settings().items() if k in ("auto_update",)}
+    if "auto_update" in d:
+        cur["auto_update"] = bool(d["auto_update"])
+    tmp = DESKTOP_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cur, f, indent=2)
+    os.replace(tmp, DESKTOP_FILE)
+    return jsonify(ok=True, **cur)
+
+
+@app.post("/api/workspace")
+def api_workspace():
+    d = request.get_json(silent=True) or {}
+    org, unit = (d.get("org") or "").strip()[:80], (d.get("unit") or "").strip()[:80]
+    if not org:
+        return jsonify(error="Enter a company or site name."), 400
+    st = tsetup.update(org=org, unit=unit or "Quality")
+    return jsonify(ok=True, org=st["org"], unit=st["unit"])
+
+
+# ---------------------------------------------------------------- plugins (settings)
+@app.route("/settings/plugins")
+def plugins_page():
+    return render_template("plugins.html", page="plugins", title="Plugins", data_dir=VIGIL_DIR)
+
+
+@app.route("/api/plugins")
+def api_plugins():
+    return jsonify(plugins.overview(probe=request.args.get("probe", "1") != "0"))
+
+
+@app.post("/api/plugins/active")
+def api_plugins_active():
+    pid = (request.get_json(silent=True) or {}).get("id") or "none"
+    try:
+        plugins.set_active(pid)
+    except plugins.PluginError as e:
+        return jsonify(error=str(e)), 400
+    HEALTH.update(model=_check_model(), agent={"id": tconfig.agent_id(), "name": get_agent().name}, demo_mode=demo_mode())
+    if demo_mode():
+        ensure_sample_data()
+    return jsonify(ok=True, active_agent=plugins.active_agent_id(), agent=get_agent().name, demo_mode=demo_mode())
+
+
+@app.post("/api/plugins/<pid>")
+def api_plugins_update(pid):
+    d = request.get_json(silent=True) or {}
+    try:
+        st = plugins.update_plugin(pid, enabled=d.get("enabled"), settings=d.get("settings"))
+    except plugins.PluginError as e:
+        return jsonify(error=str(e)), 400
+    HEALTH.update(model=_check_model(), agent={"id": tconfig.agent_id(), "name": get_agent().name}, demo_mode=demo_mode())
+    return jsonify(ok=True, enabled=st["enabled"], status=plugins.status(pid, probe=False), active_agent=plugins.active_agent_id())
+
+
+@app.post("/api/plugins/<pid>/test")
+def api_plugins_test(pid):
+    return jsonify(status=plugins.status(pid, probe=True))
+
+
 @app.route("/api/health")
 def api_health():
     d = DEMO.public(since=10**12)
@@ -1454,7 +1738,7 @@ def api_health():
         changed = os.path.getmtime(LOG)
     except OSError:
         changed = None
-    return jsonify({**HEALTH, "log_changed": changed, "now": time.time(),
+    return jsonify({**HEALTH, "licence": licensing.check().status()["state"], "log_changed": changed, "now": time.time(),
                     "demo": {k: d[k] for k in ("running", "kind", "processed", "total")}})
 
 
@@ -1463,9 +1747,6 @@ def pdf(cid):
     return send_from_directory(REPORTS, f"MDR_{cid}.pdf", max_age=0)
 
 
-@app.route("/chart.png")
-def chart():
-    return send_from_directory(VIGIL_DIR, "philips_chart.png", max_age=0)
 
 
 def _shutdown(*_):
@@ -1476,6 +1757,8 @@ def _shutdown(*_):
 
 if __name__ == "__main__":
     signal.signal(signal.SIGTERM, _shutdown)
+    ensure_sample_data()
+    vigil()  # point vigil.py at the data folder before any worker (console or intake.py) can process a complaint
     threading.Thread(target=health_loop, daemon=True).start()
     start_intake_worker(recover=True)  # resume anything left queued or interrupted
     if intake_mod():
@@ -1483,5 +1766,6 @@ if __name__ == "__main__":
             intake_mod().init_app(app)  # mounts POST /api/v1/complaints (+ /csv, status) and intake.py's worker
         except Exception as e:
             print("intake.py endpoints not mounted:", type(e).__name__, e, flush=True)
-    print(f"Vigil Console v2 on http://localhost:5001  (data: {VIGIL_DIR})", flush=True)
-    app.run(host="127.0.0.1", port=int(os.environ.get("VIGIL_CONSOLE_PORT", 5001)), debug=False, threaded=True)
+    port = int(os.environ.get("VIGIL_CONSOLE_PORT", 5001))
+    print(f"Thirty console on http://localhost:{port}  (data: {VIGIL_DIR} · agent: {get_agent().name}{' · demo mode' if demo_mode() else ''})", flush=True)
+    app.run(host="127.0.0.1", port=port, debug=False, threaded=True)

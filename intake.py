@@ -17,7 +17,7 @@ Usage:
 
 The console can mount the same endpoints:  import intake; intake.init_app(app)
 """
-import csv, datetime as dt, email, email.policy, fcntl, hashlib, hmac, imaplib, io, json, os, queue, re, secrets
+import csv, datetime as dt, email, email.policy, hashlib, hmac, imaplib, io, json, os, queue, re, secrets
 import sys, threading, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -30,7 +30,8 @@ except ImportError:  # flask lives in ~/hackathon/venv, like fpdf2 for vigil.py
     raise
 
 sys.path.insert(0, HERE)
-import vigil  # noqa: E402  (process(), log, Telegram, PDFs - unchanged)
+import vigil  # noqa: E402
+from thirty.filelock import lock as _flock, unlock as _funlock  # noqa: E402  (process(), log, Telegram, PDFs - unchanged)
 
 SETTINGS = os.path.join(HERE, "settings.json")
 INTAKE = os.path.join(HERE, "intake")
@@ -128,8 +129,8 @@ def _index_rows():
 def _index_update(vid, **kw):
     """Insert or update one index row (thread lock + flock: the console and `intake.py serve` may both run)."""
     os.makedirs(INTAKE, exist_ok=True)
-    with _index_lock, open(INDEX + ".lock", "a") as lk:
-        fcntl.flock(lk, fcntl.LOCK_EX)
+    with _index_lock, open(INDEX + ".lock", "a+") as lk:
+        _flock(lk, exclusive=True, blocking=True)
         rows = _index_rows()
         hit = next((r for r in rows if r["vigil_id"] == vid), None)
         if hit is None:
@@ -141,6 +142,7 @@ def _index_update(vid, **kw):
             w = csv.DictWriter(f, fieldnames=INDEX_FIELDS, extrasaction="ignore")
             w.writeheader(); w.writerows(rows)
         os.replace(tmp, INDEX)
+        _funlock(lk)
 
 
 def submit(payload, kind="api", default_source="api", raw=None, raw_ext="json"):

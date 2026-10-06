@@ -1,0 +1,16 @@
+{
+  "id": "local",
+  "name": "Local model agent",
+  "version": "1.0.0",
+  "description": "Classifies complaints and drafts the Form 3500A on a local OpenAI-compatible model server (vLLM, llama.cpp, Ollama with the OpenAI API). 0 bytes to cloud AI as long as the server is on your machine or network.",
+  "capabilities": ["agent"],
+  "settings": [
+    {"key": "base_url", "label": "Server URL", "type": "url", "default": "", "required": true,
+     "help": "OpenAI-compatible base URL, e.g. http://localhost:8000/v1"},
+    {"key": "model", "label": "Model", "type": "string", "default": "",
+     "help": "Model id. Leave blank to use the first model the server lists."},
+    {"key": "api_key", "label": "API key", "type": "secret", "default": "",
+     "help": "Only if your local server requires one."},
+    {"key": "timeout", "label": "Timeout (seconds)", "type": "number", "default": 180}
+  ]
+}

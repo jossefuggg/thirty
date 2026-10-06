@@ -6,10 +6,10 @@
       <iframe src="/reports/{{ r.id }}.pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH" title="Form 3500A preview" tabindex="-1" loading="lazy"></iframe>
       <span class="thumb-cover"></span>
     </button>
-    <button class="btn btn-dark" data-pdf style="width:100%">{{ icon('external') }}Open full form</button>
-    <p class="pdf-note">Draft generated on the local model. Fields marked UNKNOWN must be obtained before submission.</p>
+    <button class="btn btn-primary" data-pdf style="width:100%">{{ icon('external') }}Open full form</button>
+    <p class="pdf-note">Drafted by {{ AGENT.name }}. Fields marked UNKNOWN must be obtained before submission.</p>
   {% elif r.reportable %}
-    <div class="pdf-empty"><span class="spin"></span><b>Drafting Form 3500A…</b><span>The local model is filling the MedWatch fields. It appears here automatically.</span></div>
+    <div class="pdf-empty"><span class="spin"></span><b>Drafting Form 3500A…</b><span>{{ AGENT.name }} is filling the MedWatch fields. It appears here automatically.</span></div>
   {% else %}
     <div class="pdf-empty">{{ icon('file') }}<b>No Form 3500A needed</b><span>Not reportable under 21 CFR 803.</span></div>
   {% endif %}

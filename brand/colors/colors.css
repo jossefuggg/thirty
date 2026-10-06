@@ -1,0 +1,30 @@
+:root {
+  /* Thirty palette: Paper & Coral */
+  --t-paper: #F7F5F0;
+  --t-ink: #15181D;
+  --t-coral: #FF5A3C;
+  --t-slate: #5B6470;
+  --t-stone: #DDD8CE;
+  --t-amber: #F2B134;
+  --t-ink-hover: #2A2F37;
+  --t-coral-hover: #E84E31;
+  --t-stone-light: #EDEAE3;
+  --t-slate-dark: #B9BEC6;
+  --t-line-dark: #3A414B;
+
+  /* semantic, light mode */
+  --t-bg: var(--t-paper);
+  --t-fg: var(--t-ink);
+  --t-fg-2: var(--t-slate);
+  --t-line: var(--t-stone);
+  --t-panel: var(--t-stone-light);
+  --t-track: var(--t-stone);
+}
+[data-theme="dark"], .t-dark {
+  --t-bg: var(--t-ink);
+  --t-fg: var(--t-paper);
+  --t-fg-2: var(--t-slate-dark);
+  --t-line: var(--t-line-dark);
+  --t-panel: #1E2229;
+  --t-track: var(--t-line-dark);
+}

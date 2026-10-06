@@ -1,0 +1,97 @@
+# Builds Thirty installers for macOS, Windows and Linux when a version tag (v1.2.3) is pushed, and attaches
+# them to a GitHub Release (draft until you publish it). Signing is optional: see docs/RELEASING.md for the
+# secrets; when they are absent the builds are unsigned and still uploaded.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-14, name: macOS }
+          - { os: windows-2022, name: Windows }
+          - { os: ubuntu-22.04, name: Linux }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Set the version from the tag
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then python3 tools/set_version.py "$TAG"; fi
+          echo "version: $(python3 -c 'import thirty; print(thirty.__version__)')"
+
+      - name: Test
+        run: |
+          pip install -r requirements-dev.txt pyinstaller
+          pytest -q
+
+      - name: Freeze the backend
+        run: python3 tools/build_backend.py --check
+
+      - name: Install Electron tooling
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build installers
+        working-directory: desktop
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS signing + notarisation (optional). CSC_LINK = base64 .p12 of a "Developer ID Application" certificate.
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows signing (optional). WIN_CSC_LINK = base64 .pfx code-signing certificate.
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          ARGS="--publish always"
+          case "${{ runner.os }}" in
+            macOS)
+              if [ -z "$CSC_LINK" ]; then echo "No MAC_CSC_LINK secret: building an unsigned macOS app"; export CSC_IDENTITY_AUTO_DISCOVERY=false; fi
+              if [ -z "$APPLE_ID" ]; then echo "No APPLE_ID secret: skipping notarisation"; ARGS="$ARGS -c.mac.notarize=false"; fi
+              npx electron-builder --mac $ARGS ;;
+            Windows)
+              if [ -z "$WIN_CSC_LINK" ]; then echo "No WIN_CSC_LINK secret: building an unsigned Windows installer"; fi
+              npx electron-builder --win $ARGS ;;
+            Linux)
+              npx electron-builder --linux $ARGS ;;
+          esac
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: thirty-${{ matrix.name }}
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
+            desktop/dist/*.exe
+            desktop/dist/*.AppImage
+            desktop/dist/*.deb
+            desktop/dist/*.yml
+            desktop/dist/*.blockmap
+          if-no-files-found: warn

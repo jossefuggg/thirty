@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+  .pg { display: grid; gap: var(--s3); max-width: 900px; }
+  .sec { padding: var(--s3); display: grid; gap: 16px; }
+  .sec .card-h { padding: 0; height: auto; border: 0; }
+  .lic { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
+  .lic .n { font-family: var(--font-display); font-size: 56px; line-height: 1; letter-spacing: -.03em; min-width: 96px; text-align: center; }
+  .lic .n.hot { color: var(--t-coral); }
+  .lic b { display: block; font-size: var(--fs-16); font-weight: 800; } .lic span { color: var(--muted); font-size: 14px; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; font-size: 14px; } .kv span { color: var(--muted); }
+  .textarea { font-family: var(--mono); font-size: 12px; min-height: 96px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; } .row .res { font-size: 13px; color: var(--muted); }
+  .tgl { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; cursor: pointer; }
+  .tgl input { appearance: none; width: 36px; height: 22px; border-radius: 11px; background: var(--track); position: relative; cursor: pointer; transition: background var(--t-fast); margin: 0; }
+  .tgl input::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); transition: transform var(--t-fast); box-shadow: 0 1px 2px rgba(21,24,29,.3); }
+  .tgl input:checked { background: var(--text); } .tgl input:checked::after { transform: translateX(14px); } .tgl input:focus-visible { box-shadow: var(--t-focus); }
+  .hint { font-size: 14px; color: var(--muted); max-width: 70ch; }
+  .st-licensed, .st-expiring { background: var(--text); color: var(--bg); } .st-grace, .st-expired, .st-invalid { background: transparent; color: var(--text); border-color: var(--t-amber); } .st-evaluation { background: transparent; color: var(--muted); border-color: var(--border); }
+  .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; max-width: 560px; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="pg">
+  <section class="card sec">
+    <div class="card-h"><h2>{{ icon('key') }}Licence</h2><span class="aside" id="lic-pill"></span></div>
+    <div class="lic" id="lic"><div class="empty loading"><span class="spin"></span><b>Loading…</b></div></div>
+    <div class="kv" id="lic-kv" hidden></div>
+    <p class="hint">Thirty is licensed per site, per year. Paste the key you received, or choose the key file. Without a key Thirty runs in evaluation; the licence key never leaves this machine.</p>
+    <div class="field"><label class="label" for="key">Licence key</label><textarea class="textarea" id="key" placeholder="thirty1.…" spellcheck="false"></textarea></div>
+    <div class="row">
+      <button class="btn btn-primary" id="lic-save">Install key</button>
+      <label class="btn btn-secondary" for="lic-file">Choose key file…<input id="lic-file" type="file" accept=".key,.txt" hidden></label>
+      <button class="btn btn-danger" id="lic-remove" style="display:none">Remove key</button>
+      <span class="res" id="lic-res"></span>
+    </div>
+  </section>
+
+  <section class="card sec">
+    <div class="card-h"><h2>{{ icon('download') }}Updates</h2><span class="aside" id="upd-aside"></span></div>
+    <label class="tgl"><input type="checkbox" id="auto-update">Check GitHub Releases for updates automatically</label>
+    <p class="hint">Off by default. When on, the desktop app checks for a new release about two minutes after start and every six hours, and asks before downloading. Nothing else is sent. The web console (this page outside the desktop app) never updates itself.</p>
+    <div class="kv"><span>App version</span><b>{{ app_version or 'web console' }}</b><span>Backend version</span><b>{{ VERSION }}</b><span>Data folder</span><b class="mono" style="font-size:12px">{{ data_dir }}</b></div>
+  </section>
+
+  <section class="card sec">
+    <div class="card-h"><h2>{{ icon('user') }}Workspace</h2></div>
+    <form class="fgrid" id="ws">
+      <div class="field"><label class="label" for="org">Company or site</label><input class="input" id="org" name="org" value="{{ WS.org }}" maxlength="80"></div>
+      <div class="field"><label class="label" for="unit">Team</label><input class="input" id="unit" name="unit" value="{{ WS.unit }}" maxlength="80"></div>
+      <div class="row" style="grid-column:1/-1"><button class="btn btn-primary btn-sm">Save</button><a class="btn btn-secondary btn-sm" href="/setup?again=1">Run first-run setup again</a><span class="res" id="ws-res"></span></div>
+    </form>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var LABEL = { licensed: "Licensed", expiring: "Renews soon", grace: "Grace period", expired: "Expired", evaluation: "Evaluation", invalid: "Invalid key" };
+  function render(s) {
+    $("lic-pill").innerHTML = '<span class="pill pill-sm st-' + esc(s.state) + '">' + esc(LABEL[s.state] || s.state) + "</span>";
+    var n = s.days_left == null ? "—" : Math.max(0, s.days_left), hot = s.days_left != null && s.days_left <= 30;
+    $("lic").innerHTML = '<div class="n' + (hot ? " hot" : "") + '">' + n + '</div><div><b>' + esc(s.label) + "</b><span>" + (s.days_left == null ? "Days of licence left appear here once a key is installed." : "days of licence left") + (s.reason ? " · " + esc(s.reason) : "") + "</span></div>";
+    var kv = $("lic-kv"); kv.hidden = !s.id;
+    kv.innerHTML = s.id ? "<span>Site</span><b>" + esc(s.site) + "</b><span>Organisation</span><b>" + esc(s.org) + "</b><span>Expires</span><b>" + esc(s.expires) + "</b><span>Key id</span><b class=\"mono\">" + esc(s.id) + "</b>" : "";
+    $("lic-remove").style.display = (s.id || s.state === "invalid") ? "" : "none";
+  }
+  function load() {
+    fetch("/api/licence", { cache: "no-store" }).then(function (r) { if (!r.ok) throw r; return r.json(); }).then(function (j) { render(j.licence); $("auto-update").checked = !!j.desktop.auto_update; $("upd-aside").textContent = j.desktop.in_desktop ? "desktop app" : "web console"; })
+      .catch(function () { V.state($("lic"), "error", "Could not load the licence", V.offline(), load); });
+  }
+  function post(url, body) { return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }); }
+  $("lic-save").onclick = function () { var res = $("lic-res"); res.textContent = "Checking…";
+    post("/api/licence", { key: $("key").value }).then(function (x) { res.textContent = x.ok ? "Installed" : x.j.error; if (x.ok) { $("key").value = ""; load(); } }); };
+  $("lic-file").onchange = function () { var f = this.files[0]; if (!f) return; f.text().then(function (t) { $("key").value = t.trim(); $("lic-save").click(); }); this.value = ""; };
+  $("lic-remove").onclick = function () { if (!confirm("Remove the licence key from this machine?")) return; post("/api/licence/remove", {}).then(load); };
+  $("auto-update").onchange = function () { post("/api/desktop", { auto_update: this.checked }).then(function (x) { V.toast(x.ok ? (x.j.auto_update ? "Automatic update checks on" : "Automatic update checks off") : x.j.error, !x.ok); }); };
+  $("ws").onsubmit = function (e) { e.preventDefault(); post("/api/workspace", { org: $("org").value, unit: $("unit").value }).then(function (x) { $("ws-res").textContent = x.ok ? "Saved" : x.j.error; if (x.ok) setTimeout(function () { location.reload(); }, 400); }); };
+  load();
+})();
+</script>
+{% endblock %}
