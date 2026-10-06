@@ -59,7 +59,6 @@ jobs:
         working-directory: desktop
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # macOS signing + notarisation (optional). CSC_LINK = base64 .p12 of a "Developer ID Application" certificate.
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
@@ -70,18 +69,38 @@ jobs:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: |
-          ARGS="--publish always"
+          # An empty secret arrives as an empty variable, which electron-builder treats as a certificate path.
+          for v in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID WIN_CSC_LINK WIN_CSC_KEY_PASSWORD; do
+            if [ -z "${!v:-}" ]; then unset "$v"; fi
+          done
+          ARGS="--publish never"
           case "${{ runner.os }}" in
             macOS)
-              if [ -z "$CSC_LINK" ]; then echo "No MAC_CSC_LINK secret: building an unsigned macOS app"; export CSC_IDENTITY_AUTO_DISCOVERY=false; fi
-              if [ -z "$APPLE_ID" ]; then echo "No APPLE_ID secret: skipping notarisation"; ARGS="$ARGS -c.mac.notarize=false"; fi
+              if [ -z "${CSC_LINK:-}" ]; then echo "No MAC_CSC_LINK secret: building an unsigned macOS app"; export CSC_IDENTITY_AUTO_DISCOVERY=false; fi
+              if [ -z "${APPLE_ID:-}" ]; then echo "No APPLE_ID secret: skipping notarisation"; ARGS="$ARGS -c.mac.notarize=false"; fi
               npx electron-builder --mac $ARGS ;;
             Windows)
-              if [ -z "$WIN_CSC_LINK" ]; then echo "No WIN_CSC_LINK secret: building an unsigned Windows installer"; fi
+              if [ -z "${WIN_CSC_LINK:-}" ]; then echo "No WIN_CSC_LINK secret: building an unsigned Windows installer"; fi
               npx electron-builder --win $ARGS ;;
             Linux)
               npx electron-builder --linux $ARGS ;;
           esac
+          ls -la dist
+
+      - name: Attach to the GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The release is v<version>: created as a draft when missing, reused (draft, pre-release or published) when present.
+          VERSION="$(python3 -c 'import thirty; print(thirty.__version__)')"
+          TAG="v$VERSION"
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --title "Thirty $VERSION" --notes "Installers built by the Release workflow." --target "$GITHUB_SHA"
+          fi
+          shopt -s nullglob
+          FILES=(desktop/dist/*.dmg desktop/dist/*.zip desktop/dist/*.exe desktop/dist/*.AppImage desktop/dist/*.deb desktop/dist/*.yml desktop/dist/*.blockmap)
+          gh release upload "$TAG" "${FILES[@]}" --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Upload build output
         uses: actions/upload-artifact@v4

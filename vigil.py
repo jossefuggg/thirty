@@ -45,7 +45,7 @@ REPORTS = os.path.join(HERE, "reports")
 def load_env():
     for p in [os.path.join(ROOT, "secrets.env"), os.path.join(HERE, "secrets.env")]:
         if os.path.exists(p):
-            for line in open(p):
+            for line in open(p, encoding="utf-8"):
                 if "=" in line and not line.startswith("#"):
                     k, v = line.strip().split("=", 1)
                     os.environ.setdefault(k, v)
@@ -540,10 +540,10 @@ def log_lock():
 
 def log(row):
     with log_lock():
-        if os.path.exists(LOG) and next(csv.reader(open(LOG)), None) != FIELDS:
+        if os.path.exists(LOG) and next(csv.reader(open(LOG, encoding="utf-8", newline="")), None) != FIELDS:
             write_log(read_log())  # older header: rewrite once with the current columns before appending
         new = not os.path.exists(LOG)
-        with open(LOG, "a", newline="") as f:
+        with open(LOG, "a", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
             if new: w.writeheader()
             w.writerow(row)
@@ -555,13 +555,13 @@ def read_log():
     with log_lock():
         if not os.path.exists(LOG): return []
         latest = {}
-        for r in csv.DictReader(open(LOG)):
+        for r in csv.DictReader(open(LOG, encoding="utf-8", newline="")):
             latest[r["id"]] = r  # keeps first-seen order, latest content
         return list(latest.values())
 
 def write_log(rows):
     with log_lock():
-        with open(LOG, "w", newline="") as f:
+        with open(LOG, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
             w.writeheader(); w.writerows(rows)
         push_log()
@@ -603,7 +603,7 @@ def push_log():
     if r is not None and r.returncode == 0:
         if os.path.exists(PUSH_PENDING): os.remove(PUSH_PENDING)
         return
-    open(PUSH_PENDING, "w").write(dt.datetime.now().isoformat(timespec="seconds"))
+    open(PUSH_PENDING, "w", encoding="utf-8").write(dt.datetime.now().isoformat(timespec="seconds"))
     err = (r.stderr or r.stdout)[-160:].strip() if r is not None else "nemoclaw unavailable"
     print(f"Sandbox upload deferred (next sync cycle retries): {err}")
 
@@ -614,7 +614,7 @@ def _pull(name):
         path = os.path.join(tmp, name)
         if r is None or r.returncode or not os.path.exists(path):
             return []
-        return list(csv.DictReader(open(path)))
+        return list(csv.DictReader(open(path, encoding="utf-8", newline="")))
 
 def pull_approvals():
     """Apply 'approve <id>' and 'need info <id>' made in Telegram (OpenClaw vigil skill) to decisions.csv.
@@ -703,7 +703,7 @@ def device_memory(c):
 
 def cmd_import_history(_):
     """Build history.csv from hackathon_data MAUDE exports. Pure code, no model calls; demo_set ids excluded."""
-    csv.field_size_limit(sys.maxsize)  # some MAUDE narratives exceed the default 128 KB field limit
+    csv.field_size_limit(min(sys.maxsize, 2**31 - 1))  # some MAUDE narratives exceed the default 128 KB field limit
     demo = {r["mdr_report_key"] for r in csv.DictReader(open(os.path.join(HERE, "demo_set.csv"), encoding="utf-8"))}
     seen, out, skipped = set(), [], 0
     for name in HISTORY_SOURCES:

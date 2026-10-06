@@ -22,7 +22,7 @@ def load_secret(path):
     env = os.environ.get("THIRTY_LICENCE_SECRET")
     if env:
         return env.strip()
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return f.read().strip()
 
 
@@ -59,12 +59,12 @@ def main():
         print(f"{'demo' if a.demo else 'site'} licence for {a.site}, {(expires - today).days} days, expires {expires}", file=sys.stderr)
         key = licensing.make_key(payload, load_secret(a.secret))
         if a.out:
-            with open(a.out, "w") as f:
+            with open(a.out, "w", encoding="utf-8") as f:
                 f.write(key + "\n")
             print("written", a.out)
         print(key)
     else:
-        key = open(a.key).read() if os.path.exists(a.key) else a.key
+        key = open(a.key, encoding="utf-8").read() if os.path.exists(a.key) else a.key
         payload, err = licensing.parse(key)
         print("payload:", payload)
         print("OK" if not err else "ERROR: " + err)

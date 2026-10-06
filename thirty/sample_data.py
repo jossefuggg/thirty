@@ -412,7 +412,7 @@ def seed(data_dir, with_pdfs=True, with_history=True):
                                           "G4_date_received_by_manufacturer": (dt.date.today() - dt.timedelta(days=_days_ago(item))).isoformat(), "G4_note": ""})
             finally:
                 v.REPORTS = old
-    with open(os.path.join(data_dir, ".sample-seed"), "w") as f:
+    with open(os.path.join(data_dir, ".sample-seed"), "w", encoding="utf-8") as f:
         f.write(dt.date.today().isoformat())
     return [r["id"] for r in rs]
 
@@ -420,7 +420,7 @@ def seed(data_dir, with_pdfs=True, with_history=True):
 def seed_date(data_dir):
     """Date the sample data was last seeded, or None."""
     try:
-        with open(os.path.join(data_dir, ".sample-seed")) as f:
+        with open(os.path.join(data_dir, ".sample-seed"), encoding="utf-8") as f:
             return dt.date.fromisoformat(f.read().strip())
     except (OSError, ValueError):
         return None

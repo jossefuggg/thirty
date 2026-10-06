@@ -13,12 +13,12 @@ def main(version):
     if not re.fullmatch(r"\d+\.\d+\.\d+(?:[-+.][0-9A-Za-z.-]+)?", version):
         sys.exit(f"not a version: {version}")
     p = os.path.join(ROOT, "thirty", "__init__.py")
-    s = open(p).read(); s = re.sub(r'__version__ = "[^"]*"', f'__version__ = "{version}"', s); open(p, "w").write(s)
+    s = open(p, encoding="utf-8").read(); s = re.sub(r'__version__ = "[^"]*"', f'__version__ = "{version}"', s); open(p, "w", encoding="utf-8").write(s)
     p = os.path.join(ROOT, "pyproject.toml")
-    s = open(p).read(); s = re.sub(r'(?m)^version = "[^"]*"', f'version = "{version}"', s, count=1); open(p, "w").write(s)
+    s = open(p, encoding="utf-8").read(); s = re.sub(r'(?m)^version = "[^"]*"', f'version = "{version}"', s, count=1); open(p, "w", encoding="utf-8").write(s)
     p = os.path.join(ROOT, "desktop", "package.json")
-    d = json.load(open(p)); d["version"] = version
-    with open(p, "w") as f:
+    d = json.load(open(p, encoding="utf-8")); d["version"] = version
+    with open(p, "w", encoding="utf-8") as f:
         json.dump(d, f, indent=2); f.write("\n")
     print("version set to", version)
 
