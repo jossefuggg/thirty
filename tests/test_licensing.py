@@ -70,7 +70,8 @@ def test_licence_api_and_desktop_settings(client, console, keypair):
     assert "Evaluation" not in client.get("/").get_data(as_text=True)
     assert client.get("/api/health").get_json()["licence"] == "licensed"
     assert client.post("/api/licence/remove").get_json()["licence"]["state"] == "evaluation"
-    assert client.get("/api/licence").get_json()["desktop"]["auto_update"] is False
+    assert client.get("/api/licence").get_json()["desktop"]["auto_update"] is True  # update checks are on by default
+    assert client.post("/api/desktop", json={"auto_update": False}).get_json()["auto_update"] is False
     assert client.post("/api/desktop", json={"auto_update": True}).get_json()["auto_update"] is True
     import json
     assert json.load(open(os.path.join(console.VIGIL_DIR, "desktop.json")))["auto_update"] is True
