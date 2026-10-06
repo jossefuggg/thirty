@@ -15,7 +15,6 @@ updated as each phase lands. Decisions taken during the phases are recorded at t
 | Pipeline / agent | Python 3.11+, `requests`, optional `fpdf2`, `vaderSentiment`, `rapidfuzz` | `vigil.py` |
 | Intake channels | Python, Flask blueprint, `imaplib` | `intake.py` |
 | Console (web UI) | Flask 3 + Jinja2 templates, vanilla JS (no bundler, no framework), inline CSS, inline SVG icons | `dashboard_v2/` |
-| Old console (v1) | Flask, superseded by `dashboard_v2` | `dashboard/` |
 | Chat approvals | OpenClaw skill run inside a NemoClaw sandbox, driven from a Telegram group | `skill/vigil/` |
 | Local model | Any OpenAI-compatible server (vLLM on the hackathon box), `VIGIL_LLM_BASE`, default `http://localhost:8000/v1` | env |
 | Data | Flat files: CSV + JSON next to the code, no database | repo root / `dashboard_v2/` |
@@ -169,7 +168,8 @@ points `vigil.py`'s file paths at the data folder after import.
 * `start_console.sh` uses `sg docker` and `nemoclaw`, both specific to the hackathon box.
 * The console's `DEMO_COMMANDS` call `vigil.py` through `sg docker`, which does not exist elsewhere.
 * The brand kit was delivered as `thirty-brand-kit.zip` at the repo root (not a `/thirty-brand-kit`
-  folder); the parts the UI needs are copied to `dashboard_v2/static/thirty/`.
+  folder); a trimmed copy is in `brand/` and the parts the UI needs in `dashboard_v2/static/thirty/`.
+  The zip, `dashboard/` (console v1) and the hackathon chart files were deleted after Phase 7.
 
 ## 7. Desktop packaging (Phase 4 decision, recorded before building)
 

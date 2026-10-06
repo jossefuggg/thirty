@@ -8,14 +8,17 @@ Key file format (one line, <data>/licence.key):
     thirty1.<base64url payload>.<base64url signature>
 payload = canonical JSON {"id", "site", "org", "issued", "expires", "seats", "notes"}
 
-PUBLIC_KEY is empty until the owner runs `tools/make_licence.py keygen` and pastes the public key here
-(or sets THIRTY_LICENCE_PUBKEY). Until then every key reports "cannot verify: no public key".
+PUBLIC_KEY is the owner's Ed25519 public key (generated with `tools/make_licence.py keygen`); the matching
+secret key is kept outside the repository. THIRTY_LICENCE_PUBKEY overrides it (tests).
+
+Policy: Evaluation (no key) runs fully. After expiry there are GRACE_DAYS of grace; past that the app is
+read-only for decisions (approve / request info / undo are refused) until a new key is installed.
 """
 import base64, datetime as dt, hashlib, json, os
 
 from . import config
 
-PUBLIC_KEY = ""  # hex, 32 bytes; set by the owner (see docs/RELEASING.md). Env THIRTY_LICENCE_PUBKEY overrides.
+PUBLIC_KEY = "d05e4e59d3caf31b75195b4114c76a6a9d8d9882468290ce32508a2601c258e1"  # Ed25519 public key; the secret half is held by the owner (tools/make_licence.py)
 FILE = "licence.key"
 PREFIX = "thirty1"
 GRACE_DAYS = 14  # after expiry: still "licensed" with a warning, then evaluation
@@ -251,3 +254,9 @@ class OfflineKeyFile(LicenseCheck):
 def check():
     """The app's licence check (the offline key file for now)."""
     return OfflineKeyFile()
+
+
+def blocks_decisions(status=None):
+    """True when a licence has expired past its grace period: reviews are read-only until renewed."""
+    st = status or check().status()
+    return st["state"] == "expired"

@@ -78,3 +78,26 @@ def test_licence_api_and_desktop_settings(client, console, keypair):
     r = client.post("/api/workspace", json={"org": "Harbor Medical Devices", "unit": "RA"})
     assert r.status_code == 200 and "Harbor Medical Devices" in client.get("/").get_data(as_text=True)
     client.post("/api/workspace", json={"org": "Northwind Medical", "unit": "Quality"})
+
+
+def test_expired_licence_makes_reviews_read_only(client, console, keypair):
+    sk, _ = keypair
+    cid = next(r["id"] for r in console.all_rows() if r["status"] == "PENDING_REVIEW" and r["decision"] == "REPORTABLE")
+    client.post("/api/licence", json={"key": issue(sk, -40)})
+    try:
+        assert "read-only" in client.get("/").get_data(as_text=True)
+        r = client.post(f"/api/complaint/{cid}/action", json={"kind": "approve", "name": "T. Reviewer"})
+        assert r.status_code == 403 and "expired" in r.get_json()["error"]
+        client.post("/api/licence", json={"key": issue(sk, -3)})  # grace: still allowed, with a warning
+        assert "grace" in client.get("/").get_data(as_text=True).lower()
+        assert client.post(f"/api/complaint/{cid}/action", json={"kind": "approve", "name": "T. Reviewer"}).status_code == 200
+        client.post(f"/api/complaint/{cid}/action", json={"kind": "undo", "name": "T. Reviewer"})
+    finally:
+        client.post("/api/licence/remove")
+
+
+def test_shipped_public_key_verifies_keys_made_by_the_owner_tool(monkeypatch):
+    monkeypatch.delenv("THIRTY_LICENCE_PUBKEY", raising=False)
+    assert len(bytes.fromhex(licensing.PUBLIC_KEY)) == 32
+    other = licensing.make_key({"id": "X", "site": "Y", "expires": "2099-01-01"}, secrets.token_bytes(32).hex())
+    assert licensing.parse(other)[1] == "signature does not match"

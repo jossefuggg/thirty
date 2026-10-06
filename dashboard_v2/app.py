@@ -1412,6 +1412,8 @@ def api_action(cid):
         return jsonify(error="unknown action"), 400
     if not name:
         return jsonify(error="Enter your name first."), 400
+    if licensing.blocks_decisions():
+        return jsonify(error="The licence has expired. Install a renewed key under Licence & updates to approve or request info."), 403
     if kind == "undo":  # back to the review queue (only from an approval or info request)
         status, guard = "PENDING_REVIEW", lambda s: s.startswith(("APPROVED", "INFO REQUESTED"))
     elif kind == "approve":

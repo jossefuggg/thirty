@@ -319,6 +319,7 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
       <button class="help" id="help" aria-label="Help" title="Keyboard: / search · Esc close">{{ icon('help') }}</button>
     </header>
     <main class="content {% block content_class %}{% endblock %}">
+      {% if LICENCE.state in ('expired', 'grace') %}<div class="empty" role="alert" style="display:grid;grid-template-columns:auto 1fr auto;text-align:left;align-items:center;gap:12px;padding:12px 16px;border:2px solid var(--t-amber);border-radius:var(--r-panel);margin-bottom:var(--s3)"><div class="art" style="width:32px;height:32px;border-radius:8px;background:var(--t-amber);color:var(--t-ink)">{{ icon('key') }}</div><div><b>{{ LICENCE.label }}</b><p style="margin:0;max-width:none">{{ 'Reviews are read-only until a renewed key is installed.' if LICENCE.state == 'expired' else 'Install a renewed key before the grace period ends; after that reviews become read-only.' }}</p></div><a class="btn btn-secondary btn-sm" href="/settings/licence">Licence &amp; updates</a></div>{% endif %}
       {% block page_header %}<div class="ph"><h1>{{ title }}</h1><div class="ph-r">{% block actions %}{% endblock %}</div></div>{% endblock %}
       {% block body %}{% endblock %}</main>
   </div>

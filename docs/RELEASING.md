@@ -87,15 +87,11 @@ releases (currently `jossefuggg/vigil`; change it if the repo is renamed).
 
 Per-site annual licences, verified offline with an Ed25519 signature. No payment provider.
 
-One-time setup (you, not CI):
-
-```bash
-python3 tools/make_licence.py keygen          # writes ~/.thirty/licence-secret.key (keep it private, back it up)
-# prints:  PUBLIC_KEY = '…'   -> paste into thirty/licensing.py (PUBLIC_KEY = "…") and commit
-```
-
-Until `PUBLIC_KEY` is set, Thirty accepts no key ("cannot verify: no public key configured") and runs in
-**Evaluation**. Builds made before the key is set cannot verify keys issued later.
+The keypair exists: the public key is in `thirty/licensing.py` (`PUBLIC_KEY`), the **secret key is the
+file `thirty-licence-secret.key` handed to the owner outside the repository**. Store it in a password
+manager and at `~/.thirty/licence-secret.key` (mode 0600) on the machine that issues keys. If it is ever
+lost or leaked, run `python3 tools/make_licence.py keygen` again, replace `PUBLIC_KEY`, ship a new
+release, and reissue every customer key (old keys stop verifying).
 
 Issue a key for a customer:
 
@@ -108,8 +104,10 @@ The customer pastes the key (or chooses the file) under **Settings → Licence &
 as `<data>/licence.key` and never leaves the machine. States: **Licensed**, **Renews soon** (≤ 30 days),
 **Grace period** (14 days after expiry), **Expired**, **Evaluation** (no key), **Invalid key**.
 
-What the scaffold does *not* do yet (decisions for you): enforce anything beyond the "Evaluation"
-label (e.g. block approvals after expiry), tie keys to a machine, count seats, or collect payment.
+Policy (decided): **Evaluation runs fully** (demos and trials need every screen). After expiry there are
+14 days of grace with a banner; past that, reviews are **read-only** (approve / request info / undo
+answer 403 with a message pointing at the licence screen) until a renewed key is installed. Everything
+else keeps working so nothing is lost. Not done: machine binding, seat counting, payment.
 The `thirty.licensing.LicenseCheck` interface is the seam for a different implementation (online
 check, licence server) later.
 
