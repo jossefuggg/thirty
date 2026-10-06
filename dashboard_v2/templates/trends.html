@@ -5,7 +5,7 @@
   /* chart colours: history = slate, live = ink, severity = stone / slate / ink; recall band = hatched stone */
   .tr-page { --hist: var(--muted); --live: var(--text); --sev-1: var(--border-2); --sev-2: var(--muted); --sev-3: var(--text); --grid: var(--border); }
   .tr { display: grid; gap: var(--s3); }
-  .filters { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 4px; margin: -4px; }
+  .filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px; margin: -4px; }
   .filters .k { font-size: var(--fs-12); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-right: 8px; white-space: nowrap; }
   .fchip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; white-space: nowrap; border-radius: var(--r-pill); background: transparent; border: 2px solid var(--border);
     font-weight: 700; font-size: var(--fs-14); color: var(--text); transition: background var(--t-fast), border-color var(--t-fast); }

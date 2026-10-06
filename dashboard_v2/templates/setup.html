@@ -15,9 +15,10 @@
   .steps span.on { color: var(--t-fg); } .steps span.done::before { content: "✓ "; }
   main { width: min(760px, calc(100% - 48px)); margin: 0 auto; padding: 24px 0 48px; }
   .step { display: none; } .step.on { display: block; }
+  [hidden] { display: none !important; }
   h1 { font-size: 56px; margin-bottom: 16px; } @media (max-width: 720px) { h1 { font-size: 40px; } }
   .lead { font-size: 18px; color: var(--t-fg-2); max-width: 60ch; margin: 0 0 32px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 32px; } @media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
   .opt { display: grid; gap: 8px; padding: 20px; border: 2px solid var(--t-line); border-radius: var(--t-radius-lg); background: var(--t-card); cursor: pointer; text-align: left; color: inherit; font: inherit; }
   .opt:hover { border-color: var(--t-fg); } .opt.on { border-color: var(--t-fg); background: var(--t-panel); } .opt:focus-visible { outline: none; box-shadow: var(--t-focus); }
   .opt b { font-size: 18px; font-weight: 800; } .opt p { margin: 0; font-size: 14px; color: var(--t-fg-2); }
