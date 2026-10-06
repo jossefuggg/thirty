@@ -44,7 +44,7 @@
   <section class="card sec">
     <div class="card-h"><h2>{{ icon('download') }}Updates</h2><span class="aside" id="upd-aside"></span></div>
     <label class="tgl"><input type="checkbox" id="auto-update">Check GitHub Releases for updates automatically</label>
-    <p class="hint">Off by default. When on, the desktop app checks for a new release about two minutes after start and every six hours, and asks before downloading. Nothing else is sent. The web console (this page outside the desktop app) never updates itself.</p>
+    <p class="hint">On by default. The desktop app asks GitHub Releases for a newer version two minutes after start and every six hours, then asks you before downloading. Nothing else is sent. Until the macOS build is code-signed it opens the download page instead of installing in place. The web console (this page outside the desktop app) never updates itself.</p>
     <div class="kv"><span>App version</span><b>{{ app_version or 'web console' }}</b><span>Backend version</span><b>{{ VERSION }}</b><span>Data folder</span><b class="mono" style="font-size:12px">{{ data_dir }}</b></div>
   </section>
 

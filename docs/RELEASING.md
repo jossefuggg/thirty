@@ -77,12 +77,14 @@ releases (`jossefuggg/thirty`; change it if the repo moves).
 
 * Implemented with `electron-updater` in `desktop/updater.js`, reading the `latest*.yml` files that
   `electron-builder --publish always` uploads to each GitHub Release.
-* **Off by default.** The user switches it on under **Settings → Licence & updates → Updates**. The
-  console writes `<data>/desktop.json` `{"auto_update": true}`; the Electron shell re-reads it on each
-  check (two minutes after start, then every six hours), so switching off needs no restart.
+* **On by default.** The app asks GitHub Releases for a newer version two minutes after start and every
+  six hours, and asks the user before downloading. Switching it off under **Settings → Licence & updates →
+  Updates** writes `<data>/desktop.json` `{"auto_update": false}`; the Electron shell re-reads it on each
+  tick. Unsigned macOS builds cannot replace themselves (macOS requires a code-signed app), so on macOS the
+  dialog opens the download page until `MAC_CSC_LINK` and notarisation are set up.
 * When on, Thirty asks before downloading; the update installs when the app quits. **Help → Check for
   updates…** always asks first and works regardless of the setting.
-* Only the GitHub Releases API is contacted, and only when the setting is on or the menu item is used.
+* Only the GitHub Releases API is contacted (the `latest*.yml` manifest), and only while the setting is on or when the menu item is used.
 * To test: publish a release with a higher version than the installed app, switch the setting on, use
   Help → Check for updates…
 

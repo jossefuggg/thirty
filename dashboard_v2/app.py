@@ -1775,7 +1775,7 @@ def desktop_settings():
             d = json.load(f)
     except (OSError, ValueError):
         d = {}
-    d.setdefault("auto_update", False)
+    d.setdefault("auto_update", True)
     d["in_desktop"] = bool(os.environ.get("THIRTY_DESKTOP"))
     d["app_version"] = os.environ.get("THIRTY_APP_VERSION") or ""
     return d

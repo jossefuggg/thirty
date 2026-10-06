@@ -3,13 +3,13 @@
 {% block head %}
 <style>
   /* the command center fills exactly one screen; panels scroll inside */
-  .cc-page { padding-bottom: var(--s3); }
+  .cc-page { padding-bottom: 0; }
   .cc-page .ph { min-height: 36px; margin-bottom: var(--s2); } .cc-page .ph h1 { font-size: var(--fs-28); }
   .cc-page .card-h { height: 48px; padding: 0 16px; }
   #cc-err .empty { padding: 12px 16px; grid-template-columns: auto auto 1fr auto; display: grid; text-align: left; align-items: center; gap: 12px; border: 2px solid var(--t-amber); border-radius: var(--r-panel); }
   #cc-err .empty .art { width: 32px; height: 32px; border-radius: 8px; } #cc-err .empty .art .i { width: 18px; height: 18px; } #cc-err .empty p { margin: 0; max-width: none; }
-  /* fits the window: topbar 72 + content padding 24 + page header 52 + content padding 32 + page padding 24 */
-  .cc { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: var(--s2); height: calc(100vh - var(--topbar-h) - 24px - 52px - 32px - 24px - 2px); min-height: 600px; }
+  /* fits the window: topbar 72 + content padding 24 + page header 52 + content padding 32 */
+  .cc { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: var(--s2); height: calc(100vh - var(--topbar-h) - 24px - 52px - 32px - 2px); min-height: 600px; }
 
   /* KPI cards: serif number, eyebrow label, ink rule on top (coral only for the two deadline tiles when > 0) */
   .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
@@ -22,7 +22,7 @@
   .kpi .foot { grid-column: 1 / 3; display: grid; grid-template-columns: minmax(0, 1fr) 64px; align-items: end; gap: 10px; height: 24px; }
   .kpi .delta { font-size: var(--fs-12); color: var(--muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .kpi .delta.up { color: var(--text); }
-  @media (max-width: 1500px) { .st .sub { display: none; } .kpi { padding: 12px 14px 10px; grid-template-columns: 1fr; } .kpi .lbl { font-size: 11px; letter-spacing: .08em; } .kpi .ic { display: none; } .kpi .v, .kpi .foot { grid-column: 1; } .kpi .v { font-size: 40px; } .cc .card-h .aside { display: none; } }
+  @media (max-width: 1500px) { .kpi { padding: 12px 14px 10px; grid-template-columns: 1fr; } .kpi .lbl { font-size: 11px; letter-spacing: .08em; } .kpi .ic { display: none; } .kpi .v, .kpi .foot { grid-column: 1; } .kpi .v { font-size: 40px; } .cc .card-h .aside { display: none; } }
   @media (max-width: 1320px) { .kpi .lbl { font-size: 10.5px; letter-spacing: .04em; } .kpi { padding: 14px; } }
   .kpi .sp { position: relative; height: 24px; } .kpi.flat .foot { grid-template-columns: minmax(0, 1fr); } .kpi.flat .sp { display: none; }
   .spark-dot { position: absolute; right: -2px; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; box-shadow: 0 0 0 2px var(--surface); }
@@ -57,7 +57,7 @@
   @keyframes glow { 0%, 25% { border-color: var(--text); box-shadow: 0 0 0 3px var(--border); } }
 
   /* decision queue */
-  .qi { display: grid; grid-template-columns: 4px minmax(0, 1fr); gap: 0 12px; padding: 10px 4px 10px 0; cursor: pointer; transition: background var(--t-fast); }
+  .qi { display: grid; grid-template-columns: 4px minmax(0, 1fr); gap: 0 12px; padding: 8px 4px 8px 0; cursor: pointer; transition: background var(--t-fast); }
   .qi + .qi { border-top: 1px solid var(--border); }
   .qi:hover { background: var(--hover); }
   .qi .edge { border-radius: 0 3px 3px 0; background: var(--pc); }
@@ -65,7 +65,7 @@
   .qi .t { font-weight: 800; display: flex; gap: 8px; align-items: center; min-width: 0; font-size: var(--fs-14); }
   .qi .t .mono { font-size: 13px; color: var(--muted); font-weight: 700; }
   .qi .t .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
-  .qi .m { display: flex; gap: 6px; margin-top: 6px; align-items: center; min-width: 0; flex-wrap: wrap; }
+  .qi .m { display: flex; gap: 6px; margin-top: 4px; align-items: center; min-width: 0; flex-wrap: wrap; }
   .qi .acts .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; }
   .qi .acts { display: flex; gap: 8px; margin-left: auto; flex: none; }
   .qi.enter { animation: cardIn var(--t-slow) var(--ease); }
@@ -91,22 +91,6 @@
   .hx .go { color: var(--text); font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; } .hx .go .i { width: 16px; height: 16px; }
   @media (max-width: 1500px) { .hx { grid-template-columns: minmax(0, 1fr) 96px auto; gap: 12px; padding: 12px 16px; } .hx .k { font-size: 11px; letter-spacing: .08em; white-space: nowrap; } .hx .t { font-size: 12px; } }
 
-  /* pipeline */
-  .pipe { display: grid; grid-template-columns: 1fr 48px 1fr 48px 1fr 48px 1fr; align-items: center; padding: 10px var(--s3); }
-  .st { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 0 12px; align-items: center; min-width: 0; }
-  .st .si { grid-row: 1 / 4; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--hover); color: var(--text); }
-  .st .si .i { width: 20px; height: 20px; }
-  .st .layer { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-  .st .nm { display: flex; align-items: baseline; gap: 10px; }
-  .st .nm b { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-28); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-  .st .nm span { font-weight: 700; font-size: var(--fs-14); white-space: nowrap; }
-  .st .sub { font-size: var(--fs-12); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 18px; display: flex; align-items: center; }
-  .st.human .si { background: var(--text); color: var(--bg); }
-  @media (max-width: 1500px) { .st .sub { display: none; } }
-  .link { height: 2px; background: var(--border); position: relative; margin: 0 8px; border-radius: 2px; }
-  .link::after { content: ""; position: absolute; right: -6px; top: -5px; border: 6px solid transparent; border-left-color: var(--border-2); border-right: 0; }
-  .flow .link { background: repeating-linear-gradient(90deg, var(--text) 0 8px, transparent 8px 16px); background-size: 32px 2px; animation: flow .8s linear infinite; }
-  .flow .link::after { border-left-color: var(--text); }
   @keyframes flow { to { background-position: 32px 0; } }
   .chipline { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: 11px; font-weight: 800; letter-spacing: .08em; }
   .chipline i { width: 6px; height: 6px; border-radius: 50%; background: var(--t-coral); animation: ping 1.2s infinite; }
@@ -151,24 +135,12 @@
     </div>
   </section>
 
-  <section class="card pipe" id="pipe" aria-label="Pipeline">
-    <div class="st"><span class="si">{{ icon('inbox') }}</span><span class="layer">Intake</span>
-      <span class="nm"><b data-p="intake">0</b><span>complaints in</span></span><span class="sub" id="ps-intake">Waiting for complaints</span></div>
-    <div class="link"></div>
-    <div class="st"><span class="si">{{ icon('list') }}</span><span class="layer">Layer 1 · Rules</span>
-      <span class="nm"><b data-p="scored">0</b><span>rules scored</span></span><span class="sub" id="ps-scored">Keywords · event type · distress</span></div>
-    <div class="link"></div>
-    <div class="st"><span class="si">{{ icon('cpu') }}</span><span class="layer">Layer 2 · Local AI</span>
-      <span class="nm"><b data-p="checked">0</b><span>AI checked</span></span><span class="sub" id="ps-checked">21 CFR 803 reportability</span></div>
-    <div class="link"></div>
-    <div class="st human"><span class="si">{{ icon('user') }}</span><span class="layer">Layer 4 · Human</span>
-      <span class="nm"><b data-p="decided">0</b><span id="ps-decided-l">human decided</span></span><span class="sub" id="ps-decided">Approve or request info</span></div>
-  </section>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+var AGENT_NAME = {{ AGENT.name|tojson }};
 (function () {
   var first = true, nodes = {}, sigs = {};
   var EMPTY = {
@@ -244,7 +216,6 @@
       sync("feed", s.feed, id, function (r) { return "fc " + r.priority; }, feedHTML, { flash: true, open: true });
       sync("queue", s.queue, id, function (r) { return "qi " + r.priority; }, queueHTML, { leave: true, open: true });
       sync("alerts", s.alerts, function (a) { return a.family + "|" + a.issue; }, function () { return "al"; }, alertHTML);
-      $("feed-aside").textContent = s.feed.length ? "Newest first · " + s.feed.length + " complaint" + (s.feed.length === 1 ? "" : "s") : "";
       $("q-n").textContent = s.queue.length; $("q-n").classList.toggle("hot", s.queue.length > 0);
       $("al-n").textContent = s.alerts.length; $("al-n").classList.toggle("hot", s.alerts.length > 0);
       var nb = $("nav-queue"); nb.textContent = s.queue.length; nb.classList.toggle("show", s.queue.length > 0);
@@ -254,13 +225,8 @@
         var sg = hx.spark.join(","); if ($("hx").dataset.sp !== sg) { $("hx").dataset.sp = sg; $("hx-sp").innerHTML = V.spark(hx.spark, getComputedStyle($("hx")).getPropertyValue("--muted").trim()); } }
       else $("hx-t").textContent = "FDA history not loaded (python3 vigil.py import-history)";
       var p = s.pipeline, d = s.demo || {};
-      document.querySelectorAll("[data-p]").forEach(function (el) { V.countTo(el, +p[el.dataset.p] || 0); });
-      $("ps-intake").innerHTML = d.running && d.kind === "replay" ? '<span class="chipline"><i></i>REPLAY ' + d.processed + " / " + d.total + "</span>" : p.intake ? "Received and logged" : "Waiting for complaints";
-      $("ps-scored").textContent = p.scored ? p.urgent + " urgent · keywords, event, distress" : "Keywords · event type · distress";
-      $("ps-checked").textContent = p.checked ? p.reportable + " reportable · " + p.needs_info + " needs info · " + p.not_reportable + " not" : "21 CFR 803 reportability";
-      $("ps-decided-l").textContent = p.reviewable ? "of " + p.reviewable + " decided" : "human decided";
-      $("ps-decided").textContent = p.reviewable ? p.approved + " approved · " + p.info + " info requested" : "Approve or request info";
-      $("pipe").classList.toggle("flow", !!(d.running && d.kind === "replay"));
+      $("feed-aside").innerHTML = (d.running && d.kind === "replay" ? '<span class="chipline"><i></i>REPLAY ' + d.processed + " / " + d.total + "</span> · " : "") +
+        (p.intake ? p.intake + " in · " + p.checked + " checked by " + esc(AGENT_NAME) + " · " + (p.reviewable ? (p.approved + p.info) + " of " + p.reviewable + " decided" : "nothing to decide") : "Waiting for complaints");
       $("cc-err").hidden = true;
       first = false;
     }).catch(function () {
