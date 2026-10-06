@@ -14,7 +14,7 @@ as phases land.
 - [x] Phase 5 — First-run setup
 - [x] Phase 6 — Installers
 - [x] Phase 7 — Licensing and updates (scaffold only)
-- [ ] Finish — README, final PR summary
+- [x] Finish — README, final PR summary
 
 ## Product context
 
