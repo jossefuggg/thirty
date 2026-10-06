@@ -1,6 +1,7 @@
 """First-run setup state: <data>/setup.json.
 
-{"completed": "2026-10-05T10:00:00", "mode": "explore" | "site", "org": "...", "unit": "...", "agent": "sample" | "local" | "none"}
+{"completed": "2026-10-05T10:00:00", "mode": "explore" | "site", "org": "...", "unit": "...", "agent": "sample" | "local" | "none",
+ "jurisdictions": ["US", "EU"]}   # reporting clocks that apply to this site (thirty.jurisdictions)
 
 Until the file exists the console shows the setup flow (/setup). Everything chosen there can be changed
 later: the agent on the Plugins screen, the workspace on the Licence & updates screen, the mode by
@@ -33,12 +34,14 @@ def required():
     return load() is None
 
 
-def complete(mode, org="", unit="", agent="sample"):
+def complete(mode, org="", unit="", agent="sample", jurisdictions=None):
+    from . import jurisdictions as J
     mode = "explore" if mode != "site" else "site"
     st = {"completed": dt.datetime.now().isoformat(timespec="seconds"), "mode": mode,
           "org": (org or "").strip()[:80] or (SAMPLE_ORG if mode == "explore" else "My site"),
           "unit": (unit or "").strip()[:80] or (SAMPLE_UNIT if mode == "explore" else "Quality"),
-          "agent": agent if agent in ("sample", "local", "none") else "sample"}
+          "agent": agent if agent in ("sample", "local", "none") else "sample",
+          "jurisdictions": J.normalise(jurisdictions)}
     save(st)
     return st
 
@@ -62,7 +65,15 @@ def update(**fields):
 def workspace():
     """What the top bar shows: the site chosen at setup, or the sample company."""
     st = load() or {}
-    return {"org": st.get("org") or SAMPLE_ORG, "unit": st.get("unit") or SAMPLE_UNIT, "mode": st.get("mode") or "explore"}
+    return {"org": st.get("org") or SAMPLE_ORG, "unit": st.get("unit") or SAMPLE_UNIT, "mode": st.get("mode") or "explore",
+            "jurisdictions": jurisdictions()}
+
+
+def jurisdictions():
+    """Reporting clocks enabled for this site; US FDA always."""
+    from . import jurisdictions as J
+    st = load() or {}
+    return J.normalise(st.get("jurisdictions"))
 
 
 def wants_sample_data():

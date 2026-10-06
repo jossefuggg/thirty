@@ -54,3 +54,21 @@ def unlock(f):
 
 def is_posix():
     return fcntl is not None and os.name == "posix"
+
+
+class locked:
+    """with locked(path): exclusive, blocking lock on a small lock file (creates it)."""
+    def __init__(self, path):
+        self.path, self.f = path, None
+
+    def __enter__(self):
+        self.f = open(self.path, "a+")
+        lock(self.f, exclusive=True, blocking=True)
+        return self.f
+
+    def __exit__(self, *exc):
+        try:
+            unlock(self.f)
+        finally:
+            self.f.close()
+        return False

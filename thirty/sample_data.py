@@ -397,6 +397,10 @@ def seed(data_dir, with_pdfs=True, with_history=True):
         except OSError: pass
     reports = os.path.join(data_dir, "reports")
     shutil.rmtree(reports, ignore_errors=True)
+    shutil.rmtree(os.path.join(data_dir, "decisions"), ignore_errors=True)  # reviewer decision records belong to the old set
+    for name in ("audit.jsonl", "audit.jsonl.lock"):
+        try: os.remove(os.path.join(data_dir, name))
+        except OSError: pass
     if with_pdfs:
         v = _load_vigil()
         if v.FPDF is not None:

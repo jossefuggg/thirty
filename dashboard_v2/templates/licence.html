@@ -12,6 +12,11 @@
   .textarea { font-family: var(--mono); font-size: 12px; min-height: 96px; }
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; } .row .res { font-size: 13px; color: var(--muted); }
   .tgl { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; cursor: pointer; }
+  .jurs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+  .jur { display: grid; grid-template-columns: 20px 1fr; gap: 2px 10px; align-items: center; padding: 10px 12px; border: 2px solid var(--border); border-radius: var(--r-btn); cursor: pointer; }
+  .jur:has(input:checked) { border-color: var(--text); } .jur.fixed { cursor: default; }
+  .jur input { width: 18px; height: 18px; accent-color: var(--t-ink); margin: 0; grid-row: 1 / 3; } .jur b { font-size: 13px; } .jur span { font-size: 11px; color: var(--muted); }
+  @media (max-width: 900px) { .jurs { grid-template-columns: repeat(2, 1fr); } }
   .tgl input { appearance: none; width: 36px; height: 22px; border-radius: 11px; background: var(--track); position: relative; cursor: pointer; transition: background var(--t-fast); margin: 0; }
   .tgl input::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); transition: transform var(--t-fast); box-shadow: 0 1px 2px rgba(21,24,29,.3); }
   .tgl input:checked { background: var(--text); } .tgl input:checked::after { transform: translateX(14px); } .tgl input:focus-visible { box-shadow: var(--t-focus); }
@@ -48,6 +53,9 @@
     <form class="fgrid" id="ws">
       <div class="field"><label class="label" for="org">Company or site</label><input class="input" id="org" name="org" value="{{ WS.org }}" maxlength="80"></div>
       <div class="field"><label class="label" for="unit">Team</label><input class="input" id="unit" name="unit" value="{{ WS.unit }}" maxlength="80"></div>
+      <div class="field" style="grid-column:1/-1"><span class="label">Reporting clocks that apply to this site</span>
+        <div class="jurs">{% for code, j in JURISDICTIONS.items() %}<label class="jur{{ ' fixed' if code == 'US' }}"><input type="checkbox" name="jur" value="{{ code }}" {{ 'checked' if code in WS.jurisdictions }} {{ 'disabled' if code == 'US' }}><b>{{ j.name }}</b><span>{{ j.rule }}</span></label>{% endfor %}</div>
+        <p class="hint">Each open report shows a deadline per jurisdiction, from the awareness date. US FDA is always on. EU and UK run the 2 / 10 / 15-day ladder, Health Canada 10 / 30 days.</p></div>
       <div class="row" style="grid-column:1/-1"><button class="btn btn-primary btn-sm">Save</button><a class="btn btn-secondary btn-sm" href="/setup?again=1">Run first-run setup again</a><span class="res" id="ws-res"></span></div>
     </form>
   </section>
@@ -75,7 +83,7 @@
   $("lic-file").onchange = function () { var f = this.files[0]; if (!f) return; f.text().then(function (t) { $("key").value = t.trim(); $("lic-save").click(); }); this.value = ""; };
   $("lic-remove").onclick = function () { if (!confirm("Remove the licence key from this machine?")) return; post("/api/licence/remove", {}).then(load); };
   $("auto-update").onchange = function () { post("/api/desktop", { auto_update: this.checked }).then(function (x) { V.toast(x.ok ? (x.j.auto_update ? "Automatic update checks on" : "Automatic update checks off") : x.j.error, !x.ok); }); };
-  $("ws").onsubmit = function (e) { e.preventDefault(); post("/api/workspace", { org: $("org").value, unit: $("unit").value }).then(function (x) { $("ws-res").textContent = x.ok ? "Saved" : x.j.error; if (x.ok) setTimeout(function () { location.reload(); }, 400); }); };
+  $("ws").onsubmit = function (e) { e.preventDefault(); post("/api/workspace", { org: $("org").value, unit: $("unit").value, jurisdictions: Array.prototype.map.call(document.querySelectorAll("input[name=jur]:checked"), function (i) { return i.value; }) }).then(function (x) { $("ws-res").textContent = x.ok ? "Saved" : x.j.error; if (x.ok) setTimeout(function () { location.reload(); }, 400); }); };
   load();
 })();
 </script>

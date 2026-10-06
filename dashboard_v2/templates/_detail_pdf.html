@@ -7,7 +7,8 @@
       <span class="thumb-cover"></span>
     </button>
     <button class="btn btn-primary" data-pdf style="width:100%">{{ icon('external') }}Open full form</button>
-    <p class="pdf-note">Drafted by {{ AGENT.name }}. Fields marked UNKNOWN must be obtained before submission.</p>
+    <a class="btn btn-secondary" href="/complaint/{{ r.id }}/pack.zip" style="width:100%;margin-top:8px" download>{{ icon('download') }}Download submission pack</a>
+    <p class="pdf-note">Drafted by {{ AGENT.name }}. Fields marked UNKNOWN must be obtained before submission. The pack adds the decision record, the clocks and the signed audit entries.</p>
   {% elif r.reportable %}
     <div class="pdf-empty"><span class="spin"></span><b>Drafting Form 3500A…</b><span>{{ AGENT.name }} is filling the MedWatch fields. It appears here automatically.</span></div>
   {% else %}

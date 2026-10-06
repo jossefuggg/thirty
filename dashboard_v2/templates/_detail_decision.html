@@ -1,0 +1,53 @@
+<div class="card-h"><h2>{{ icon('scale') }}Reportability decision</h2>
+  <span class="aside">{% if r.record %}<span class="pill pill-sm d-{{ r.record.outcome.decision }}">{{ (r.record.outcome.decision or '')|replace('_', ' ') }}</span> recorded by {{ r.record.by }} · {{ r.record.time[:16]|replace('T', ' ') }}{% if r.records_n > 1 %} · {{ r.records_n }} records{% endif %}{% else %}21 CFR 803.18 record · pre-filled by {{ AGENT.name }}, not yet confirmed{% endif %}</span></div>
+<form class="dec" id="dec-form" data-cid="{{ r.id }}">
+  <ol class="qs">
+    {% for key, q, help, jur in r.tree %}
+    <li class="q {{ 'q-off' if ('US' in jur.split()) == false and not (r.jurisdictions|select('in', jur.split())|list) }}">
+      <div class="qt2"><b>{{ loop.index }}. {{ q }}</b><span>{{ help }}</span><em>{% for j in jur.split() %}{{ r.jur_names[j].name }}{{ ' · ' if not loop.last }}{% endfor %}</em></div>
+      <div class="seg" role="radiogroup" aria-label="{{ q }}">
+        {% for v, l in [('yes', 'Yes'), ('no', 'No'), ('unknown', 'Unknown')] %}
+        <label><input type="radio" name="{{ key }}" value="{{ v }}" {{ 'checked' if r.answers.get(key) == v }}><span>{{ l }}</span></label>
+        {% endfor %}
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+  <div class="dec-out" id="dec-out" data-us="{{ 'US' in r.jurisdictions }}">
+    <span class="k">Outcome</span><b id="dec-outcome">—</b><span id="dec-basis"></span>
+  </div>
+  <div class="dec-grid">
+    <div class="field"><label for="dec-aware">Awareness date</label><input class="input" type="date" id="dec-aware" value="{{ r.aware }}" max="{{ TODAY }}">
+      <span class="hint">The day anyone at the manufacturer first learned of the event. Every clock runs from it.</span></div>
+    <div class="field"><label for="dec-name">Reviewer</label><input class="input" id="dec-name" maxlength="60" placeholder="e.g. A. Rivera, Regulatory Affairs" value="{{ r.record.by if r.record else '' }}" autocomplete="name"></div>
+  </div>
+  <div class="field"><label for="dec-rationale">Rationale <span class="req-mark">required, also for not reportable</span></label>
+    <textarea class="input" id="dec-rationale" rows="4" placeholder="The facts evaluated and the reasoning behind the decision (803.18(b)(3)).">{{ r.record.rationale if r.record else r.reason }}</textarea></div>
+  <details class="rec-fields" {{ 'open' if r.record and r.record.fields.values()|select|list }}>
+    <summary>{{ icon('chevron') }}Complaint record fields · 21 CFR 820.35(a)</summary>
+    <div class="dec-grid">
+      {% for key, label, help in r.record_fields %}
+      <div class="field"><label for="dec-f-{{ key }}">{{ label }}</label><input class="input" id="dec-f-{{ key }}" data-field="{{ key }}" maxlength="500" value="{{ r.record.fields.get(key, '') if r.record else '' }}"><span class="hint">{{ help }}</span></div>
+      {% endfor %}
+    </div>
+  </details>
+  <div class="dec-acts">
+    <button class="btn btn-primary" type="submit" id="dec-save">{{ icon('check') }}Record decision</button>
+    <span class="sig">Signed with your name, the meaning of the signature and the time, into the hash-chained audit trail.</span>
+    <span class="res" id="dec-res" aria-live="polite"></span>
+  </div>
+</form>
+{% if r.clocks %}
+<div class="clocks">
+  <div class="k">Reporting clocks · from awareness {{ r.aware }}</div>
+  <table class="ctbl">
+    <thead><tr><th>Jurisdiction</th><th>Report</th><th>Due</th><th>Left</th><th>File via</th></tr></thead>
+    <tbody>{% for c in r.clocks %}
+      <tr class="{{ 'hot' if c.days_left <= 7 }}"><td><b>{{ c.name }}</b><span>{{ c.rule }}</span></td><td>{{ c.days }} {{ 'work days' if c.work_days else 'days' }}<span>{{ c.basis }}</span></td>
+        <td class="tnum">{{ c.due }}</td><td class="tnum left">{% if c.days_left < 0 %}{{ -c.days_left }}d overdue{% else %}{{ c.days_left }}d{% endif %}</td><td><span>{{ c.portal }}</span></td></tr>
+    {% endfor %}</tbody>
+  </table>
+</div>
+{% elif r.record and r.record.outcome.decision == 'NOT_REPORTABLE' %}
+<div class="clocks"><div class="k">Reporting clocks</div><p class="none">{{ icon('check') }}None: recorded as not reportable. The rationale is on file.</p></div>
+{% endif %}

@@ -335,7 +335,7 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
 <aside class="drawer" id="drawer" aria-hidden="true"></aside>
 <div class="modal" id="modal"><div class="modal-c" role="dialog" aria-modal="true" aria-labelledby="modal-t">
   <h3 id="modal-t">Who is reviewing?</h3>
-  <p>Your name is written to decisions.csv and the audit trail with this decision.</p>
+  <p id="modal-meaning">Your name is written to decisions.csv and the audit trail with this decision.</p>
   <div class="field"><label for="modal-name">Reviewer name</label><input class="input" id="modal-name" maxlength="60" placeholder="e.g. A. Rivera, Regulatory Affairs" autocomplete="name"></div>
   <div class="acts"><button class="btn btn-secondary" id="modal-cancel">Cancel</button><button class="btn btn-primary" id="modal-ok">Confirm</button></div>
 </div></div>
@@ -432,10 +432,12 @@ V.toast = function (msg, err) {
   setTimeout(function () { t.style.transition = "opacity .25s"; t.style.opacity = 0; setTimeout(function () { t.remove(); }, 260); }, 3600);
 };
 /* reviewer name modal: resolves with the name, or null if cancelled */
-V.askName = function (title) {
+V.MEANINGS = { approve: "I approve this Form 3500A draft for submission to the regulator.", info: "I am requesting more information before a reporting decision.", undo: "I am reverting the previous decision to pending review." };
+V.askName = function (title, meaning) {
   var saved = ""; try { saved = localStorage.getItem("vigil-reviewer") || ""; } catch (e) {}
   return new Promise(function (resolve) {
     $("modal-t").textContent = title || "Who is reviewing?"; $("modal-name").value = saved;
+    $("modal-meaning").textContent = (meaning ? "Signature meaning: \u201c" + meaning + "\u201d " : "") + "Your name, this meaning and the time are written to the hash-chained audit trail.";
     var sync = function () { $("modal-ok").disabled = !$("modal-name").value.trim(); };  // never log an empty / anonymous reviewer
     $("modal-name").oninput = sync; sync();
     $("modal").classList.add("show"); setTimeout(function () { $("modal-name").focus(); $("modal-name").select(); }, 60);
@@ -449,10 +451,10 @@ V.askName = function (title) {
 };
 /* approve / request info -> decisions.csv (under the pipeline's lock) */
 V.act = function (cid, kind) {
-  return V.askName(kind === "approve" ? "Approve #" + cid : "Request info for #" + cid).then(function (name) {
+  return V.askName(kind === "approve" ? "Approve #" + cid : "Request info for #" + cid, V.MEANINGS[kind]).then(function (name) {
     if (!name) return null;
     return fetch("/api/complaint/" + encodeURIComponent(cid) + "/action", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: kind, name: name }) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      body: JSON.stringify({ kind: kind, name: name, meaning: V.MEANINGS[kind] }) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (x) { V.toast(x.ok ? "#" + cid + (kind === "approve" ? " approved by " : ": info requested by ") + name : x.j.error, !x.ok);
         document.dispatchEvent(new CustomEvent("vigil:changed")); return x; })
       .catch(function () { V.toast("Could not reach the console", true); });

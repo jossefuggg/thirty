@@ -14,6 +14,7 @@ as phases land.
 - [x] Phase 5 — First-run setup
 - [x] Phase 6 — Installers
 - [x] Phase 7 — Licensing and updates (scaffold only)
+- [x] Phase 8 — Compliance record: decision tree, jurisdiction clocks, signed audit chain, submission pack (`docs/COMPLIANCE.md`)
 - [x] Finish — README, final PR summary
 
 ## Product context
@@ -136,6 +137,17 @@ and build on those tokens and components. If the folder is missing, use the valu
   mode works, how to write a plugin.
 - Final summary in the pull request: what was done per phase, what was left out and why, and a list of
   decisions that need me.
+
+## Phase 8 — Compliance record (from the market research)
+
+Built after v1.1.1 from `docs/MARKET.md` §5 P0 rows; details and status in `docs/COMPLIANCE.md`.
+
+- [x] Reportability decision tree with recorded rationale, reviewer, awareness date, 820.35 fields
+- [x] Reporting clocks per jurisdiction (US, EU, UK, CA) from the awareness date; site setting
+- [x] Hash-chained audit trail with e-signature meaning; verify + export on the Audit Log
+- [x] Submission pack zip per complaint
+- [ ] HL7 ICSR XML (eMDR) and EU MIR 7.3.1 XML: needs exact IMDRF code tables, not attempted blind
+- [ ] Validation package, per-user login (P0/P1 rows still open)
 
 ## Notes for the next session
 

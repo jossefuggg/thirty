@@ -20,6 +20,8 @@
   .ck .left { font-size: var(--fs-20); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
   .ck.red .left, .ck.over .left, .ck.five .left { color: var(--coral-text); }
   .ck .due { font-size: 13px; color: var(--muted); } .ck .due b { color: var(--text); display: block; font-size: 14px; }
+  .ck .oth { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; } .ck .oth em { font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: var(--r-pill); border: 1px solid var(--border-2); color: var(--text); white-space: nowrap; }
+  .ck .oth em.hot { border-color: var(--t-coral); color: var(--coral-text); }
   .scale { display: grid; grid-template-columns: 250px minmax(0, 1fr) 170px 150px; gap: 20px; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--hover); font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
   .scale .ax { display: flex; justify-content: space-between; text-transform: none; letter-spacing: 0; font-weight: 700; }
 </style>
@@ -51,7 +53,8 @@
       return '<a class="ck ' + u + (five ? " five" : "") + '" href="/complaint/' + encodeURIComponent(r.id) + '" data-open="' + esc(r.id) + '"><div class="who"><b>' + esc(r.device || "Device not specified") + '</b><span><span class="mono">#' + esc(r.id) + "</span>" +
         '<span class="pill pill-sm d-' + esc(r.decision) + '">' + esc(V.label(r.decision)) + "</span>" + (five ? '<span class="pill pill-sm pill-five-day">5-day</span>' : "") + "</span></div>" +
         '<div class="track' + (u === "over" ? " over" : "") + '"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
-        '<div class="left">' + V.dueShort(r.ms) + '</div><div class="due"><b>' + d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + "</b>" + esc(r.deadline_days) + "-day report · " + V.statusPill(r).replace(/<[^>]+>/g, "") + "</div></a>";
+        '<div class="left">' + V.dueShort(r.ms) + '</div><div class="due"><b>' + d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + "</b>" + esc(r.deadline_days) + "-day report · " + V.statusPill(r).replace(/<[^>]+>/g, "") +
+        (r.clocks && r.clocks.length ? '<span class="oth">' + r.clocks.map(function (c) { return '<em class="' + (c.days_left <= 7 ? "hot" : "") + '">' + esc(c.code) + " " + esc(c.days) + "d · " + (c.days_left < 0 ? -c.days_left + "d overdue" : c.days_left + "d left") + "</em>"; }).join("") + "</span>" : "") + "</div></a>";
     }).join("") : "";
     if (!rows.length) V.state($("list"), "empty", "No open reports", "Reportable and needs-info complaints appear here until they are approved.");
     $("n").textContent = rows.length; $("s-over").textContent = c.over; $("s-week").textContent = c.week; $("s-mid").textContent = c.mid; $("s-ok").textContent = c.ok;
