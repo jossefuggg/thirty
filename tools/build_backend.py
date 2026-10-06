@@ -30,33 +30,52 @@ def build():
 
 
 def check(exe):
+    """Boot the frozen backend on a fresh data folder, complete first-run setup through the API (explore mode),
+    and confirm the console shows the sample data. Never reads the live process's stdout: that blocks."""
+    import json
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]
     data = os.path.join(DESKTOP, "build", "check-data")
     shutil.rmtree(data, ignore_errors=True)
     env = {**os.environ, "VIGIL_DIR": data, "VIGIL_CONSOLE_PORT": str(port), "THIRTY_SAMPLE_DELAY": "0"}
     env.pop("VIGIL_LLM_BASE", None)
-    p = subprocess.Popen([exe], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    log = open(os.path.join(DESKTOP, "build", "check.log"), "w+", encoding="utf-8", errors="replace")
+    p = subprocess.Popen([exe], env=env, stdout=log, stderr=subprocess.STDOUT)
+    base = f"http://127.0.0.1:{port}"
+
+    def get(path, timeout=3):
+        return urllib.request.urlopen(base + path, timeout=timeout).read().decode()
+
+    def post(path, body):
+        req = urllib.request.Request(base + path, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+        return urllib.request.urlopen(req, timeout=30).read().decode()
+
     try:
-        end = time.time() + 60
-        while time.time() < end:
+        end, health, setup_done = time.time() + 90, None, False
+        while time.time() < end and p.poll() is None:
             try:
-                h = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=1).read().decode()
-                html = urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2).read().decode()
-                assert "Thirty" in html and "Sample data" in html
+                health = get("/api/health", timeout=1)
+                assert "Thirty" in get("/setup"), "setup page missing"
+                if not setup_done:
+                    post("/api/setup", {"mode": "explore", "agent": "sample"}); setup_done = True
+                html = get("/")
+                assert "Thirty" in html and "Sample data" in html, "console without sample data"
                 pdfs = os.listdir(os.path.join(data, "reports"))
-                print(f"check ok: /api/health -> {h[:80]}… · {len(pdfs)} PDFs drafted · data in {data}")
+                assert pdfs, "no PDFs drafted"
+                print(f"check ok: /api/health -> {health[:80]}… · {len(pdfs)} PDFs drafted · data in {data}", flush=True)
                 return True
             except Exception:
-                if p.poll() is not None:
-                    break
                 time.sleep(0.5)
-        print(p.stdout.read()[-3000:])
-        sys.exit("check failed: backend did not answer")
+        p.terminate()
+        try: p.wait(5)
+        except Exception: p.kill()
+        log.seek(0); print(log.read()[-3000:], flush=True)
+        sys.exit("check failed: backend did not answer or setup/console check failed")
     finally:
         p.terminate()
         try: p.wait(5)
         except Exception: p.kill()
+        log.close()
         shutil.rmtree(data, ignore_errors=True)
 
 
