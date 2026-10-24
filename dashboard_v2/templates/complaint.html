@@ -16,7 +16,7 @@
   /* ---------- layout: single readable column ---------- */
   .dt { display: grid; gap: var(--s3); align-items: start; max-width: 920px; }
   .cb { padding: var(--s3); }
-  .k { font-size: var(--fs-12); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .k { font-size: var(--fs-13); font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); }
 
   /* ---------- hero decision card (no tinted panels: the pill carries the colour) ---------- */
   .hero { overflow: hidden; }
@@ -100,7 +100,7 @@
   .rec-fields .dec-grid { margin-top: var(--s2); }
   .dec-acts { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; } .dec-acts .sig { font-size: 12px; color: var(--muted); max-width: 46ch; } .dec-acts .res { font-size: 13px; font-weight: 700; margin-left: auto; }
   .clocks { padding: 0 var(--s3) var(--s3); } .clocks .k { margin-bottom: 10px; }
-  .ctbl { width: 100%; border-collapse: collapse; font-size: 13px; } .ctbl th { text-align: left; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  .ctbl { width: 100%; border-collapse: collapse; font-size: 13px; } .ctbl th { text-align: left; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--border); }
   .ctbl td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; } .ctbl td span { display: block; font-size: 12px; color: var(--muted); } .ctbl td b { font-weight: 800; }
   .ctbl tr.hot .left { color: var(--coral-text); font-weight: 800; } .ctbl .left { font-weight: 800; white-space: nowrap; }
 
@@ -108,7 +108,7 @@
   .qt { font-size: var(--fs-16); line-height: 1.75; color: var(--text); padding: var(--s2) var(--s3); border-left: 4px solid var(--text); background: var(--hover); border-radius: 0 var(--r-btn) var(--r-btn) 0; white-space: pre-wrap; }
   .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s2); margin-top: var(--s2); }
   .facts div { padding: 12px 14px; border-radius: var(--r-btn); background: var(--hover); }
-  .facts span { display: block; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .facts span { display: block; font-size: var(--fs-12); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
   .facts b { font-size: var(--fs-14); font-weight: 700; }
   details.narr { margin-top: var(--s2); } details.narr summary { cursor: pointer; font-weight: 700; color: var(--text); font-size: var(--fs-14); list-style: none; display: inline-flex; gap: 6px; align-items: center; }
   details.narr summary::-webkit-details-marker { display: none; } details.narr summary .i { width: 16px; height: 16px; transition: transform var(--t); } details.narr[open] summary .i { transform: rotate(90deg); }

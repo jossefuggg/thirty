@@ -64,7 +64,7 @@ img { display: block; max-width: 100%; }
 ::selection { background: var(--t-coral); color: var(--t-ink); }
 * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .serif { font-family: var(--font-display); font-weight: 400; letter-spacing: -.015em; }
-.eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0; color: var(--muted); }
 
 /* ================================================================ shell */
 .app { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; padding-left: var(--sidebar-w); }
@@ -154,7 +154,7 @@ a.helpmenu-row:hover { background: var(--hover); color: var(--text); }
 /* ================================================================ components */
 .card { background: var(--surface); border-radius: var(--r-panel); border: 1px solid var(--border); padding: 0; }
 .card-h { display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid var(--border); height: 56px; flex: none; }
-.card-h h2 { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+.card-h h2 { font-size: var(--fs-14); font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--text); display: flex; align-items: center; gap: 10px; }
 .card-h h2 .i { color: var(--muted); width: 18px; height: 18px; }
 .card-h .aside { margin-left: auto; font-size: var(--fs-12); color: var(--muted); display: flex; align-items: center; gap: 12px; }
 .count-badge { min-width: 24px; height: 22px; padding: 0 8px; border-radius: var(--r-pill); background: var(--hover); color: var(--text); font-size: var(--fs-12); font-weight: 800; display: inline-grid; place-items: center; letter-spacing: 0; text-transform: none; }
@@ -207,7 +207,7 @@ a.helpmenu-row:hover { background: var(--hover); color: var(--text); }
 .empty.loading b { color: var(--muted); }
 .empty.error .art { background: var(--t-amber); color: var(--t-ink); }
 tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty { padding: var(--s4) var(--s3); }
-.dh { font-size: var(--fs-12); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.dh { font-size: var(--fs-13); font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); margin-bottom: 12px; }
 .quote { padding: 16px 20px; border-left: 3px solid var(--text); background: var(--hover); border-radius: 0 var(--r-btn) var(--r-btn) 0; font-size: var(--fs-14); line-height: 1.7; color: var(--text); }
 .ticks { display: grid; gap: 10px; } .ticks li { display: flex; gap: 10px; align-items: flex-start; } .ticks .i { color: var(--t-amber); width: 18px; height: 18px; margin-top: 1px; }
 
