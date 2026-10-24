@@ -1,0 +1,33 @@
+{#
+  error.html — the no-auth render-failure page (Requirement 1.9).
+
+  Rendered by front_door._render_error with:
+    retry_url (str) — the same URL to try again.
+
+  This must stay dependency-free and show a plain message with a retry link —
+  never a login redirect. It extends base_report.html, but if that itself fails
+  the blueprint falls back to a tiny inline HTML page in Python.
+#}
+{% extends "report/base_report.html" %}
+{% from "report/base_report.html" import ring %}
+
+{% block page_title %}Report a device problem{% endblock %}
+
+{% block content %}
+<header class="rp-head">
+  {{ ring(56) }}
+  <span class="rp-wordmark">Thirty<small>Report a device problem</small></span>
+</header>
+
+<div>
+  <p class="rp-eyebrow">Something went wrong</p>
+  <h1 class="rp-title" style="font-size: clamp(32px, 7vw, 48px)">The page could not load</h1>
+  <p class="rp-lede">Please try again. Your report has not been lost.</p>
+</div>
+
+<div class="rp-actions">
+  <span class="rp-spacer"></span>
+  <a class="rp-btn rp-btn-primary rp-btn-block"
+     href="{{ retry_url or url_for('reporter.landing') }}">Try again</a>
+</div>
+{% endblock %}

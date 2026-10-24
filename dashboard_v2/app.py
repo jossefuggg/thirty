@@ -499,7 +499,63 @@ def source_of(cid):
 
 SOURCES = {"rest": ("REST API", "zap"), "csv": ("File upload", "upload"), "email": ("Email", "mail"),
            "replay": ("Replay", "play"), "test": ("API test", "zap"), "api": ("API", "zap"),
-           "history": ("FDA history", "file")}
+           "history": ("FDA history", "file"), "reporter": ("Reporter", "user")}
+
+
+# ---------------------------------------------------------------- reporter front-door helpers (report-front-door spec, R9)
+# Required Draft_3500A fields for the Completeness_Score (the Requirement-4 data set, mapped to the keys the
+# drafted 3500A JSON actually stores — see thirty/reporter/interview.to_draft_3500a). "lot_or_serial" is stored
+# under both D4_lot and D4_serial, so it counts as a single required field satisfied by either key.
+REQUIRED_3500A = [
+    ("D1_brand_name",),          # device brand name
+    ("D4_model",),               # device model
+    ("D4_lot", "D4_serial"),     # lot number or serial number
+    ("B5_event_description",),   # free-text description of what happened
+    ("B2_outcomes",),            # patient outcome (list field)
+    ("H3_device_evaluated",),    # device malfunctioned mapping
+    ("B3_date_of_event",),       # date of the event
+    ("date_noticed",),           # date the problem was noticed
+    ("follow_up_contact",),      # follow-up contact
+]
+
+
+def is_reporter(row):
+    """True only when a complaint came through the public report front door (source == "reporter").
+    An absent or empty source column is treated as non-reporter (R9.1, R9.2, R9.7)."""
+    return (row.get("source") or "") == "reporter"
+
+
+def _draft_3500a_fields(cid):
+    """The drafted Form 3500A fields persisted next to the PDF at REPORTS/MDR_<cid>.json (written by
+    vigil.make_mdr()). Returns {} when the side JSON is missing or unreadable so the score degrades to 0."""
+    side = os.path.join(REPORTS, f"MDR_{cid}.json")
+    try:
+        with open(side, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _known_3500a_value(value):
+    """A drafted field counts as known when it is present, non-empty, and not the UNKNOWN sentinel.
+    List fields (e.g. B2_outcomes) count as known only when the list has at least one known entry."""
+    if value is None:
+        return False
+    if isinstance(value, (list, tuple)):
+        return any(_known_3500a_value(v) for v in value)
+    text = str(value).strip()
+    return bool(text) and text.upper() != "UNKNOWN"
+
+
+def completeness_score(row):
+    """Integer 0-100: the proportion of required Draft_3500A fields holding a known (non-UNKNOWN) value,
+    rounded to the nearest integer (R9.3). All known -> 100 (R9.4); all UNKNOWN/empty -> 0 (R9.5). The
+    drafted fields come from the per-complaint 3500A draft the pipeline already produces."""
+    fields = _draft_3500a_fields(row.get("id", ""))
+    known = sum(1 for keys in REQUIRED_3500A
+                if any(_known_3500a_value(fields.get(k)) for k in keys))
+    return round(100 * known / len(REQUIRED_3500A))
 
 
 def _yyyymmdd(v):
@@ -736,6 +792,7 @@ def _globals():
     return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "NAV_GROUPS": NAV_GROUPS, "VERSION": VERSION, "WS": workspace(), "SOURCES": SOURCES,
             "DEMO_MODE": demo_mode(), "SAMPLE_DATA": sample_data_mode(), "PUBLIC_DEMO": PUBLIC_DEMO, "PUBLIC_DEMO_BANNER": PUBLIC_DEMO_BANNER, "PUBLIC_BASE": public_base(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name}, "LICENCE": licensing.check().status(),
             "fmt_day": fmt_day, "LOCAL_AGENT": tconfig.agent_id() == "local", "CLOUD_AGENT": tconfig.agent_id() == "claude", "DATA_DIR": VIGIL_DIR, "TODAY": dt.date.today().isoformat(), "JURISDICTIONS": tjur.JURISDICTIONS,
+            "is_reporter": is_reporter, "completeness_score": completeness_score,
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 
@@ -2055,6 +2112,11 @@ def init_runtime():
             intake_mod().init_app(app)  # mounts POST /api/v1/complaints (+ /csv, status) and intake.py's worker
         except Exception as e:
             print("intake.py endpoints not mounted:", type(e).__name__, e, flush=True)
+    try:
+        from thirty import reporter  # lazy: keep the reporter package off the import-time path
+        reporter.init_app(app)  # mounts the public /report Front_Door blueprint after intake's paths are set
+    except Exception as e:
+        print("reporter Front_Door not mounted:", type(e).__name__, e, flush=True)
 
 
 # Under gunicorn (the public demo) app.py is imported, not run as __main__: initialise at import time so the

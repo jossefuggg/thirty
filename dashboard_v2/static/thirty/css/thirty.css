@@ -1,96 +1,127 @@
 /* =====================================================================
-   Thirty — web UI stylesheet  (Clinical Glass)
+   Thirty — web UI stylesheet  (Pitch deck: dark glass)
    Drop-in: <link rel="stylesheet" href="css/thirty.css">
-   Mood: clinical, calm, premium medical hardware.
-   Cool light-grey ground, frosted-glass surfaces, Manrope throughout.
-   Fonts: Manrope only (headlines 800, body 500). Self-host in /fonts.
+   Dark by default; light is the toggle alternative ([data-theme="light"]).
+   Fonts (self-hosted in /fonts): Manrope (UI, headlines 800) + JetBrains Mono (IDs, numbers, clocks).
    ===================================================================== */
 
-/* ---------- fonts (self-hosted; delete this block if you use Google Fonts) ---------- */
+/* ---------- fonts ---------- */
 @font-face { font-family: "Manrope"; font-weight: 500; font-display: swap; src: url("../fonts/manrope-500.woff2") format("woff2"); }
 @font-face { font-family: "Manrope"; font-weight: 600; font-display: swap; src: url("../fonts/manrope-600.woff2") format("woff2"); }
 @font-face { font-family: "Manrope"; font-weight: 700; font-display: swap; src: url("../fonts/manrope-700.woff2") format("woff2"); }
 @font-face { font-family: "Manrope"; font-weight: 800; font-display: swap; src: url("../fonts/manrope-800.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 400; font-display: swap; src: url("../fonts/jetbrains-mono-400.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 500; font-display: swap; src: url("../fonts/jetbrains-mono-500.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 700; font-display: swap; src: url("../fonts/jetbrains-mono-700.woff2") format("woff2"); }
 
-/* ---------- tokens ---------- */
-:root {
-  /* palette — cool clinical greys, coral as the single signal, steel for neutrals */
-  --t-paper: #F2F4F7;        /* mid of the background gradient */
-  --t-bg-1: #EEF1F4;         /* gradient top */
-  --t-bg-2: #F7F8FA;         /* gradient bottom */
+/* ---------- tokens: dark (default) ---------- */
+:root, [data-theme="dark"], .t-dark {
+  color-scheme: dark;
+  /* constants (same in both themes) */
   --t-ink: #14181F;
-  --t-coral: #FF5A3C;
-  --t-steel: #8A96A6;        /* neutral pills + charts */
-  --t-slate: #5B6573;        /* secondary text (AA on glass) */
-  --t-stone: #D5DAE1;        /* hairlines */
-  --t-amber: #F2B134;        /* NEEDS INFO only */
-  --t-ink-hover: #262D38;
-  --t-coral-hover: #E84E31;
-  --t-coral-text: #C2381A;   /* coral for small text on light glass: passes AA. On ink use plain coral. */
-  --t-stone-light: #E4E8ED;
-  --t-slate-dark: #AEB7C3;
-  --t-line-dark: #2A313C;
+  --t-paper: #F2F4F7;
+  --t-steel: #8A96A6;          /* charts: history */
+  --t-blue: #3D7BFF;           /* brand, links, focus, progress */
+  --t-violet: #8B7CF6;         /* highlights */
+  --t-teal: #2BB5A0;           /* approved, success, privacy badge */
+  --t-coral: #FF5A3C;          /* REPORTABLE, overdue, under 7 days */
+  --t-amber: #F2B134;          /* NEEDS INFO only */
+  --t-coral-hover: #FF7357;
+  --t-line-dark: rgba(255, 255, 255, 0.12);
+  --t-slate-dark: #A9B3C1;
+  --t-grad: linear-gradient(90deg, #3D7BFF 0%, #8B7CF6 100%);   /* progress bars + deadline rings */
 
-  /* glass surfaces — translucent white, blurred backdrop, white inner border, deep soft shadow */
-  --t-glass-bg: rgba(255, 255, 255, 0.70);
-  --t-glass-border: rgba(255, 255, 255, 0.60);
+  /* ground */
+  --t-bg-1: #0F141B;
+  --t-bg-2: #18202B;
+  --t-bg: #141A23;             /* opaque ground for overlays (drawer, modal, menus, sticky table heads) */
+  --t-glow-blue: rgba(61, 123, 255, 0.26);
+  --t-glow-violet: rgba(139, 124, 246, 0.22);
+  --t-page-bg:
+    radial-gradient(1100px 700px at 6% -12%, var(--t-glow-blue), transparent 68%),
+    radial-gradient(1000px 760px at 102% 6%, var(--t-glow-violet), transparent 68%),
+    radial-gradient(900px 600px at 70% 112%, var(--t-glow-blue), transparent 68%),
+    linear-gradient(160deg, var(--t-bg-1) 0%, var(--t-bg-2) 100%);
+  --t-bar-bg: rgba(15, 20, 27, 0.78);   /* sticky top bar + rail: legible over scrolled content */
+
+  /* text */
+  --t-fg: #F2F4F7;
+  --t-fg-2: #A9B3C1;
+  --t-ink-hover: #FFFFFF;
+
+  /* accent text tints + 16% grounds */
+  --t-blue-text: #8FB2FF;   --t-blue-tint: rgba(61, 123, 255, 0.16);
+  --t-violet-text: #B9ADFF; --t-violet-tint: rgba(139, 124, 246, 0.16);
+  --t-teal-text: #5FD8C4;   --t-teal-tint: rgba(43, 181, 160, 0.16);
+  --t-coral-text: #FF8D74;  --t-coral-tint: rgba(255, 90, 60, 0.16);
+  --t-amber-text: #F7C766;  --t-amber-tint: rgba(242, 177, 52, 0.16);
+  --t-neutral-tint: rgba(255, 255, 255, 0.08);
+  --t-steel-tint: var(--t-neutral-tint);
+
+  /* glass */
+  --t-glass-bg: rgba(255, 255, 255, 0.06);
+  --t-glass-border: rgba(255, 255, 255, 0.12);
   --t-glass-blur: blur(18px);
-  --t-glass-shadow: 0 20px 40px rgba(20, 30, 45, 0.08);
+  --t-glass-shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
+  --t-frame-bg: rgba(255, 255, 255, 0.04);
+  --t-frame-shadow: none;
 
-  /* semantic (light) */
-  --t-bg: var(--t-bg-2);     /* opaque solid ground for overlays that must not be see-through */
-  --t-fg: var(--t-ink);
-  --t-fg-2: var(--t-slate);
-  --t-line: var(--t-stone);
-  --t-panel: var(--t-stone-light);
-  --t-track: var(--t-stone);
+  /* semantic */
+  --t-line: rgba(255, 255, 255, 0.12);
+  --t-panel: rgba(255, 255, 255, 0.06);
+  --t-track: rgba(255, 255, 255, 0.10);
   --t-card: var(--t-glass-bg);
+  --t-input-bg: rgba(255, 255, 255, 0.05);
 
-  /* type — Manrope only; display is Manrope 800 */
+  /* buttons */
+  --t-primary-bg: #F2F4F7;  --t-primary-fg: #14181F;  --t-primary-hover: #FFFFFF;
+  --t-secondary-border: rgba(255, 255, 255, 0.18);
+
+  /* type */
   --t-font-display: "Manrope", -apple-system, "Segoe UI", Arial, sans-serif;
   --t-font-ui: "Manrope", -apple-system, "Segoe UI", Arial, sans-serif;
+  --t-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --t-track-head: -0.04em;
 
   /* shape + rhythm */
-  --t-radius: 12px;      /* buttons, inputs */
-  --t-radius-lg: 16px;   /* cards, panels, images */
-  --t-radius-frame: 28px;/* the one big outer container */
-  --t-radius-pill: 999px;
-  --t-space: 8px;        /* everything is a multiple of 8 */
-  --t-focus: 0 0 0 3px var(--t-bg-2), 0 0 0 6px var(--t-coral);
-
-  /* the outer frame: a large rounded white-glass container floating on the grey */
-  --t-frame-bg: rgba(255, 255, 255, 0.72);
-  --t-frame-shadow: 0 32px 80px rgba(20, 30, 45, 0.12);
-  --t-frame-margin: 24px;
-
-  /* soft tinted pill grounds (sentence case, small). Text stays AA on each tint. */
-  --t-coral-tint: rgba(255, 90, 60, 0.12);
-  --t-amber-tint: rgba(242, 177, 52, 0.18);
-  --t-steel-tint: rgba(138, 150, 166, 0.14);
-  --t-amber-text: #8A6400;   /* amber is too light for text; this reads AA on the amber tint and on glass */
+  --t-radius: 12px;          /* inputs */
+  --t-radius-lg: 16px;       /* cards, panels */
+  --t-radius-frame: 28px;
+  --t-radius-pill: 999px;    /* buttons + pills */
+  --t-space: 8px;
+  --t-focus: 0 0 0 2px var(--t-bg-1), 0 0 0 4px var(--t-blue);
+  --t-frame-margin: 0px;
 }
-[data-theme="dark"], .t-dark {
-  --t-paper: #0F141B;
-  --t-bg-1: #0D121A;
-  --t-bg-2: #141A23;
-  --t-bg: #121821;
-  --t-glass-bg: rgba(26, 33, 44, 0.55);
-  --t-glass-border: rgba(255, 255, 255, 0.08);
-  --t-glass-shadow: 0 20px 44px rgba(0, 0, 0, 0.45);
-  --t-fg: #ECEFF3;
-  --t-fg-2: var(--t-slate-dark);
-  --t-line: var(--t-line-dark);
-  --t-panel: #1A212B;
-  --t-track: var(--t-line-dark);
-  --t-card: var(--t-glass-bg);
-  --t-coral-text: var(--t-coral);
-  --t-focus: 0 0 0 3px var(--t-bg-1), 0 0 0 6px var(--t-coral);
-  --t-frame-bg: rgba(22, 28, 38, 0.55);
-  --t-frame-shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
-  --t-coral-tint: rgba(255, 90, 60, 0.20);
-  --t-amber-tint: rgba(242, 177, 52, 0.22);
-  --t-steel-tint: rgba(138, 150, 166, 0.20);
-  --t-amber-text: var(--t-amber);
+
+/* ---------- tokens: light (toggle alternative) ---------- */
+[data-theme="light"], .t-light {
+  color-scheme: light;
+  --t-bg-1: #EEF1F4;
+  --t-bg-2: #F7F8FA;
+  --t-bg: #F7F8FA;
+  --t-glow-blue: rgba(61, 123, 255, 0.10);
+  --t-glow-violet: rgba(139, 124, 246, 0.09);
+  --t-bar-bg: rgba(247, 248, 250, 0.84);
+  --t-fg: #14181F;
+  --t-fg-2: #5B6573;
+  --t-ink-hover: #262D38;
+  --t-blue-text: #2457C5;   --t-blue-tint: rgba(61, 123, 255, 0.12);
+  --t-violet-text: #5847D0; --t-violet-tint: rgba(139, 124, 246, 0.14);
+  --t-teal-text: #136E60;   --t-teal-tint: rgba(43, 181, 160, 0.14);
+  --t-coral-text: #C2381A;  --t-coral-tint: rgba(255, 90, 60, 0.12);
+  --t-amber-text: #7E5B00;  --t-amber-tint: rgba(242, 177, 52, 0.18);
+  --t-neutral-tint: rgba(20, 24, 31, 0.06);
+  --t-glass-bg: rgba(255, 255, 255, 0.70);
+  --t-glass-border: rgba(20, 24, 31, 0.08);
+  --t-glass-shadow: 0 20px 40px rgba(20, 30, 45, 0.08);
+  --t-frame-bg: rgba(255, 255, 255, 0.50);
+  --t-line: rgba(20, 24, 31, 0.12);
+  --t-panel: rgba(20, 24, 31, 0.05);
+  --t-track: rgba(20, 24, 31, 0.10);
+  --t-input-bg: rgba(255, 255, 255, 0.92);
+  --t-primary-bg: #14181F;  --t-primary-fg: #FFFFFF;  --t-primary-hover: #262D38;
+  --t-secondary-border: rgba(20, 24, 31, 0.18);
+  --t-focus: 0 0 0 2px var(--t-bg-2), 0 0 0 4px var(--t-blue);
 }
 
 /* ---------- base ---------- */
@@ -103,38 +134,39 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   color: var(--t-fg);
-  background: var(--t-bg-1);
-  background-image: linear-gradient(160deg, var(--t-bg-1) 0%, var(--t-bg-2) 100%);
+  background: var(--t-page-bg);
+  background-color: var(--t-bg-1);
   background-attachment: fixed;
 }
-a { color: var(--t-fg); text-decoration-color: var(--t-coral); text-underline-offset: 3px; }
-a:hover { color: var(--t-coral-text); }
+a { color: var(--t-blue-text); text-decoration-color: var(--t-blue); text-underline-offset: 3px; }
+a:hover { color: var(--t-fg); }
 hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
+.mono, code, kbd, samp { font-family: var(--t-font-mono); }
 
-/* ---------- type scale (Manrope 800 headlines, tight tracking) ---------- */
-.t-display, h1 { font-family: var(--t-font-display); font-weight: 800; font-size: 64px; line-height: 1.02; letter-spacing: -0.03em; margin: 0 0 24px; }
-.t-h2, h2      { font-family: var(--t-font-display); font-weight: 800; font-size: 40px; line-height: 1.08; letter-spacing: -0.025em; margin: 0 0 16px; }
+/* ---------- type scale (Manrope 800 headlines, tracking -0.04em) ---------- */
+.t-display, h1 { font-family: var(--t-font-display); font-weight: 800; font-size: 64px; line-height: 1.02; letter-spacing: var(--t-track-head); margin: 0 0 24px; }
+.t-h2, h2      { font-family: var(--t-font-display); font-weight: 800; font-size: 40px; line-height: 1.08; letter-spacing: var(--t-track-head); margin: 0 0 16px; }
 .t-h3, h3      { font-family: var(--t-font-ui); font-weight: 800; font-size: 24px; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 8px; }
 .t-lead        { font-size: 20px; line-height: 1.5; color: var(--t-fg-2); }
 .t-body, p     { font-size: 16px; line-height: 1.55; }
 .t-small       { font-size: 14px; line-height: 1.5; color: var(--t-fg-2); }
-.t-eyebrow     { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--t-fg-2); }
-.t-number      { font-family: var(--t-font-display); font-weight: 800; font-size: 88px; line-height: 0.95; letter-spacing: -0.04em; }
-.t-coral       { color: var(--t-coral); }       /* big numbers and display only */
-.t-coral-text  { color: var(--t-coral-text); }  /* coral for small text */
+.t-eyebrow     { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--t-fg-2); }
+.t-number      { font-family: var(--t-font-mono); font-weight: 700; font-size: 80px; line-height: 0.95; letter-spacing: -0.04em; }
+.t-coral       { color: var(--t-coral); }
+.t-coral-text  { color: var(--t-coral-text); }
 .t-muted       { color: var(--t-fg-2); }
 @media (max-width: 720px) {
   .t-display, h1 { font-size: 44px; }
   .t-h2, h2 { font-size: 32px; }
-  .t-number { font-size: 60px; }
+  .t-number { font-size: 56px; }
 }
 
-/* ---------- buttons ---------- */
+/* ---------- buttons (pills) ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
   height: 44px; padding: 0 22px;
-  border-radius: var(--t-radius-pill);   /* buttons are pills */
-  border: 2px solid transparent;
+  border-radius: var(--t-radius-pill);
+  border: 1px solid transparent;
   font-family: var(--t-font-ui); font-weight: 700; font-size: 15px; line-height: 1;
   letter-spacing: 0; text-decoration: none; white-space: nowrap;
   cursor: pointer; user-select: none;
@@ -144,41 +176,34 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 .btn:focus-visible { outline: none; box-shadow: var(--t-focus); }
 .btn[disabled], .btn.is-disabled { cursor: not-allowed; pointer-events: none; }
 
-/* Primary — ink with white text. */
-.btn-primary { background: var(--t-ink); color: #FFFFFF; }
-.btn-primary:hover { background: var(--t-ink-hover); color: #FFFFFF; }
-.t-dark .btn-primary, [data-theme="dark"] .btn-primary { background: #FFFFFF; color: var(--t-ink); }
-.t-dark .btn-primary:hover, [data-theme="dark"] .btn-primary:hover { background: #E7EBF0; color: var(--t-ink); }
+/* Primary — paper with ink text (ink with white text in light mode). */
+.btn-primary { background: var(--t-primary-bg); color: var(--t-primary-fg); }
+.btn-primary:hover { background: var(--t-primary-hover); color: var(--t-primary-fg); }
 .btn-primary[disabled], .btn-primary.is-disabled { background: var(--t-track); color: var(--t-fg-2); }
 
-/* Accent — ONE per screen, the action that moves the clock: Approve, Start, Book a demo. Coral with ink text (passes AA; paper text on coral does not). */
+/* Accent — the ONE key action per screen: coral with ink text. */
 .btn-accent { background: var(--t-coral); color: var(--t-ink); }
 .btn-accent:hover { background: var(--t-coral-hover); color: var(--t-ink); }
 .btn-accent[disabled], .btn-accent.is-disabled { background: var(--t-track); color: var(--t-fg-2); }
 
-/* Secondary — white glass with a hairline border. */
-.btn-secondary { background: var(--t-glass-bg); color: var(--t-fg); border-color: var(--t-line); -webkit-backdrop-filter: var(--t-glass-blur); backdrop-filter: var(--t-glass-blur); }
-.btn-secondary:hover { border-color: var(--t-fg-2); background: var(--t-glass-bg); }
+/* Secondary — glass with a hairline border. */
+.btn-secondary { background: var(--t-glass-bg); color: var(--t-fg); border-color: var(--t-secondary-border); -webkit-backdrop-filter: var(--t-glass-blur); backdrop-filter: var(--t-glass-blur); }
+.btn-secondary:hover { border-color: var(--t-fg-2); background: var(--t-panel); }
 .btn-secondary[disabled], .btn-secondary.is-disabled { color: var(--t-fg-2); border-color: var(--t-line); }
 
-/* Ghost — text only, for tertiary actions in rows and toolbars. */
 .btn-ghost { background: transparent; color: var(--t-fg); padding: 0 12px; }
 .btn-ghost:hover { background: var(--t-panel); }
 .btn-ghost[disabled], .btn-ghost.is-disabled { color: var(--t-fg-2); }
 
-/* Destructive — coral outline, ink text; fills on hover. Use for Override / Close without action. */
 .btn-danger { background: transparent; color: var(--t-fg); border-color: var(--t-coral); }
 .btn-danger:hover { background: var(--t-coral); color: var(--t-ink); }
 
-/* sizes */
 .btn-sm { height: 36px; padding: 0 16px; font-size: 14px; border-radius: var(--t-radius-pill); }
 .btn-lg { height: 56px; padding: 0 30px; font-size: 17px; border-radius: var(--t-radius-pill); }
 .btn-block { width: 100%; }
 .btn .btn-icon { width: 18px; height: 18px; flex: none; }
 
-/* ---------- status pills (sentence case, small, soft tinted grounds) ----------
-   Solid coral is reserved for OVERDUE and the one key action per screen. Everything
-   else is a soft tint with dark text that passes AA. */
+/* ---------- status pills: sentence case, tinted ---------- */
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
   height: 24px; padding: 0 10px;
@@ -188,21 +213,19 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 }
 .pill-reportable { background: var(--t-coral-tint); color: var(--t-coral-text); }
 .pill-needs-info { background: var(--t-amber-tint); color: var(--t-amber-text); }
-.pill-not-reportable { background: var(--t-steel-tint); color: var(--t-fg); }
-.pill-approved { background: var(--t-steel-tint); color: var(--t-fg); }
-.pill-five-day { background: var(--t-coral); color: var(--t-ink); }   /* a 5-day clock is as urgent as overdue: solid coral */
-.pill-neutral { background: var(--t-steel-tint); color: var(--t-fg); }
-.pill-overdue { background: var(--t-coral); color: var(--t-ink); }    /* the only other solid coral */
+.pill-approved { background: var(--t-teal-tint); color: var(--t-teal-text); }
+.pill-not-reportable, .pill-neutral { background: var(--t-neutral-tint); color: var(--t-fg); }
+.pill-five-day, .pill-overdue { background: var(--t-coral-tint); color: var(--t-coral-text); border-color: var(--t-coral); }
 .pill-lg { height: 32px; padding: 0 14px; font-size: 13px; }
 
-/* "0 bytes to cloud AI" badge */
+/* privacy badge: teal */
 .badge-local {
   display: inline-flex; align-items: center; gap: 10px;
-  height: 36px; padding: 0 14px; border-radius: var(--t-radius);
-  background: var(--t-ink); color: #FFFFFF;
-  font-weight: 700; font-size: 14px;
+  height: 36px; padding: 0 14px; border-radius: var(--t-radius-pill);
+  background: var(--t-teal-tint); color: var(--t-teal-text); border: 1px solid rgba(43, 181, 160, 0.35);
+  font-weight: 700; font-size: 13px;
 }
-.badge-local::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--t-coral); }
+.badge-local::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--t-teal); box-shadow: 0 0 0 4px var(--t-teal-tint); }
 
 /* ---------- inputs ---------- */
 .field { display: flex; flex-direction: column; gap: 8px; }
@@ -210,22 +233,20 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 .input, .select, .textarea {
   width: 100%; box-sizing: border-box;
   height: 44px; padding: 0 14px;
-  background: rgba(255, 255, 255, 0.92); color: var(--t-fg);
-  border: 2px solid var(--t-line); border-radius: var(--t-radius);
+  background: var(--t-input-bg); color: var(--t-fg);
+  border: 1px solid var(--t-secondary-border); border-radius: var(--t-radius);
   font-family: var(--t-font-ui); font-size: 15px; font-weight: 500;
   transition: border-color .15s ease;
 }
-[data-theme="dark"] .input, [data-theme="dark"] .select, [data-theme="dark"] .textarea,
-.t-dark .input, .t-dark .select, .t-dark .textarea { background: rgba(20, 26, 35, 0.75); }
 .textarea { height: auto; min-height: 120px; padding: 12px 14px; line-height: 1.5; resize: vertical; }
 .input::placeholder, .textarea::placeholder { color: var(--t-fg-2); }
 .input:hover, .select:hover, .textarea:hover { border-color: var(--t-fg-2); }
-.input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--t-fg); box-shadow: var(--t-focus); }
+.input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--t-blue); box-shadow: var(--t-focus); }
 .input.is-error { border-color: var(--t-coral); }
 .help { font-size: 13px; color: var(--t-fg-2); }
 .help.is-error { color: var(--t-coral-text); font-weight: 700; }
 
-/* ---------- cards + panels (frosted glass) ---------- */
+/* ---------- cards + panels (glass) ---------- */
 .card {
   background: var(--t-glass-bg);
   -webkit-backdrop-filter: var(--t-glass-blur);
@@ -235,29 +256,27 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
   box-shadow: var(--t-glass-shadow);
   padding: 30px;
 }
-.card-accent { border-top: 4px solid var(--t-coral); }
-.stat { display: flex; flex-direction: column; gap: 6px; padding-top: 20px; border-top: 4px solid var(--t-fg); }
+.card-accent { border-top: 3px solid var(--t-blue); }
+.stat { display: flex; flex-direction: column; gap: 6px; padding-top: 20px; border-top: 3px solid var(--t-fg); }
 .stat-accent { border-top-color: var(--t-coral); }
 .stat .t-number { margin: 0; }
 .stat .t-eyebrow { margin-top: 4px; }
 
-/* ---------- the ring (30-day clock) ----------
-   <div class="ring" style="--days-left: 23"> <svg>…</svg> <div class="ring-label">23<span>days</span></div> </div>
-   Track = stone, elapsed = ink, the first five days = coral. See components.html for the SVG. */
+/* ---------- the ring (30-day clock): gradient, coral under 7 days ---------- */
 .ring { position: relative; width: 160px; height: 160px; }
 .ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .ring-label {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  font-family: var(--t-font-display); font-size: 56px; line-height: 1; letter-spacing: -0.03em;
+  font-family: var(--t-font-mono); font-weight: 700; font-size: 48px; line-height: 1; letter-spacing: -0.04em;
 }
-.ring-label span { font-family: var(--t-font-ui); font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--t-fg-2); margin-top: 6px; }
+.ring-label span { font-family: var(--t-font-ui); font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--t-fg-2); margin-top: 6px; }
 
-/* ---------- deadline bar (as on the Compliance Clock) ---------- */
+/* ---------- progress / deadline bar ---------- */
 .deadline { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; }
-.deadline-track { height: 10px; border-radius: 999px; background: var(--t-track); overflow: hidden; }
-.deadline-fill { height: 100%; border-radius: 999px; background: var(--t-fg); }
+.deadline-track { height: 8px; border-radius: 999px; background: var(--t-track); overflow: hidden; }
+.deadline-fill { height: 100%; border-radius: 999px; background: var(--t-grad); }
 .deadline-fill.is-urgent { background: var(--t-coral); }
-.deadline-value { font-weight: 800; font-size: 15px; white-space: nowrap; }
+.deadline-value { font-family: var(--t-font-mono); font-weight: 700; font-size: 15px; white-space: nowrap; }
 .deadline-value.is-urgent { color: var(--t-coral-text); }
 
 /* ---------- nav ---------- */

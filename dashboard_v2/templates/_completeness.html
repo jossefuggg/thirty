@@ -1,0 +1,33 @@
+{#
+  Completeness score display (report-front-door, Requirement 9.6; 9.7 enforced
+  by the include condition in task 9.4 + the guard below).
+
+  DISPLAY ONLY. The score (0-100 integer) is computed in app.py
+  (`completeness_score(row)`, task 8) and passed in as `completeness`. This
+  partial never computes it.
+
+  Context:
+    - `completeness` : int 0-100. When undefined or None, nothing is rendered
+                       (guard), so a non-reporter / unscored row shows nothing.
+
+  A value of 0 is valid and still renders (all required fields UNKNOWN -> 0).
+  Shown only for reporter-source rows; task 9.4 includes it only for those rows.
+
+  Reuses brand tokens (var(--track) bar track, var(--text) fill, var(--muted)
+  label) so it matches the console. No CSS framework; a tiny scoped style block.
+  Wiring this include into the shared templates is a separate task (9.4).
+#}
+{%- if completeness is defined and completeness is not none -%}
+{%- set _pct = completeness | int -%}
+{%- if _pct < 0 %}{% set _pct = 0 %}{% elif _pct > 100 %}{% set _pct = 100 %}{% endif -%}
+<span class="completeness" title="Required Form 3500A fields supplied: {{ _pct }}%">
+  <span class="completeness-bar"><i style="width: {{ _pct }}%"></i></span>
+  <span class="completeness-n">Completeness {{ _pct }}%</span>
+</span>
+<style>
+  .completeness { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-12); font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .completeness-bar { display: inline-block; width: 56px; height: 6px; border-radius: var(--r-pill); background: var(--track); overflow: hidden; flex: none; }
+  .completeness-bar i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--text); }
+  .completeness-n { font-variant-numeric: tabular-nums; }
+</style>
+{%- endif -%}

@@ -1,0 +1,57 @@
+{#
+  base_report.html — standalone public layout for the reporter Front_Door.
+
+  This is NOT dashboard_v2/base.html. The console base carries the authenticated
+  nav/shell; these pages are public, no-login (Requirement 1.5). This layout is
+  deliberately minimal: a mobile-first viewport, the brand tokens/fonts from the
+  existing thirty.css, and the scoped report.css. No console chrome.
+
+  Blocks:
+    - page_title   : <title> text
+    - body_class   : extra classes on the page container (e.g. per-screen)
+    - content      : the screen body (rendered inside the glass frame)
+
+  Macro `ring(size)` renders our own small frosted "30" ring mark as inline SVG
+  (the first-five-days segment glows coral). No external asset is referenced.
+#}
+{% macro ring(size=72) -%}
+<svg class="rp-ring" width="{{ size }}" height="{{ size }}" viewBox="0 0 72 72"
+     role="img" aria-label="Thirty" focusable="false">
+  <defs>
+    <linearGradient id="rp-ring-coral" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF7A5C"/>
+      <stop offset="1" stop-color="#FF5A3C"/>
+    </linearGradient>
+  </defs>
+  {# faint full track #}
+  <circle cx="36" cy="36" r="28" fill="none" stroke="#D5DAE1" stroke-width="6"
+          opacity="0.55"/>
+  {# the glowing first-five-days segment: ~1/6 of the ring, starting at 12 o'clock #}
+  <circle cx="36" cy="36" r="28" fill="none" stroke="url(#rp-ring-coral)"
+          stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="30 146" transform="rotate(-90 36 36)"/>
+  <text x="36" y="36" text-anchor="middle" dominant-baseline="central"
+        font-family="Manrope, -apple-system, Segoe UI, Arial, sans-serif"
+        font-weight="800" font-size="20" fill="#14181F">30</text>
+</svg>
+{%- endmacro %}
+<!doctype html>
+<html lang="{{ language or 'en' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>{% block page_title %}Report a device problem{% endblock %} · Thirty</title>
+<link rel="icon" type="image/svg+xml" href="/static/thirty/logo/favicon.svg">
+<link rel="apple-touch-icon" href="/static/thirty/logo/apple-touch-icon-180.png">
+{# thirty.css provides the @font-face (Manrope) and brand tokens; report.css is
+   the scoped mobile-first layer for these public pages. Order matters. #}
+<link rel="stylesheet" href="/static/thirty/css/thirty.css">
+<link rel="stylesheet" href="/static/thirty/css/report.css">
+</head>
+<body class="rp-body">
+  <main class="rp-frame {% block body_class %}{% endblock %}" id="rp-main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,91 @@
+{#
+  review.html — plain-words review of the collected answers (Requirements 5.1–5.5).
+
+  Context (from front_door._review_context, plus optional keys on confirm):
+    summary [{field,label,value,is_unknown}], fields, field_labels,
+    not_known_label, ended, end_reason, ended_without_completion (bool),
+    language, reporter_type, plain_mode, max_answer_chars,
+    optionally description_required (bool) and submit_error (str).
+
+  Each row has an inline edit control POSTing to reporter.review_edit with
+  field + value, or idk=1 to mark it not known (Requirement 5.3). A confirm
+  button POSTs to reporter.confirm (Requirement 5.4). is_unknown rows already
+  carry the plain "not known" value, so we just render value (Requirement 5.2).
+#}
+{% extends "report/base_report.html" %}
+{% from "report/base_report.html" import ring %}
+
+{% block page_title %}Review your report{% endblock %}
+
+{% block content %}
+<header class="rp-head">
+  {{ ring(56) }}
+  <span class="rp-wordmark">Thirty<small>Report a device problem</small></span>
+</header>
+
+<div>
+  <p class="rp-eyebrow">Review</p>
+  <h1 class="rp-title" style="font-size: clamp(32px, 7vw, 48px)">Check your report</h1>
+  <p class="rp-lede">Read it over. Change anything that is wrong, then send it to a reviewer.</p>
+</div>
+
+{% if ended_without_completion %}
+  <p class="rp-note rp-note-amber" role="status">
+    We stopped the questions early, so a few details may be missing. You can add
+    them below before you send the report.
+  </p>
+{% endif %}
+
+{% if submit_error %}
+  <p class="rp-note rp-note-error" role="alert">{{ submit_error }}</p>
+{% endif %}
+
+{% if description_required %}
+  <p class="rp-note rp-note-error" role="alert">
+    Please add a short description of what happened before you send the report.
+  </p>
+{% endif %}
+
+<div class="rp-card rp-card-lg">
+  <ul class="rp-summary">
+    {% for row in summary %}
+    <li class="rp-row"
+        {% if description_required and row.field == 'event_description' %}id="rp-focus-row"{% endif %}>
+      <span class="rp-row-label">{{ row.label }}</span>
+      <span class="rp-row-value {% if row.is_unknown %}is-unknown{% endif %}">{{ row.value }}</span>
+
+      {# per-field inline edit: a value field + save, and a "not known" submit #}
+      <form class="rp-edit-form" method="post" action="{{ url_for('reporter.review_edit') }}">
+        <input type="hidden" name="field" value="{{ row.field }}">
+        <label class="rp-label" for="rp-edit-{{ row.field }}" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Edit {{ row.label }}</label>
+        <input class="rp-input" id="rp-edit-{{ row.field }}" name="value" type="text"
+               maxlength="{{ max_answer_chars or 5000 }}"
+               placeholder="Update {{ row.label | lower }}">
+        <button type="submit" class="rp-btn rp-btn-ghost">Save</button>
+        <button type="submit" name="idk" value="1" class="rp-btn rp-btn-ghost"
+                formnovalidate aria-label="Mark {{ row.label | lower }} as not known">Not known</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+<form method="post" action="{{ url_for('reporter.confirm') }}">
+  <div class="rp-actions">
+    <span class="rp-spacer"></span>
+    <button type="submit" class="rp-btn rp-btn-primary rp-btn-block">Send to a reviewer</button>
+  </div>
+</form>
+
+<p class="rp-fine">A named reviewer checks your report before anything is filed.</p>
+
+{% if description_required %}
+<script>
+  /* gently focus the description edit when it is required */
+  (function () {
+    var row = document.getElementById('rp-focus-row');
+    if (row) { var i = row.querySelector('input[name="value"]'); if (i) { i.focus(); } }
+  })();
+</script>
+{% endif %}
+{% endblock %}

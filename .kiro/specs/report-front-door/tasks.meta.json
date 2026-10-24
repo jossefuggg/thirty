@@ -204,6 +204,16 @@
         "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792867889902
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792875970344
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792876386004
       }
     ],
     "9.2 Create the integrations QR panel partial `dashboard_v2/templates/integrations/_qr_panel.html`": [
@@ -211,6 +221,16 @@
         "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792867889962
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792876391120
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792876770071
       }
     ],
     "9.3 Create the console badge/score include partials": [
@@ -218,6 +238,16 @@
         "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792867889992
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792876773394
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792876871634
       }
     ],
     "9.4 Wire the partials into the shared templates via small named includes only": [
@@ -232,6 +262,16 @@
         "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792867890050
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792877769348
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792877952070
       }
     ],
     "2.1 Write unit tests for the QR generator": [
@@ -336,6 +376,11 @@
         "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792875061451
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792875965592
       }
     ],
     "8.1 Add console tests to `tests/test_console.py`": [
@@ -343,6 +388,11 @@
         "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
         "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
         "timestamp": 1792867989184
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792877323517
       }
     ],
     "10.1 Write a wiring/integration test": [
@@ -350,6 +400,11 @@
         "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
         "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
         "timestamp": 1792867989219
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792877762511
       }
     ],
     "1. Create the reporter package and pure interview state model": [
@@ -405,6 +460,37 @@
         "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792872599353
+      }
+    ],
+    "7. Implement the Front_Door blueprint and routes in `thirty/reporter/front_door.py`": [
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792875965643
+      }
+    ],
+    "8. Implement console badge and completeness-score logic in `dashboard_v2/app.py`": [
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792876877319
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792877322838
+      }
+    ],
+    "10. Wire the blueprint and agent selection into the console": [
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792877342029
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792877761651
       }
     ]
   }

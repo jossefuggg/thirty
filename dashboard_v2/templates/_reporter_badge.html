@@ -1,0 +1,22 @@
+{#
+  Reporter source badge (report-front-door, Requirements 9.1, 9.2, 9.7).
+
+  Renders a soft neutral "Reporter" pill ONLY for reporter-source complaints.
+  Reuses the existing console `.src` pill (var(--hover) background, var(--text)
+  text) so it matches the other source chips. It is deliberately NOT solid
+  coral — coral is reserved for one key action / overdue.
+
+  Context (decoupled, with safe fallbacks so the partial is testable alone):
+    - `is_reporter`  : boolean. If defined, it decides on its own.
+    - `row`          : a complaint dict. If `is_reporter` is not defined, we
+                       fall back to `row.source == 'reporter'`.
+  When neither is defined, or the source is absent / not "reporter", nothing is
+  rendered (no badge for non-reporter/absent/empty source).
+
+  Wiring these includes into the shared templates is a separate task (9.4).
+#}
+{% set _is_reporter = is_reporter if is_reporter is defined
+     else (row.source == 'reporter' if (row is defined and row.source is defined and row.source) else False) %}
+{%- if _is_reporter -%}
+<span class="src" title="Source: Reporter">{{ icon('user') if icon is defined else '' }}Reporter</span>
+{%- endif -%}

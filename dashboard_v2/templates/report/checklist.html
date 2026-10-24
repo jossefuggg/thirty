@@ -1,0 +1,66 @@
+{#
+  checklist.html — the NoAgent single-screen path (Requirement 8.7).
+
+  Context (from front_door.start, NoAgent branch):
+    languages, language, reporter_type, device, devices,
+    fields (interview.FIELD_ORDER), plain_mode.
+
+  When the active agent is NoAgent there is no adaptive interview loop, so this
+  renders every field on one fixed screen instead of one-question-at-a-time.
+
+  TODO (backend follow-up, out of scope for task 9.1): there is no dedicated
+  bulk-checklist submit route. The backend only exposes per-field
+  reporter.review_edit + reporter.confirm, so wiring a single POST that records
+  every field at once needs a new route (or a review_edit-per-field sequence).
+  For now this is a readable, honest single-screen form whose inputs are named
+  by field; it is not wired to a submit endpoint yet. The render path (template
+  name + fields) is what the current tests assert.
+#}
+{% extends "report/base_report.html" %}
+{% from "report/base_report.html" import ring %}
+
+{% block page_title %}Report a device problem{% endblock %}
+
+{% block content %}
+<header class="rp-head">
+  {{ ring(56) }}
+  <span class="rp-wordmark">Thirty<small>Report a device problem</small></span>
+</header>
+
+<div>
+  <p class="rp-eyebrow">Report a device problem</p>
+  <h1 class="rp-title" style="font-size: clamp(32px, 7vw, 48px)">Tell us what happened</h1>
+  <p class="rp-lede">Fill in what you can. Leave anything you do not know blank —
+    a named reviewer checks every report.</p>
+</div>
+
+{% if device %}
+<p class="rp-hint"><span class="rp-chip">{{ device.brand }} — {{ device.common }}</span></p>
+{% endif %}
+
+{# TODO(backend): no bulk-checklist submit route exists yet — see file header.
+   This form has no action wired on purpose; inputs are named by field so the
+   follow-up route can read them. #}
+<form class="rp-form">
+  {% for field in fields %}
+  <div class="rp-field">
+    <label class="rp-label" for="rp-cl-{{ field }}">{{ field | replace('_', ' ') | capitalize }}</label>
+    {% if field == 'event_description' %}
+      <textarea class="rp-textarea" id="rp-cl-{{ field }}" name="{{ field }}"
+                maxlength="5000"></textarea>
+    {% else %}
+      <input class="rp-input" id="rp-cl-{{ field }}" name="{{ field }}" type="text"
+             maxlength="5000" autocomplete="off">
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <div class="rp-actions">
+    <span class="rp-spacer"></span>
+    <button type="submit" class="rp-btn rp-btn-primary rp-btn-block" disabled
+            title="Submitting the checklist is a backend follow-up">Send to a reviewer</button>
+  </div>
+</form>
+
+<p class="rp-fine">A named reviewer checks your report before anything is filed.</p>
+{% endblock %}

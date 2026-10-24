@@ -1,0 +1,75 @@
+{#
+  interview.html — one interview question per screen (Requirements 4.1, 4.4, 4.6).
+
+  Context (from front_door._interview_context):
+    question (dict), field, prompt, input_type ("text"|"choice"),
+    options [{value,label}], allow_idk (True), language, reporter_type,
+    plain_mode, questions_asked, question_cap, max_answer_chars.
+
+  POST to reporter.answer with 'answer' (text or the selected choice value),
+  OR the "I don't know" control which submits idk=1 (Requirement 4.7).
+  Progress is shown subtly (questions_asked of up to question_cap) and framed as
+  "so far" so it never implies a hard count.
+#}
+{% extends "report/base_report.html" %}
+{% from "report/base_report.html" import ring %}
+
+{% block page_title %}A few questions{% endblock %}
+
+{% block content %}
+<header class="rp-head">
+  {{ ring(56) }}
+  <span class="rp-wordmark">Thirty<small>Report a device problem</small></span>
+</header>
+
+{# subtle progress — "so far", capped, never a hard N-of-M promise #}
+{% set asked = questions_asked or 0 %}
+{% set cap = question_cap or 8 %}
+{% set pct = ((asked / cap) * 100) | round(0, 'floor') if cap else 0 %}
+<div class="rp-progress" aria-hidden="true">
+  <div class="rp-progress-track">
+    <div class="rp-progress-fill" style="width: {{ [pct, 8] | max }}%"></div>
+  </div>
+  <span class="rp-progress-text">{{ asked }} of up to {{ cap }} questions</span>
+</div>
+
+<div class="rp-card rp-card-lg">
+  <h1 class="rp-title" style="font-size: clamp(28px, 6vw, 40px)">{{ prompt }}</h1>
+
+  <form class="rp-form" method="post" action="{{ url_for('reporter.answer') }}" style="margin-top:20px">
+    {% if input_type == "choice" %}
+      <fieldset class="rp-field" style="border:0;margin:0;padding:0">
+        <legend class="rp-label">Choose one</legend>
+        <div class="rp-pills" role="radiogroup" aria-label="{{ prompt }}">
+          {% for opt in options %}
+          <label class="rp-pill">
+            <input type="radio" name="answer" value="{{ opt.value }}"
+                   {% if loop.first %}required{% endif %}>
+            <span>{{ opt.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+    {% else %}
+      <div class="rp-field">
+        <label class="rp-label" for="rp-answer">Your answer</label>
+        <textarea class="rp-textarea" id="rp-answer" name="answer"
+                  maxlength="{{ max_answer_chars or 5000 }}"
+                  autocomplete="off"></textarea>
+        <p class="rp-hint">Up to {{ max_answer_chars or 5000 }} characters. Write in your own language.</p>
+      </div>
+    {% endif %}
+
+    <div class="rp-actions">
+      {# "I don't know" is a real submit button posting idk=1 (Requirement 4.6) #}
+      <button type="submit" name="idk" value="1"
+              class="rp-btn rp-btn-ghost"
+              formnovalidate>I don't know</button>
+      <span class="rp-spacer"></span>
+      <button type="submit" class="rp-btn rp-btn-primary">Next</button>
+    </div>
+  </form>
+</div>
+
+<p class="rp-fine">A person reviews your report. Nothing is filed without a human.</p>
+{% endblock %}

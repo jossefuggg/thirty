@@ -47,6 +47,11 @@
     color: var(--rd-fg);
   }
 
+  /* Fill the window like the rest of the app and scroll the page normally:
+     neutralise any width cap / inner scroll box the content wrapper may impose
+     (we must not edit base.html / thirty.css, so override from the page class). */
+  .rd-page { width: 100%; max-width: none; height: auto; min-height: 0; overflow: visible; padding: 0; }
+
   /* The page paints its own dark gradient + glows so the pitch-deck mood holds
      regardless of the surrounding theme. Fixed so it reads as a backdrop. */
   .rd-page::before {
@@ -57,7 +62,15 @@
       linear-gradient(160deg, var(--rd-bg-1) 0%, var(--rd-bg-2) 100%);
   }
 
-  .rd { display: grid; gap: var(--rd-gap); max-width: 880px; }
+  /* Centered, full-window container: max 1440px, 48px side padding. */
+  .rd { max-width: 1440px; margin: 0 auto; padding: 32px 48px 64px; }
+
+  /* Desktop two-column grid: left ~60% (questions), right ~40% (sticky result).
+     The hero spans both columns. Below 1100px this collapses to one column. */
+  .rd-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--rd-gap); align-items: start; }
+  .rd-hero { grid-column: 1 / -1; }
+  .rd-left { display: grid; gap: var(--rd-gap); min-width: 0; }
+  .rd-right { display: grid; gap: var(--rd-gap); min-width: 0; position: sticky; top: 24px; align-self: start; }
 
   /* Hero: Manrope 800 headline, tight tracking, dial badge beside it, and a
      soft image backdrop behind the hero ONLY (never behind text blocks). */
@@ -77,7 +90,16 @@
   .rd-hero-copy { display: grid; gap: 10px; min-width: 0; }
   .rd-eyebrow { font-family: var(--rd-font); font-weight: 800; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--rd-blue-text); }
   .rd-hero h1 { font-family: var(--rd-font); font-weight: 800; font-size: clamp(34px, 7vw, 64px); line-height: 0.96; letter-spacing: -0.04em; margin: 0; color: var(--rd-fg); }
-  .rd-hero p { font-size: 16px; line-height: 1.6; color: var(--rd-fg-2); max-width: 60ch; margin: 0; }
+  .rd-hero p { font-size: 16px; line-height: 1.6; color: var(--rd-fg-2); max-width: 720px; margin: 0; }
+
+  /* Pre-answer preview in the right rail (before any question is answered). */
+  .rd-preview { display: grid; gap: 14px; }
+  .rd-preview h2 { font-family: var(--rd-font); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; margin: 0; color: var(--rd-fg); }
+  .rd-preview .lead { font-size: 14px; line-height: 1.6; color: var(--rd-fg-2); margin: 0; }
+  .rd-preview ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .rd-preview li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--rd-fg); }
+  .rd-preview li::before { content: ""; flex: 0 0 auto; width: 7px; height: 7px; margin-top: 7px; border-radius: 50%; background: var(--rd-blue); }
+  .rd-preview .rd-actions { margin-top: 4px; }
 
   /* Disclaimer band - top and bottom of the result. Amber accent (advisory). */
   .rd-disclaimer { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: 12px;
@@ -175,9 +197,22 @@
 
   .hidden { display: none !important; }
 
+  /* Below 1100px: single column. The result rail stops being sticky and flows
+     after the questions. */
+  @media (max-width: 1100px) {
+    .rd-grid { grid-template-columns: 1fr; }
+    .rd-right { position: static; top: auto; }
+  }
+
+  /* Tablet / narrow: ease the side padding in. */
+  @media (max-width: 820px) {
+    .rd { padding: 24px 24px 56px; }
+  }
+
   /* 390px / small phone. */
   @media (max-width: 560px) {
-    .rd { gap: 16px; }
+    .rd { gap: 16px; padding: 16px 16px 48px; }
+    .rd-grid { gap: 16px; }
     .rd-hero { padding: 20px 18px 22px; }
     .rd-hero-head { flex-direction: column; align-items: flex-start; gap: 12px; }
     .rd-dial { width: 120px; height: 120px; }
@@ -197,16 +232,21 @@
      data-pdf="{{ '1' if pdf_available else '0' }}"
      data-public-demo="{{ '1' if PUBLIC_DEMO else '0' }}">
 
+  <div class="rd-grid">
+
   <header class="rd-hero">
     <div class="rd-hero-head">
       <img class="rd-dial" src="/static/thirty/img/brand/thirty-dial-30-days.png" alt="" width="160" height="160" aria-hidden="true">
       <div class="rd-hero-copy">
         <span class="rd-eyebrow">Plan · decision support</span>
         <h1>Is your health feature<br>a medical device?</h1>
+        <p>Answer six plain-language questions. You get a likely category, what has already gone wrong with similar devices in public FDA data, and exactly what starts on day one if it is a device - and which of those Thirty handles.</p>
       </div>
     </div>
-    <p>Answer six plain-language questions. You get a likely category, what has already gone wrong with similar devices in public FDA data, and exactly what starts on day one if it is a device - and which of those Thirty handles.</p>
   </header>
+
+  <!-- LEFT column: the six questions -->
+  <div class="rd-left">
 
   <div class="rd-disclaimer" role="note">
     {{ icon('help') }}<span>{{ disclaimer }}</span>
@@ -259,7 +299,26 @@
 
     <div class="rd-actions" style="margin-top:18px">
       <button type="button" class="btn-pill btn-primary" id="rd-check">See the likely category</button>
-      <button type="button" class="btn-pill btn-ghost" id="rd-example">Try an example: {{ example_preset.name }} <em style="font-weight:600;color:var(--rd-fg-2)">({{ example_preset.note }})</em></button>
+    </div>
+  </section>
+
+  </div><!-- /rd-left -->
+
+  <!-- RIGHT column: sticky result rail (preview before any answer) -->
+  <div class="rd-right">
+
+  <!-- Pre-answer preview: shown until a result exists -->
+  <section class="glass rd-preview" id="rd-preview">
+    <span class="step-n">Your result</span>
+    <h2>See where your feature lands</h2>
+    <p class="lead">Answer the six questions, or load a worked example, to get:</p>
+    <ul>
+      <li>A likely category - general wellness, borderline, or a device class - with the answers that drove it.</li>
+      <li>What has already gone wrong with similar devices in public FDA data.</li>
+      <li>What starts on day one as a device manufacturer, and which parts Thirty handles.</li>
+    </ul>
+    <div class="rd-actions">
+      <button type="button" class="btn-pill btn-primary" id="rd-example">Try an example: {{ example_preset.name }} <em style="font-weight:600;color:var(--rd-primary-fg);opacity:.7">({{ example_preset.note }})</em></button>
     </div>
   </section>
 
@@ -329,6 +388,9 @@
       {{ icon('help') }}<span>{{ disclaimer }}</span>
     </div>
   </section>
+
+  </div><!-- /rd-right -->
+  </div><!-- /rd-grid -->
 </div>
 
 <script>
@@ -403,6 +465,7 @@
     });
     cw.innerHTML = parts.length ? ("Sources: " + parts.join(" · ")) : "";
 
+    document.getElementById("rd-preview").classList.add("hidden");
     document.getElementById("step2").classList.remove("hidden");
     document.getElementById("step3").classList.remove("hidden");
     document.getElementById("step4").classList.remove("hidden");

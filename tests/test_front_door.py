@@ -435,3 +435,151 @@ def test_start_with_no_agent_renders_checklist_instead_of_interview(tmp_path):
         name, ctx = recorder.last
         assert name == _fd.TPL_CHECKLIST
         assert ctx["fields"] == interview.FIELD_ORDER
+
+
+# =========================================================================
+# Console wiring / integration test (task 10.1).
+#
+# Proves the reporter Front_Door is mounted on the REAL console app by
+# init_runtime() (task 10) and that a confirmed sample-agent submission flows
+# end-to-end through intake.submit as a reporter-source complaint.
+#
+# Approach (preferred path: the real console app via init_runtime()):
+#   - import dashboard_v2/app.py fresh under its own module name with
+#     THIRTY_SKIP_RUNTIME_INIT=1, so the import is side-effect free (the reporter
+#     blueprint mounts in init_runtime(), not at import, so a skipped-init import
+#     must NOT have it — we assert that too);
+#   - point VIGIL_DIR + the console's paths at a tmp dir, force the sample agent
+#     with zero latency;
+#   - neutralise the pipeline (vigil.process), the background workers
+#     (start_intake_worker, the intake worker, health_loop) and sample-data
+#     seeding so nothing touches the network, spawns a thread, or seeds the repo;
+#   - call app_module.init_runtime() explicitly (idempotent) to mount intake's
+#     paths AND the reporter blueprint;
+#   - assert the reporter.* rules are on the console url_map and GET /report is
+#     200, then walk start -> interview -> confirm and assert the redirect to
+#     /report/done/REP-... and exactly one source="reporter" row in the console's
+#     intake index (VIGIL_DIR/intake/index.csv).
+# Every env var / module global touched is restored on exit.
+# =========================================================================
+import importlib.util as _ilu  # noqa: E402
+
+
+@contextlib.contextmanager
+def _console_with_reporter(tmp_path):
+    """Import the console app fresh, mount intake + reporter via init_runtime(),
+    yield (app_module, client). Hermetic: tmp VIGIL_DIR, sample agent, no threads,
+    no model, no seeding. Restores all env + module globals on exit."""
+    data_dir = str(tmp_path)
+    saved_env = {k: os.environ.get(k) for k in (
+        "VIGIL_DIR", "THIRTY_AGENT", "THIRTY_SAMPLE_DELAY", "THIRTY_SKIP_RUNTIME_INIT",
+        "VIGIL_CONSOLE_ACTIONS", "VIGIL_CONSOLE_SETTINGS", "VIGIL_CONSOLE_INTAKE",
+    )}
+    saved_intake = {
+        "INTAKE": _intake.INTAKE, "RAW": _intake.RAW, "INDEX": _intake.INDEX,
+        "process": _intake.vigil.process, "start_worker": _intake.start_worker,
+    }
+    saved_agent_registry = _agents.get_agent()
+    prev_module = sys.modules.get("console_app_wiring")
+    try:
+        os.environ["VIGIL_DIR"] = data_dir
+        os.environ["THIRTY_AGENT"] = "sample"
+        os.environ["THIRTY_SAMPLE_DELAY"] = "0"
+        os.environ["THIRTY_SKIP_RUNTIME_INIT"] = "1"  # import must be side-effect free
+        os.environ["VIGIL_CONSOLE_ACTIONS"] = os.path.join(data_dir, "actions.csv")
+        os.environ["VIGIL_CONSOLE_SETTINGS"] = os.path.join(data_dir, "settings.json")
+        os.environ["VIGIL_CONSOLE_INTAKE"] = os.path.join(data_dir, "intake.json")
+        _agents.set_agent(None)  # re-resolve to the sample agent under this env
+
+        spec = _ilu.spec_from_file_location(
+            "console_app_wiring", os.path.join(ROOT, "dashboard_v2", "app.py"))
+        app_module = _ilu.module_from_spec(spec)
+        sys.modules["console_app_wiring"] = app_module
+        spec.loader.exec_module(app_module)
+        app_module.app.config["TESTING"] = True
+        # Complete first-run setup in the tmp data dir so the console's _first_run
+        # gate serves pages instead of redirecting to /setup (mirrors conftest's
+        # data_dir fixture). This is not a public demo, so the gate is active.
+        app_module.tsetup.complete("explore")
+
+        # Import was side-effect free: the reporter blueprint is NOT mounted yet.
+        rules_before = {r.endpoint for r in app_module.app.url_map.iter_rules()}
+        assert not any(e.startswith("reporter.") for e in rules_before)
+
+        # Neutralise everything init_runtime() would spawn or seed, and the model.
+        app_module.ensure_sample_data = lambda *a, **k: None
+        app_module.health_loop = lambda *a, **k: None
+        app_module.start_intake_worker = lambda *a, **k: None
+        _intake.INTAKE = os.path.join(data_dir, "intake")
+        _intake.RAW = os.path.join(_intake.INTAKE, "raw")
+        _intake.INDEX = os.path.join(_intake.INTAKE, "index.csv")
+        _intake.vigil.process = lambda *a, **k: None
+        _intake.start_worker = lambda *a, **k: None
+
+        app_module.init_runtime()  # mounts intake paths + the reporter blueprint
+
+        yield app_module, app_module.app.test_client()
+    finally:
+        for k, v in saved_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        _intake.INTAKE = saved_intake["INTAKE"]
+        _intake.RAW = saved_intake["RAW"]
+        _intake.INDEX = saved_intake["INDEX"]
+        _intake.vigil.process = saved_intake["process"]
+        _intake.start_worker = saved_intake["start_worker"]
+        _agents.set_agent(saved_agent_registry)
+        if prev_module is None:
+            sys.modules.pop("console_app_wiring", None)
+        else:
+            sys.modules["console_app_wiring"] = prev_module
+
+
+def test_console_mounts_reporter_and_submits_reporter_source_complaint(tmp_path):
+    # Task 10.1 / Requirements 6.1, 6.7, 9.1. Proven on the REAL console app:
+    # init_runtime() mounts the Front_Door, and a confirmed sample-agent report
+    # lands as exactly one source="reporter" complaint through intake.submit.
+    with _console_with_reporter(tmp_path) as (app_module, client):
+        # 1. The reporter blueprint's routes are registered on the console app.
+        endpoints = {r.endpoint for r in app_module.app.url_map.iter_rules()}
+        for ep in ("reporter.landing", "reporter.interview", "reporter.confirm"):
+            assert ep in endpoints, f"missing {ep}; have {sorted(endpoints)}"
+        # And the /report entry point answers on the console.
+        assert client.get("/report").status_code == 200
+
+        # 2. Walk the real reporter flow with the sample agent, end to end.
+        start = client.post(
+            "/report/start",
+            data={"language": "en", "reporter_type": "nurse_clinician", "device": "AF"},
+        )
+        assert start.status_code == 302
+
+        # Answer every question with a real value, so event_description is a
+        # non-empty description and confirm is accepted (the sample agent drives
+        # the adaptive loop; the Front_Door owns the 8-question cap).
+        for _ in range(interview.QUESTION_CAP + 3):
+            r = client.get("/report/interview")
+            if r.status_code == 302 and "/report/review" in r.headers["Location"]:
+                break
+            assert r.status_code == 200
+            client.post("/report/answer", data={
+                "answer": "The CPAP mask stopped sealing overnight and the alarm failed."})
+
+        confirm = client.post("/report/confirm")
+        assert confirm.status_code == 302
+        location = confirm.headers["Location"]
+        assert "/report/done/REP-" in location
+        ref = location.rsplit("/report/done/", 1)[1].split("?", 1)[0]
+        assert _fd._REF_RE.match(ref)
+
+        # 3. Exactly one reporter-source row in the console's own intake index
+        #    (VIGIL_DIR/intake/index.csv), submitted via intake.submit.
+        console_index = os.path.join(str(tmp_path), "intake", "index.csv")
+        assert os.path.exists(console_index)
+        import csv as _csv
+        with open(console_index, encoding="utf-8") as f:
+            rows = [r for r in _csv.DictReader(f) if r["vigil_id"] == ref]
+        assert len(rows) == 1
+        assert rows[0]["source"] == "reporter"

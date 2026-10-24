@@ -117,7 +117,7 @@ Unit/integration test sub-tasks and property-based test sub-tasks are marked opt
     - Tag: `# Feature: report-front-door, Property 3`; ≥ 100 iterations
     - _Design: Testing Strategy (P3); Correctness Properties §Property 3_
 
-- [ ] 7. Implement the Front_Door blueprint and routes in `thirty/reporter/front_door.py`
+- [x] 7. Implement the Front_Door blueprint and routes in `thirty/reporter/front_door.py`
   - [x] 7.1 Create the blueprint, session store, and landing/start routes
     - Define the Flask `Blueprint` and `init_app(app)`; implement opaque `session_id` cookie + per-session JSON state under `VIGIL_DIR/reporter_sessions/<session_id>.json`
     - `GET /report` and `GET /report/<device_slug>` (case-insensitive catalogue match from `DEVICES`; unknown slug → no pre-fill, prompt selection); wrap each `GET` render in try/except returning a no-auth retry error page; `GET` does no model call
@@ -140,33 +140,33 @@ Unit/integration test sub-tasks and property-based test sub-tasks are marked opt
     - _Requirements: 2.4, 2.5, 2.6, 2.7, 2.8, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 7.1, 7.2, 7.3_
     - _Design: Components and Interfaces §1; Data Models (bilingual text storage, intake payload); Error Handling_
 
-  - [-] 7.4 Write route unit/integration tests in `tests/test_front_door.py`
+  - [x] 7.4 Write route unit/integration tests in `tests/test_front_door.py`
     - Using the Flask `client` fixture: `GET /report` and `/report/<slug>` return 200 within budget; known slug pre-fills, unknown slug prompts selection; language picker has exactly 4 options; reporter-type gate; empty description rejected with answers retained; review shows "not known"; confirm (sample agent) → `REP-xxxxxxxx` + downloadable PDF; duplicate and rejected paths; NoAgent → single-screen checklist
     - _Requirements: 1.3, 1.4, 2.1, 2.7, 3.4, 5.2, 6.4, 6.5, 6.6, 7.1, 7.2, 7.3, 8.7_
 
-- [ ] 8. Implement console badge and completeness-score logic in `dashboard_v2/app.py`
+- [x] 8. Implement console badge and completeness-score logic in `dashboard_v2/app.py`
   - Add `is_reporter(row)` (`row.get("source") == "reporter"`; absent/empty → False) and register the `"reporter": ("Reporter","user")` entry in `SOURCES`
   - Add `completeness_score(row)` over `REQUIRED_3500A` reading drafted fields: integer 0–100, all-known → 100, all-UNKNOWN → 0, computed only for reporter-source rows
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
   - _Design: Components and Interfaces §6 (Console badge + completeness score)_
 
-  - [ ] 8.1 Add console tests to `tests/test_console.py`
+  - [x] 8.1 Add console tests to `tests/test_console.py`
     - A `source="reporter"` row renders the badge and a 0–100 score; a non-reporter/empty-source row renders neither; all-known → 100, all-UNKNOWN → 0
     - _Requirements: 9.1, 9.2, 9.4, 9.5, 9.7_
 
 - [ ] 9. TEMPLATE BLOCK — all `dashboard_v2/templates/` work (shared integration surface; do as one contiguous, coordinated block; no Python task depends on this)
-  - [ ] 9.1 Create the Front_Door template partials and mobile stylesheet
+  - [x] 9.1 Create the Front_Door template partials and mobile stylesheet
     - New files: `dashboard_v2/templates/report/landing.html`, `report/interview.html`, `report/review.html`, `report/done.html`, `report/checklist.html`, and `report/_mobile.css`
     - `_mobile.css` sets `viewport`, body text `font-size: 16px`, and `min-width/min-height: 44px` on every button/link-button/option control; patient/family text omits regulatory citations
     - _Requirements: 1.6, 1.7, 2.1, 3.1, 4.6, 5.1, 5.2, 8.7_
     - _Design: Templates — concurrent-edit note; Components and Interfaces §1 (mobile-first rendering, patient/family plain language)_
 
-  - [ ] 9.2 Create the integrations QR panel partial `dashboard_v2/templates/integrations/_qr_panel.html`
+  - [x] 9.2 Create the integrations QR panel partial `dashboard_v2/templates/integrations/_qr_panel.html`
     - Render exactly 8 inline SVGs (one per `DEVICES` entry) via `qr_svg("/report/<slug>")`; per-device try/except omits a failed device with a named error indication while others render; empty catalogue → zero QRs + "no devices available" message
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
     - _Design: Components and Interfaces §4; Error Handling_
 
-  - [ ] 9.3 Create the console badge/score include partials
+  - [x] 9.3 Create the console badge/score include partials
     - New files `dashboard_v2/templates/_reporter_badge.html` and `_completeness.html` driven by `is_reporter(row)` / `completeness_score(row)`
     - _Requirements: 9.1, 9.2, 9.6, 9.7_
     - _Design: Components and Interfaces §6; Templates — concurrent-edit note_
@@ -177,18 +177,18 @@ Unit/integration test sub-tasks and property-based test sub-tasks are marked opt
     - _Requirements: 9.1, 9.6, 10.1_
     - _Design: Templates — concurrent-edit note_
 
-- [ ] 10. Wire the blueprint and agent selection into the console
+- [x] 10. Wire the blueprint and agent selection into the console
   - Call `thirty.reporter.init_app(app)` from the console init block in `dashboard_v2/app.py`, right next to the existing `intake.init_app(app)` mount
   - Confirm `get_agent()` in `thirty/agents/__init__.py` selects the active agent unchanged and that the Front_Door reads `agent.id` for the NoAgent checklist branch (add wiring only if a selector hook is missing)
   - _Requirements: 6.1, 8.7_
   - _Design: Overview (Console integration); Components and Interfaces §1 (init_app), §3 (get_agent wiring)_
 
-  - [ ] 10.1 Write a wiring/integration test
+  - [x] 10.1 Write a wiring/integration test
     - Assert the `/report` routes are registered on the console app and that a confirmed sample-agent submission appears as a `reporter`-source complaint in the console views (badge + score) end-to-end through `intake.submit`
     - Add to `tests/test_front_door.py`
     - _Requirements: 6.1, 6.7, 9.1_
 
-- [ ] 11. Final checkpoint - run the full suite
+- [x] 11. Final checkpoint - run the full suite
   - Run `.venv/bin/python -m pytest -q` and ensure all tests pass; ask the user if questions arise.
 
 ## Notes

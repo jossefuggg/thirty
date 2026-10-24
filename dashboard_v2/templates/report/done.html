@@ -1,0 +1,54 @@
+{#
+  done.html — the report was received (Requirements 6.4, 6.5, 7.3).
+
+  Context (from front_door.done):
+    reference_number (REP-xxxxxxxx), duplicate (bool), receipt_url (or None),
+    language, reporter_type, plain_mode.
+
+  Shows the reference prominently and links to the PDF receipt. The route is
+  /report/receipt/<ref>.pdf (endpoint 'reporter.receipt', arg 'ref'); the route
+  passes receipt_url already built with url_for, so we use it when present and
+  fall back to the hardcoded path otherwise. If duplicate, say it was already
+  received — no second report was created.
+#}
+{% extends "report/base_report.html" %}
+{% from "report/base_report.html" import ring %}
+
+{% block page_title %}Report received{% endblock %}
+
+{% block content %}
+<header class="rp-head">
+  {{ ring(56) }}
+  <span class="rp-wordmark">Thirty<small>Report a device problem</small></span>
+</header>
+
+<div>
+  <p class="rp-eyebrow">Received</p>
+  {% if duplicate %}
+    <h1 class="rp-title" style="font-size: clamp(32px, 7vw, 48px)">We already have this report</h1>
+    <p class="rp-lede">This report was already received, so we did not create a
+      second one. Your reference number is below.</p>
+  {% else %}
+    <h1 class="rp-title" style="font-size: clamp(32px, 7vw, 48px)">Thank you — your report is in</h1>
+    <p class="rp-lede">A named reviewer will check it. Keep your reference number
+      in case you need to follow up.</p>
+  {% endif %}
+</div>
+
+<div class="rp-card rp-card-lg">
+  <p class="rp-label" style="margin:0 0 10px">Your reference number</p>
+  <div class="rp-ref">{{ reference_number or '—' }}</div>
+
+  {% if reference_number %}
+  {% set href = receipt_url if receipt_url else '/report/receipt/' ~ reference_number ~ '.pdf' %}
+  <div class="rp-actions" style="margin-top:20px">
+    <span class="rp-spacer"></span>
+    <a class="rp-btn rp-btn-primary rp-btn-block" href="{{ href }}">Download your receipt (PDF)</a>
+  </div>
+  {% endif %}
+</div>
+
+<p class="rp-fine">
+  <a class="rp-link" href="{{ url_for('reporter.landing') }}">Report another device problem</a>
+</p>
+{% endblock %}

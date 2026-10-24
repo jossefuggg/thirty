@@ -1,0 +1,94 @@
+{#
+  QR codes panel — integrations page (Requirement 10).
+
+  This partial renders from a single context variable `qr_codes`: a list of
+  dicts, one per sample device, that the mounting code (tasks 8/10) builds and
+  passes in. The partial does no rendering logic beyond iteration so no QR
+  generation happens in Jinja.
+
+  qr_codes item contract (built by tasks 8/10):
+    {
+      "key":          device catalogue key, e.g. "AF" (one of the 8 DEVICES keys),
+      "brand":        device[0], e.g. "AeroFlow A200 CPAP",
+      "common":       device[1], e.g. "CPAP",
+      "product_code": device[2], e.g. "BZD",
+      "slug":         key.lower()  — the Front_Door resolves /report/<slug>
+                      case-insensitively against the 8 DEVICES keys,
+      "url":          public_url() + "/report/" + slug  when public_url() is set,
+                      else just "/report/" + slug,
+      "svg":          qr_svg(url) -> inline "<svg ...>...</svg>" string (trusted,
+                      app-generated markup) on success, or None when generation
+                      failed,
+      "error":        None on success, or a short message when qr_svg raised
+                      QRError for this device (svg is then None).
+    }
+
+  Build sketch for the mounting code:
+      from thirty.reporter.qr import qr_svg, QRError
+      from thirty.config import public_url
+      base = public_url()                      # "" or e.g. https://host (no trailing /)
+      slug = key.lower()
+      url  = (base + "/report/" + slug) if base else ("/report/" + slug)
+      try:
+          svg, error = qr_svg(url), None
+      except QRError as exc:
+          svg, error = None, str(exc)
+
+  Requirements covered here:
+    10.1  panel with heading + explainer that each device links to /report/<slug>
+    10.2  one QR per device (iterate qr_codes)
+    10.3  each code shows its encoded /report/<slug> URL as text
+    10.4  inline SVG only (|safe on trusted qr_svg output); no external assets
+    10.5  empty/undefined qr_codes -> "no devices available" message
+    10.6  a device whose svg is None / error is set: omit the image, show an
+          inline error naming the device, keep rendering the others
+#}
+{% set qr_codes = qr_codes if qr_codes is defined else [] %}
+<style>
+  .qr-panel .qr-intro { font-size: var(--fs-13); color: var(--muted); margin: 2px 0 4px; max-width: 70ch; }
+  .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; margin-top: 4px; }
+  .qr-tile { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; border: 1px solid var(--border);
+    border-radius: var(--r-panel); background: var(--surface); text-align: center; min-width: 0; break-inside: avoid; }
+  .qr-tile .qr-img { width: 160px; height: 160px; display: grid; place-items: center; background: #fff; border-radius: 8px; padding: 8px; }
+  .qr-tile .qr-img svg { width: 100%; height: 100%; display: block; }
+  .qr-label { min-width: 0; width: 100%; }
+  .qr-label b { display: block; font-size: var(--fs-13); font-weight: 800; color: var(--text); overflow-wrap: anywhere; }
+  .qr-label small { display: block; font-size: var(--fs-12); color: var(--muted); font-weight: 700; margin-top: 2px; }
+  .qr-url { font: 11px/1.4 var(--mono); color: var(--muted); overflow-wrap: anywhere; margin-top: 2px; }
+  .qr-fail { width: 160px; height: 160px; display: grid; place-items: center; padding: 12px; border: 2px dashed var(--border); border-radius: 8px;
+    color: var(--coral-text); font-size: var(--fs-12); font-weight: 700; }
+  .qr-fail-msg { font-size: var(--fs-12); color: var(--coral-text); font-weight: 700; overflow-wrap: anywhere; }
+  .qr-empty { font-size: var(--fs-13); color: var(--muted); padding: 8px 0; }
+  @media print {
+    .qr-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .qr-tile { border-color: #000; }
+  }
+</style>
+<section class="card qr-panel" id="qr-panel">
+  <div class="card-h"><h2>QR codes</h2><span class="aside">Print one per device for reporters to scan</span></div>
+  <p class="qr-intro">Each QR code opens that device's reporting page at <code>/report/&lt;slug&gt;</code>. Print a code and place it on or near the device so a nurse, clinician, patient or family member can scan it and report a problem without logging in.</p>
+  {% if qr_codes %}
+  <div class="qr-grid">
+    {% for d in qr_codes %}
+    <div class="qr-tile" id="qr-{{ d.key }}">
+      {% if d.svg and not d.error %}
+      <div class="qr-img" role="img" aria-label="QR code for {{ d.brand }} linking to {{ d.url }}">{{ d.svg | safe }}</div>
+      {% else %}
+      <div class="qr-fail" role="img" aria-label="QR code could not be generated for {{ d.brand }}">QR unavailable</div>
+      {% endif %}
+      <div class="qr-label">
+        <b>{{ d.brand }}</b>
+        <small>{{ d.common }} · {{ d.product_code }}</small>
+        {% if d.svg and not d.error %}
+        <div class="qr-url">{{ d.url }}</div>
+        {% else %}
+        <div class="qr-fail-msg">Could not generate QR code for {{ d.brand }}{% if d.error %}: {{ d.error }}{% endif %}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="qr-empty">No devices are available, so there are no QR codes to show.</p>
+  {% endif %}
+</section>

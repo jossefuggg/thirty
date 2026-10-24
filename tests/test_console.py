@@ -35,15 +35,22 @@ def test_static_brand_assets(client):
 
 
 def test_no_external_resources_in_templates():
-    """No CDN, no Google Fonts, no analytics: everything the pages load is served from /static."""
+    """No CDN, no Google Fonts, no analytics: everything the pages load is served from /static.
+    Walks subdirectories (templates/report/, templates/integrations/, …) so every template and css file is
+    scanned, not just the top level."""
     here = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dashboard_v2")
     bad = re.compile(r"https?://(?!localhost|127\.0\.0\.1|api\.telegram\.org)[^\s\"')]+")
     for root in (os.path.join(here, "templates"), os.path.join(here, "static", "thirty", "css")):
-        for name in os.listdir(root):
-            with open(os.path.join(root, name), encoding="utf-8") as f:
-                text = f.read()
-            hits = [h for h in bad.findall(text) if "www.w3.org" not in h and "northwind-medical.example" not in h]
-            assert not hits, f"{name}: {hits}"
+        for dirpath, _dirnames, filenames in os.walk(root):
+            for name in filenames:
+                if not name.endswith((".html", ".css")):
+                    continue
+                with open(os.path.join(dirpath, name), encoding="utf-8") as f:
+                    text = f.read()
+                hits = [h for h in bad.findall(text)
+                        if "www.w3.org" not in h and "northwind-medical.example" not in h
+                        and h != "https://host"]  # illustrative placeholder host in a Jinja comment, not a real resource
+                assert not hits, f"{name}: {hits}"
 
 
 def test_state_api_shape(client, console):
@@ -154,3 +161,85 @@ def test_intake_runs_through_sample_agent(client, console):
     assert it["status"] == "processed", it
     row = {r["id"]: r for r in console.all_rows()}["T-FIRE-1"]
     assert row["decision"] == "REPORTABLE" and str(row["deadline_days"]) == "5"
+
+
+# ---------------------------------------------------------------- reporter front-door helpers (report-front-door spec, R9)
+
+def test_is_reporter_only_for_reporter_source(console):
+    """source == "reporter" -> True; any other, empty, or missing source -> False (R9.1, R9.2, R9.7)."""
+    assert console.is_reporter({"source": "reporter"}) is True
+    assert console.is_reporter({"source": "email"}) is False
+    assert console.is_reporter({"source": "replay"}) is False
+    assert console.is_reporter({"source": ""}) is False
+    assert console.is_reporter({}) is False
+
+
+# The nine required Draft_3500A fields the Completeness_Score is computed over (keys as stored in the draft JSON).
+_ALL_KNOWN_DRAFT = {
+    "D1_brand_name": "AeroFlow A200 CPAP",
+    "D4_model": "A200",
+    "D4_lot": "LOT-123",
+    "D4_serial": "SN-999",
+    "B5_event_description": "The mask stopped sealing overnight.",
+    "B2_outcomes": ["Hospitalization (initial or prolonged)"],
+    "H3_device_evaluated": "YES",
+    "B3_date_of_event": "20260101",
+    "date_noticed": "20260102",
+    "follow_up_contact": "nurse@example.com",
+}
+_ALL_UNKNOWN_DRAFT = {
+    "D1_brand_name": "UNKNOWN",
+    "D4_model": "UNKNOWN",
+    "D4_lot": "UNKNOWN",
+    "D4_serial": "UNKNOWN",
+    "B5_event_description": "UNKNOWN",
+    "B2_outcomes": [],
+    "H3_device_evaluated": "UNKNOWN",
+    "B3_date_of_event": "",
+    "date_noticed": "UNKNOWN",
+    "follow_up_contact": "UNKNOWN",
+}
+
+
+@pytest.fixture()
+def _draft_dir(console, tmp_path, monkeypatch):
+    """Point the console's REPORTS dir at a temp folder so completeness_score reads our drafted JSON.
+    Yields a writer: write(cid, draft_dict) -> creates REPORTS/MDR_<cid>.json."""
+    import json
+    monkeypatch.setattr(console, "REPORTS", str(tmp_path))
+
+    def write(cid, draft):
+        with open(os.path.join(str(tmp_path), f"MDR_{cid}.json"), "w", encoding="utf-8") as f:
+            json.dump(draft, f)
+    return write
+
+
+def test_completeness_score_all_known_is_100(console, _draft_dir):
+    _draft_dir("REP-allknown", _ALL_KNOWN_DRAFT)
+    assert console.completeness_score({"id": "REP-allknown", "source": "reporter"}) == 100
+
+
+def test_completeness_score_all_unknown_is_0(console, _draft_dir):
+    _draft_dir("REP-allunknown", _ALL_UNKNOWN_DRAFT)
+    assert console.completeness_score({"id": "REP-allunknown", "source": "reporter"}) == 0
+
+
+def test_completeness_score_missing_draft_is_0(console, _draft_dir):
+    # No MDR_<cid>.json written -> every field unknown -> 0 (R9.5 / graceful degradation).
+    assert console.completeness_score({"id": "REP-nofile", "source": "reporter"}) == 0
+
+
+def test_completeness_score_mixed_is_rounded_integer(console, _draft_dir):
+    # Five of the nine required fields known (lot/serial counts once): round(100 * 5/9) == 56.
+    draft = dict(_ALL_UNKNOWN_DRAFT)
+    draft.update({
+        "D1_brand_name": "AeroFlow A200 CPAP",
+        "D4_model": "A200",
+        "D4_lot": "LOT-123",
+        "B5_event_description": "Mask failed overnight.",
+        "B2_outcomes": ["Hospitalization (initial or prolonged)"],
+    })
+    _draft_dir("REP-mixed", draft)
+    score = console.completeness_score({"id": "REP-mixed", "source": "reporter"})
+    assert score == 56
+    assert isinstance(score, int) and 0 <= score <= 100

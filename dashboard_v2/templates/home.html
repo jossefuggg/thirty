@@ -7,27 +7,41 @@
   #cc-err .empty { padding: 12px 16px; grid-template-columns: auto auto 1fr auto; display: grid; text-align: left; align-items: center; gap: 12px; border: 2px solid var(--t-amber); border-radius: var(--r-panel); }
   #cc-err .empty .art { width: 32px; height: 32px; border-radius: 8px; } #cc-err .empty .art .i { width: 18px; height: 18px; } #cc-err .empty p { margin: 0; max-width: none; }
 
-  /* hero: our own 30 ring as a frosted-glass object, the most urgent clock beside it */
-  .hero { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s3); align-items: center; padding: var(--s3) var(--s4); }
-  .ring30 { width: 128px; height: 128px; position: relative; flex: none; filter: drop-shadow(0 8px 20px rgba(20,30,45,.14)); }
-  .ring30 svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-  .ring30 .lbl { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; text-align: center; }
-  .ring30 .lbl b { font-family: var(--font-display); font-weight: 800; font-size: 34px; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
-  .ring30 .lbl span { font-size: 11px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+  /* header backdrop: the team ribbon, low opacity, on the right of the header only (never behind the headline text) */
+  .cc-page .ph::before { content: ""; position: absolute; z-index: 0; pointer-events: none; right: calc(var(--content-pad) * -1); top: -48px; width: min(720px, 60%); height: 240px;
+    background: url("/static/thirty/img/brand/thirty-ribbon-dark.webp") right center / cover no-repeat; opacity: .42;
+    -webkit-mask-image: linear-gradient(to left, #000 35%, transparent 95%); mask-image: linear-gradient(to left, #000 35%, transparent 95%); }
+  [data-theme="light"] .cc-page .ph::before { opacity: .22; }
+
+  /* hero: the team dial + most urgent clock on the left, the next 3 deadlines on the right */
+  .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--s4); align-items: center; padding: var(--s3) var(--s4); }
+  .hero-l { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: var(--s3); align-items: center; min-width: 0; }
+  .dial { width: 168px; height: 168px; display: block; }
   .hero-txt { min-width: 0; }
-  .hero-eyebrow { font-size: var(--fs-13); font-weight: 700; color: var(--muted); }
-  .hero-clock { font-family: var(--font-display); font-weight: 800; font-size: 40px; letter-spacing: -.03em; line-height: 1.05; margin-top: 4px; }
-  .hero-clock.over { color: var(--t-coral); }
-  .hero-sub { color: var(--muted); font-size: var(--fs-14); margin-top: 6px; }
-  .hero-sub .lnk { color: var(--text); font-weight: 700; }
-  @media (max-width: 640px) { .hero { grid-template-columns: 1fr; justify-items: start; padding: var(--s3); } .hero-clock { font-size: 32px; } }
+  .hero-eyebrow, .next-h { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+  .hero-clock { font-family: var(--mono); font-weight: 700; font-size: 40px; letter-spacing: -.04em; line-height: 1.05; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .hero-clock.over, .hero-clock.soon { color: var(--t-coral-text); }
+  .hero-sub { color: var(--muted); font-size: var(--fs-14); margin-top: 8px; }
+  .next { min-width: 0; border-left: 1px solid var(--border); padding-left: var(--s4); display: grid; gap: 10px; }
+  .next ol { display: grid; gap: 2px; }
+  .next li a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; margin: 0 -12px; border-radius: 12px; }
+  .next li a:hover { background: var(--hover); }
+  .next .id { font: 500 12px/1 var(--mono); color: var(--muted); }
+  .next .dv { font-weight: 700; font-size: var(--fs-14); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .next .due { font: 700 13px/1 var(--mono); color: var(--text); white-space: nowrap; }
+  .next .due.soon, .next .due.over { color: var(--t-coral-text); }
+  .next .none { color: var(--muted); font-size: var(--fs-14); }
+  @media (max-width: 1100px) { .hero { grid-template-columns: 1fr; } .next { border-left: 0; padding-left: 0; border-top: 1px solid var(--border); padding-top: var(--s3); } }
+  @media (max-width: 640px) { .hero { padding: var(--s3); } .hero-l { grid-template-columns: 112px minmax(0, 1fr); gap: var(--s2); } .dial { width: 112px; height: 112px; } .hero-clock { font-size: 28px; } .cc-page .ph::before { width: 70%; opacity: .3; } }
 
   /* compact number tiles with a 14-day sparkline; Overdue is the only solid-coral tile */
   .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s2); }
   .kpi { padding: 16px 18px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; position: relative; overflow: hidden; border-radius: var(--r-panel); }
-  .kpi .lbl { font-size: var(--fs-13); font-weight: 700; color: var(--muted); align-self: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .kpi .lbl { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); align-self: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .kpi .ic { display: grid; place-items: center; color: var(--muted); } .kpi .ic .i { width: 18px; height: 18px; }
-  .kpi .v { grid-column: 1; font-family: var(--font-display); font-weight: 800; font-size: 44px; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--text); margin-top: 4px; }
+  .cc-page .ph::before { }
+  @media (max-width: 640px) { .cc-page .ph::before { right: 0; top: -24px; } }
+  .kpi .v { grid-column: 1; font-family: var(--mono); font-weight: 700; font-size: 44px; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--text); margin-top: 4px; }
   .kpi .foot { grid-column: 1 / 3; display: grid; grid-template-columns: minmax(0, 1fr) 96px; align-items: end; gap: 10px; height: 28px; margin-top: 10px; }
   .kpi .delta { font-size: var(--fs-12); color: var(--muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .kpi .sp { position: relative; height: 28px; }
@@ -120,24 +134,18 @@
 <div class="cc">
   <div id="cc-err" hidden></div>
 
-  <section class="card hero" aria-label="Most urgent deadline">
-    <div class="ring30" id="ring30" role="img" aria-label="Thirty-day reporting clock">
-      <svg viewBox="0 0 120 120" aria-hidden="true">
-        <defs>
-          <filter id="ringglow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        </defs>
-        <circle cx="60" cy="60" r="52" fill="none" stroke="var(--track)" stroke-width="10"/>
-        <!-- elapsed arc (ink) -->
-        <circle id="ring-elapsed" cx="60" cy="60" r="52" fill="none" stroke="var(--text)" stroke-width="10" stroke-linecap="round" stroke-dasharray="327" stroke-dashoffset="327"/>
-        <!-- first five days glowing coral -->
-        <circle id="ring-five" cx="60" cy="60" r="52" fill="none" stroke="var(--t-coral)" stroke-width="10" stroke-linecap="round" stroke-dasharray="54 327" filter="url(#ringglow)"/>
-      </svg>
-      <div class="lbl"><b id="ring-n">30</b><span>day clock</span></div>
+  <section class="card hero" aria-label="Reporting deadlines">
+    <div class="hero-l">
+      <img class="dial" src="/static/thirty/img/brand/thirty-dial-30-days.webp" width="168" height="168" alt="Thirty-day reporting clock">
+      <div class="hero-txt">
+        <p class="hero-eyebrow">Most urgent deadline</p>
+        <div class="hero-clock" id="hero-clock">No open deadlines</div>
+        <p class="hero-sub" id="hero-sub">Reportable complaints with a running clock appear here.</p>
+      </div>
     </div>
-    <div class="hero-txt">
-      <p class="hero-eyebrow">Most urgent deadline</p>
-      <div class="hero-clock" id="hero-clock">No open deadlines</div>
-      <p class="hero-sub" id="hero-sub">Reportable complaints with a running clock appear here.</p>
+    <div class="next">
+      <p class="next-h">Next deadlines</p>
+      <ol id="next-list"><li class="none">Nothing else due.</li></ol>
     </div>
   </section>
 
