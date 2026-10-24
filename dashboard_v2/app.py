@@ -697,18 +697,25 @@ ICONS = {k: _svg(v) for k, v in {
 }.items()}
 STEP_ICONS = {"done": ICONS["check"], "info": ICONS["help"], "todo": _svg('<circle cx="12" cy="12" r="3"/>')}
 
-NAV = [("home", "/", "Command Center", "grid"), ("intake", "/intake", "Intake inbox", "download"), ("complaints", "/complaints", "Complaints", "inbox"),
-       ("clock", "/clock", "Compliance Clock", "clock"), ("trends", "/trends", "Trends", "trend"),
-       ("audit", "/audit", "Audit Log", "file"), ("integrations", "/integrations", "Integrations", "plug"), ("demo", "/demo", "Demo Control", "play"),
-       ("plugins", "/settings/plugins", "Plugins", "cpu"), ("licence", "/settings/licence", "Licence & updates", "key")]
+# Sidebar, grouped: Work (day-to-day), Records (read-only history), Settings (configure the console).
+NAV_GROUPS = [
+    ("Work", [("home", "/", "Command Center", "grid"), ("complaints", "/complaints", "Complaints", "inbox"),
+              ("clock", "/clock", "Compliance Clock", "clock")]),
+    ("Records", [("trends", "/trends", "Trends", "trend"), ("audit", "/audit", "Audit Log", "file")]),
+    ("Settings", [("intake", "/intake", "Intake inbox", "download"), ("integrations", "/integrations", "Integrations", "plug"),
+                  ("plugins", "/settings/plugins", "Plugins", "cpu"), ("demo", "/demo", "Demo Control", "play"),
+                  ("licence", "/settings/licence", "Licence & updates", "key")]),
+]
+# Flat list kept for any code that still iterates every nav entry.
+NAV = [item for _group, items in NAV_GROUPS for item in items]
 
 
 @app.context_processor
 def _globals():
     from markupsafe import Markup
-    return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "VERSION": VERSION, "WS": workspace(), "SOURCES": SOURCES,
+    return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "NAV_GROUPS": NAV_GROUPS, "VERSION": VERSION, "WS": workspace(), "SOURCES": SOURCES,
             "DEMO_MODE": demo_mode(), "SAMPLE_DATA": sample_data_mode(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name}, "LICENCE": licensing.check().status(),
-            "fmt_day": fmt_day, "LOCAL_AGENT": tconfig.agent_id() == "local", "DATA_DIR": VIGIL_DIR, "TODAY": dt.date.today().isoformat(), "JURISDICTIONS": tjur.JURISDICTIONS,
+            "fmt_day": fmt_day, "LOCAL_AGENT": tconfig.agent_id() == "local", "CLOUD_AGENT": tconfig.agent_id() == "claude", "DATA_DIR": VIGIL_DIR, "TODAY": dt.date.today().isoformat(), "JURISDICTIONS": tjur.JURISDICTIONS,
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 

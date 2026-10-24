@@ -2,15 +2,20 @@
   <span class="aside">{% if r.record %}<span class="pill pill-sm d-{{ r.record.outcome.decision }}">{{ (r.record.outcome.decision or '')|replace('_', ' ') }}</span> recorded by {{ r.record.by }} · {{ r.record.time[:16]|replace('T', ' ') }}{% if r.records_n > 1 %} · {{ r.records_n }} records{% endif %}{% else %}21 CFR 803.18 record · pre-filled by {{ AGENT.name }}, not yet confirmed{% endif %}</span></div>
 <form class="dec" id="dec-form" data-cid="{{ r.id }}">
   <ol class="qs">
+    {# Only show a question when one of the jurisdictions it matters for is enabled. #}
+    {% set ns = namespace(n=0) %}
     {% for key, q, help, jur in r.tree %}
-    <li class="q {{ 'q-off' if ('US' in jur.split()) == false and not (r.jurisdictions|select('in', jur.split())|list) }}">
-      <div class="qt2"><b>{{ loop.index }}. {{ q }}</b><span>{{ help }}</span><em>{% for j in jur.split() %}{{ r.jur_names[j].name }}{{ ' · ' if not loop.last }}{% endfor %}</em></div>
+    {% if r.jurisdictions|select('in', jur.split())|list %}
+    {% set ns.n = ns.n + 1 %}
+    <li class="q">
+      <div class="qt2"><b>{{ ns.n }}. {{ q }}</b><span>{{ help }}</span><em>{% for j in jur.split() if j in r.jurisdictions %}{{ r.jur_names[j].name }}{{ ' · ' if not loop.last }}{% endfor %}</em></div>
       <div class="seg" role="radiogroup" aria-label="{{ q }}">
         {% for v, l in [('yes', 'Yes'), ('no', 'No'), ('unknown', 'Unknown')] %}
         <label><input type="radio" name="{{ key }}" value="{{ v }}" {{ 'checked' if r.answers.get(key) == v }}><span>{{ l }}</span></label>
         {% endfor %}
       </div>
     </li>
+    {% endif %}
     {% endfor %}
   </ol>
   <div class="dec-out" id="dec-out" data-us="{{ 'US' in r.jurisdictions }}">

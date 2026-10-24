@@ -36,7 +36,8 @@ def test_settings_switching_and_no_agent(pdir):
     assert st["settings"]["base_url"] == "http://127.0.0.1:9/v1" and st["settings"]["timeout"] == 5.0
     assert plugins.status("local", probe=False)["state"] == "ready"
     assert plugins.status("local")["state"] == "error"  # nothing listens on port 9
-    assert plugins.overview(probe=False)["plugins"][0]["settings"]["api_key"] == "" and plugins.overview(probe=False)["plugins"][0]["has_secret"]["api_key"]
+    ov = next(x for x in plugins.overview(probe=False)["plugins"] if x["id"] == "local")
+    assert ov["settings"]["api_key"] == "" and ov["has_secret"]["api_key"]
     plugins.update_plugin("local", settings={"api_key": ""})  # blank keeps the secret
     assert plugins.plugin_state("local")["settings"]["api_key"] == "k"
     plugins.set_active("local"); assert get_agent().id == "local" and get_agent().base_url == "http://127.0.0.1:9/v1"

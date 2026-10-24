@@ -13,11 +13,8 @@
   .meta { display: flex; gap: 8px 24px; flex-wrap: wrap; color: var(--muted); font-size: var(--fs-14); margin-bottom: var(--s3); }
   .meta b { color: var(--text); font-weight: 700; }
 
-  /* ---------- layout: 64 / 36 ---------- */
-  .dt { display: grid; grid-template-columns: minmax(0, 64fr) minmax(0, 36fr); gap: var(--s3); align-items: start; }
-  .dt-l { display: grid; gap: var(--s3); min-width: 0; }
-  .dt-r { display: grid; gap: var(--s2); position: sticky; top: calc(var(--topbar-h) + var(--s3)); max-height: calc(100vh - var(--topbar-h) - var(--s3) * 2);
-    overflow-y: auto; padding: 2px 6px 2px 2px; margin: -2px -6px -2px -2px; min-width: 0; }
+  /* ---------- layout: single readable column ---------- */
+  .dt { display: grid; gap: var(--s3); align-items: start; max-width: 920px; }
   .cb { padding: var(--s3); }
   .k { font-size: var(--fs-12); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 
@@ -42,8 +39,40 @@
   .track i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--text); }
   .track.low i { background: var(--muted); }
   .conf-row b { font-size: var(--fs-20); font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
-  .model-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .model-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 0; }
   .model-line .i { width: 16px; height: 16px; color: var(--muted); }
+  .verdict-reason { font-size: 17px; line-height: 1.6; color: var(--text); max-width: 72ch; margin: 0; }
+  /* the verdict card owns the one primary action: drop the two-up grid, let it breathe */
+  .hero-b #f-review .rv-acts { grid-template-columns: auto auto; justify-content: start; }
+  .hero-b #f-review .rv-acts .btn { width: auto; min-width: 200px; }
+  .hero-b #f-review .rv-b { padding: 0; }
+  .hero-b #f-review .card-h { display: none; }
+
+  /* ---------- decision record: collapsed to one line ---------- */
+  .rec-panel { overflow: hidden; }
+  .rec-summary { display: flex; align-items: center; gap: 12px; padding: var(--s2) var(--s3); cursor: pointer; list-style: none; font-size: var(--fs-14); }
+  .rec-summary::-webkit-details-marker { display: none; }
+  .rec-summary:hover { background: var(--hover); }
+  .rec-chev { display: inline-flex; color: var(--muted); transition: transform var(--t) var(--ease); }
+  .rec-chev .i { width: 18px; height: 18px; }
+  .rec-panel[open] .rec-chev { transform: rotate(90deg); }
+  .rec-title { font-weight: 700; color: var(--text); }
+  .rec-sub { color: var(--muted); }
+  .rec-panel > #f-decision { border-top: 1px solid var(--border); }
+  .rec-panel > #f-decision .card-h { display: none; }
+
+  /* ---------- tabs ---------- */
+  .tabs { padding: 0; }
+  .tabstrip { display: flex; gap: 2px; flex-wrap: wrap; padding: 6px 10px 0; border-bottom: 1px solid var(--border); }
+  .tab { height: 42px; padding: 0 14px; font-size: var(--fs-14); font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; display: inline-flex; align-items: center; gap: 8px; border-radius: 6px 6px 0 0; }
+  .tab:hover { color: var(--text); background: var(--hover); }
+  .tab.on { color: var(--text); font-weight: 700; border-bottom-color: var(--text); }
+  .tab-n { min-width: 20px; height: 18px; padding: 0 6px; border-radius: var(--r-pill); background: var(--hover); color: var(--muted); font-size: 11px; font-weight: 800; display: inline-grid; place-items: center; }
+  .tab.on .tab-n { background: var(--text); color: var(--bg); }
+  .tabpanel { padding: var(--s3); }
+  .tabpanel[hidden] { display: none; }
+  .tabpanel .card-h { padding: 0 0 var(--s2); height: auto; border-bottom: 1px solid var(--border); margin-bottom: var(--s2); }
+  .tabpanel .tl, .tabpanel .pdf-b, .tabpanel .mem-b { padding: 0; }
 
   /* ---------- reportability decision tree ---------- */
   .dec { padding: var(--s3); display: grid; gap: var(--s2); }
@@ -180,12 +209,15 @@
   .changed { animation: glowc 1.6s var(--ease); }
   @keyframes glowc { 0%, 30% { box-shadow: 0 0 0 3px var(--border); } }
 
-  @media (max-width: 1280px) { .dt { grid-template-columns: 1fr; } .dt-r { position: static; max-height: none; overflow: visible; } .facts, .parts { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 1280px) { .facts, .parts { grid-template-columns: 1fr 1fr; } }
   @media print {
-    .dt { grid-template-columns: 1fr; } .dt-r { position: static; max-height: none; overflow: visible; margin: 0; padding: 0; }
-    .two { grid-template-columns: 1fr 1fr; } .rv-acts, .undo, .thumb, [data-pdf], .lb, .crumb { display: none !important; }
+    .dt { max-width: none; }
+    /* print shows everything: reveal each tab panel and the decision record */
+    .tabstrip { display: none; } .tabpanel[hidden] { display: block !important; } .tabpanel { break-inside: avoid; border-top: 1px solid var(--border); }
+    .rec-panel { } .rec-panel > #f-decision { display: block !important; } .rec-chev { display: none; }
+    .rv-acts, .undo, .thumb, [data-pdf], .lb, .crumb { display: none !important; }
     .pdf-b::after { content: "Form 3500A draft: reports/MDR_{{ r.id }}.pdf"; font-size: 12px; color: var(--muted); }
-    .dt-r > *, .hero, .two .card { break-inside: avoid; } .qt { break-inside: auto; }
+    .hero, .card { break-inside: avoid; } .qt { break-inside: auto; }
   }
 </style>
 {% endblock %}
@@ -212,89 +244,97 @@
 </div>
 
 <div class="dt">
-  <!-- ================= left 64% ================= -->
-  <div class="dt-l">
-    <section class="card hero {{ r.decision }}">
-      <div class="hero-top">
-        <div>
-          <span class="pill pill-lg d-{{ r.decision }}">{% if r.decision == 'REPORTABLE' %}{{ icon('alert') }}{% elif r.decision == 'NEEDS_INFO' %}{{ icon('help') }}{% else %}{{ icon('check') }}{% endif %}{{ (r.decision or '')|replace('_', ' ') }}</span>
-          <div class="hero-cat">
-            {% if r.category and r.category != 'NONE' %}<span class="c">{{ r.category|replace('_', ' ')|title }}</span>{% endif %}
-            <span class="legal">{{ icon('scale') }}{{ r.legal }}</span>
-          </div>
-        </div>
-        <div id="f-cd">{% include "_detail_cd.html" %}</div>
+  <!-- 1. complaint text -->
+  <section class="card">
+    <div class="card-h"><h2>{{ icon('file') }}Complaint</h2>{% if r.src %}<span class="aside">FDA MAUDE report {{ r.src.report_number }}</span>{% endif %}</div>
+    <div class="cb">
+      <blockquote class="qt">{{ r.full_text }}</blockquote>
+      {% if r.src %}
+      <div class="facts">
+        <div><span>Event type</span><b>{{ r.src.event_type or '—' }}</b></div>
+        <div><span>Patient outcome</span><b>{{ r.src.patient_outcomes or 'Not stated' }}</b></div>
+        <div><span>Event date</span><b>{% set e = r.src.date_of_event %}{{ (e[:4] ~ '-' ~ e[4:6] ~ '-' ~ e[6:8]) if e|length == 8 else 'Not stated' }}</b></div>
+        <div><span>Source</span><b>{{ r.src.report_source or '—' }}</b></div>
       </div>
-      <div class="hero-b">
-        <div class="why"><span class="k">Why Thirty decided this</span><p>{{ r.reason }}</p></div>
-        <div class="conf-row"><span class="k">Confidence</span>
-          <div class="track {{ 'low' if r.conf < 70 }}" role="meter" aria-label="Confidence" aria-valuenow="{{ r.conf }}" aria-valuemin="0" aria-valuemax="100"><i style="width:{{ r.conf }}%"></i></div>
-          <b>{{ r.conf }}%</b></div>
-        <div class="model-line">{{ icon('cpu') }}Classified by {{ AGENT.name }} on this machine · 0 bytes sent to cloud AI</div>
-      </div>
-    </section>
-
-    <section class="card" id="f-decision">{% include "_detail_decision.html" %}</section>
-
-    <section class="card">
-      <div class="card-h"><h2>{{ icon('file') }}Complaint text</h2>{% if r.src %}<span class="aside">FDA MAUDE report {{ r.src.report_number }}</span>{% endif %}</div>
-      <div class="cb">
-        <blockquote class="qt">{{ r.full_text }}</blockquote>
-        {% if r.src %}
-        <div class="facts">
-          <div><span>Event type</span><b>{{ r.src.event_type or '—' }}</b></div>
-          <div><span>Patient outcome</span><b>{{ r.src.patient_outcomes or 'Not stated' }}</b></div>
-          <div><span>Event date</span><b>{% set e = r.src.date_of_event %}{{ (e[:4] ~ '-' ~ e[4:6] ~ '-' ~ e[6:8]) if e|length == 8 else 'Not stated' }}</b></div>
-          <div><span>Source</span><b>{{ r.src.report_source or '—' }}</b></div>
-        </div>
-        {% endif %}
-        {% if r.narrative and r.narrative != r.full_text %}
-        <details class="narr"><summary>{{ icon('chevron') }}Manufacturer narrative</summary><p>{{ r.narrative }}</p></details>
-        {% endif %}
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="card-h"><h2>{{ icon('list') }}Priority breakdown</h2><span class="aside">Layer 1 · deterministic rules</span></div>
-      <div class="cb">
-        <div class="pb-top"><span class="score">{{ b.total }}</span><span class="pill p-{{ r.priority }}">{{ r.priority }}</span>
-          <span class="rule">URGENT ≥ 15 · HIGH ≥ 8 · distress can only raise priority</span></div>
-        {% set denom = [b.parts|map(attribute=1)|sum, 1]|max %}
-        {% set shades = ['var(--text)', 'var(--muted)', 'var(--border-2)', 'var(--t-amber)'] %}
-        <div class="sbar">{% for name, val, col in b.parts %}{% if val %}<i style="width:{{ (val / denom * 100)|round(2) }}%;background:{{ shades[loop.index0 % 4] }}" title="{{ name }} +{{ val }}"></i>{% endif %}{% endfor %}</div>
-        <div class="parts" style="grid-template-columns: repeat({{ b.parts|length }}, minmax(0, 1fr))">
-          {% for name, val, col in b.parts %}<div style="--c:{{ shades[loop.index0 % 4] }}"><i class="sw"></i><b>+{{ val }}</b><span>{{ name }}</span></div>{% endfor %}
-        </div>
-        {% if b.keywords %}<div class="kws">{% for k, w in b.keywords %}<span class="kw">{{ k|lower }}<em>+{{ w }}</em></span>{% endfor %}</div>{% endif %}
-      </div>
-    </section>
-
-    <div class="two">
-      <section class="card">
-        <div class="card-h"><h2>{{ icon('help') }}Missing information</h2><span class="count-badge">{{ r.missing_list|length }}</span></div>
-        <div class="cb">
-          {% if r.missing_list %}<ul class="li">{% for m in r.missing_list %}<li><span class="mk">!</span><span>{{ m }}</span></li>{% endfor %}</ul>
-          {% else %}<p class="none">{{ icon('check') }}Nothing flagged as missing.</p>{% endif %}
-        </div>
-      </section>
-      <section class="card">
-        <div class="card-h"><h2>{{ icon('send') }}Follow-up questions</h2><span class="count-badge">{{ r.questions|length }}</span></div>
-        <div class="cb" id="questions">
-          {% if r.questions %}<ol class="li q">{% for q in r.questions %}<li><span class="mk">{{ loop.index }}</span><span>{{ q }}</span></li>{% endfor %}</ol>
-          {% else %}<p class="none">{{ icon('check') }}{{ 'Drafted with the Form 3500A…' if r.reportable else 'None needed: not reportable.' }}</p>{% endif %}
-        </div>
-      </section>
+      {% endif %}
+      {% if r.narrative and r.narrative != r.full_text %}
+      <details class="narr"><summary>{{ icon('chevron') }}Manufacturer narrative</summary><p>{{ r.narrative }}</p></details>
+      {% endif %}
     </div>
-  </div>
+  </section>
 
-  <!-- ================= right 36%, sticky ================= -->
-  <aside class="dt-r">
-    <section class="card" id="f-review">{% include "_detail_review.html" %}</section>
-    <section class="card" id="f-timeline">{% include "_detail_timeline.html" %}</section>
-    <section class="card">
-      <div class="card-h"><h2>{{ icon('brain') }}Device memory</h2><span class="aside">{{ r.history.family }} · {{ r.history.days }} days</span></div>
-      <div class="mem-b">
-        {% set h = r.history %}
+  <!-- 2. verdict card: decision, one-sentence reason, deadline, one primary action -->
+  <section class="card hero {{ r.decision }}">
+    <div class="hero-top">
+      <div>
+        <span class="pill pill-lg d-{{ r.decision }}">{% if r.decision == 'REPORTABLE' %}{{ icon('alert') }}{% elif r.decision == 'NEEDS_INFO' %}{{ icon('help') }}{% else %}{{ icon('check') }}{% endif %}{{ (r.decision or '')|replace('_', ' ') }}</span>
+        <div class="hero-cat">
+          {% if r.category and r.category != 'NONE' %}<span class="c">{{ r.category|replace('_', ' ')|title }}</span>{% endif %}
+          <span class="legal">{{ icon('scale') }}{{ r.legal }}</span>
+        </div>
+      </div>
+      <div id="f-cd">{% include "_detail_cd.html" %}</div>
+    </div>
+    <div class="hero-b">
+      <p class="verdict-reason">{{ r.reason }}</p>
+      <div id="f-review">{% include "_detail_review.html" %}</div>
+      <p class="model-line">{{ icon('cpu') }}Classified by {{ AGENT.name }} on this machine · {{ r.conf }}% confidence · 0 bytes sent to cloud AI</p>
+    </div>
+  </section>
+
+  <!-- 3. decision record: collapsed to one line, expands -->
+  {% set q_count = [] %}{% for t in r.tree if r.jurisdictions|select('in', t[3].split())|list %}{% set _ = q_count.append(1) %}{% endfor %}
+  <details class="card rec-panel" id="f-decision-panel">
+    <summary class="rec-summary">
+      <span class="rec-chev">{{ icon('chevron') }}</span>
+      <span class="rec-title">Decision record: {{ q_count|length }} question{{ 's' if q_count|length != 1 }}, pre-filled by {{ AGENT.name }}</span>
+      {% if r.record %}<span class="pill pill-sm d-{{ r.record.outcome.decision }}">{{ (r.record.outcome.decision or '')|replace('_', ' ') }}</span><span class="rec-sub">recorded by {{ r.record.by }}</span>{% else %}<span class="rec-sub">not yet confirmed</span>{% endif %}
+    </summary>
+    <div id="f-decision">{% include "_detail_decision.html" %}</div>
+  </details>
+
+  <!-- 4. everything else, behind tabs -->
+  <section class="card tabs" id="detail-tabs">
+    <div class="tabstrip" role="tablist" aria-label="Complaint details">
+      <button class="tab on" role="tab" id="tab-priority" aria-selected="true" aria-controls="panel-priority" data-tab="priority">Priority breakdown</button>
+      <button class="tab" role="tab" id="tab-missing" aria-selected="false" aria-controls="panel-missing" data-tab="missing" tabindex="-1">Missing information<span class="tab-n">{{ r.missing_list|length }}</span></button>
+      <button class="tab" role="tab" id="tab-followup" aria-selected="false" aria-controls="panel-followup" data-tab="followup" tabindex="-1">Follow-up questions<span class="tab-n">{{ r.questions|length }}</span></button>
+      <button class="tab" role="tab" id="tab-timeline" aria-selected="false" aria-controls="panel-timeline" data-tab="timeline" tabindex="-1">Timeline</button>
+      <button class="tab" role="tab" id="tab-memory" aria-selected="false" aria-controls="panel-memory" data-tab="memory" tabindex="-1">Device memory</button>
+      <button class="tab" role="tab" id="tab-form" aria-selected="false" aria-controls="panel-form" data-tab="form" tabindex="-1">Form 3500A</button>
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="panel-priority" aria-labelledby="tab-priority" tabindex="0">
+      <div class="pb-top"><span class="score">{{ b.total }}</span><span class="pill p-{{ r.priority }}">{{ r.priority }}</span>
+        <span class="rule">URGENT ≥ 15 · HIGH ≥ 8 · distress can only raise priority</span></div>
+      {% set denom = [b.parts|map(attribute=1)|sum, 1]|max %}
+      {% set shades = ['var(--text)', 'var(--muted)', 'var(--border-2)', 'var(--t-amber)'] %}
+      <div class="sbar">{% for name, val, col in b.parts %}{% if val %}<i style="width:{{ (val / denom * 100)|round(2) }}%;background:{{ shades[loop.index0 % 4] }}" title="{{ name }} +{{ val }}"></i>{% endif %}{% endfor %}</div>
+      <div class="parts" style="grid-template-columns: repeat({{ b.parts|length }}, minmax(0, 1fr))">
+        {% for name, val, col in b.parts %}<div style="--c:{{ shades[loop.index0 % 4] }}"><i class="sw"></i><b>+{{ val }}</b><span>{{ name }}</span></div>{% endfor %}
+      </div>
+      {% if b.keywords %}<div class="kws">{% for k, w in b.keywords %}<span class="kw">{{ k|lower }}<em>+{{ w }}</em></span>{% endfor %}</div>{% endif %}
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="panel-missing" aria-labelledby="tab-missing" tabindex="0" hidden>
+      {% if r.missing_list %}<ul class="li">{% for m in r.missing_list %}<li><span class="mk">!</span><span>{{ m }}</span></li>{% endfor %}</ul>
+      {% else %}<p class="none">{{ icon('check') }}Nothing flagged as missing.</p>{% endif %}
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="panel-followup" aria-labelledby="tab-followup" tabindex="0" hidden>
+      <div id="questions">
+        {% if r.questions %}<ol class="li q">{% for q in r.questions %}<li><span class="mk">{{ loop.index }}</span><span>{{ q }}</span></li>{% endfor %}</ol>
+        {% else %}<p class="none">{{ icon('check') }}{{ 'Drafted with the Form 3500A…' if r.reportable else 'None needed: not reportable.' }}</p>{% endif %}
+      </div>
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="panel-timeline" aria-labelledby="tab-timeline" tabindex="0" hidden>
+      <div id="f-timeline">{% include "_detail_timeline.html" %}</div>
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="panel-memory" aria-labelledby="tab-memory" tabindex="0" hidden>
+      {% set h = r.history %}
+      <div class="mem-b" style="padding:0">
         {% if h.count %}
           <div class="mem-top"><span class="mem-n">{{ h.count }}</span>
             <div><b>{{ h.count }} prior complaint{{ 's' if h.count != 1 }} on {{ h.family }}</b><span>in the {{ h.days }} days before this one</span></div></div>
@@ -305,9 +345,12 @@
         {% endif %}
         {% if h.model_line %}<div class="model-saw">{{ icon('cpu') }}<span>Model was told: {{ h.model_line }}</span></div>{% endif %}
       </div>
-    </section>
-    <section class="card" id="f-pdf">{% include "_detail_pdf.html" %}</section>
-  </aside>
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="panel-form" aria-labelledby="tab-form" tabindex="0" hidden>
+      <div id="f-pdf">{% include "_detail_pdf.html" %}</div>
+    </div>
+  </section>
 </div>
 
 <div class="lb" id="lb"><div class="lb-c">
@@ -323,6 +366,37 @@
 <script>
 (function () {
   var CID = {{ r.id|tojson }}, sigs = {};
+
+  /* tabs: roving focus, arrow-key navigation, one panel visible */
+  (function () {
+    var strip = $("detail-tabs"); if (!strip) return;
+    var tabs = [].slice.call(strip.querySelectorAll(".tab"));
+    function select(tab, focus) {
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.classList.toggle("on", on); t.setAttribute("aria-selected", on ? "true" : "false"); t.tabIndex = on ? 0 : -1;
+        $(t.getAttribute("aria-controls")).hidden = !on;
+      });
+      if (focus) tab.focus();
+    }
+    strip.addEventListener("click", function (e) { var t = e.target.closest(".tab"); if (t) select(t); });
+    strip.addEventListener("keydown", function (e) {
+      var i = tabs.indexOf(document.activeElement); if (i < 0) return;
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); select(tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length], true); }
+      if (e.key === "Home") { e.preventDefault(); select(tabs[0], true); }
+      if (e.key === "End") { e.preventDefault(); select(tabs[tabs.length - 1], true); }
+    });
+  })();
+  /* print shows the full record: open the decision drawer and every tab */
+  window.addEventListener("beforeprint", function () {
+    var rec = $("f-decision-panel"); if (rec) { rec.dataset.wasOpen = rec.open ? "1" : "0"; rec.open = true; }
+    document.querySelectorAll(".tabpanel[hidden]").forEach(function (p) { p.dataset.printShown = "1"; p.hidden = false; });
+  });
+  window.addEventListener("afterprint", function () {
+    var rec = $("f-decision-panel"); if (rec && rec.dataset.wasOpen === "0") rec.open = false;
+    document.querySelectorAll('.tabpanel[data-print-shown="1"]').forEach(function (p) { p.hidden = true; delete p.dataset.printShown; });
+  });
+
   /* hero countdown: '29 days 23 h left' */
   function tickCd() {
     var el = $("cd"); if (!el) return;

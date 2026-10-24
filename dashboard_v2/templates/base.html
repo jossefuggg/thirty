@@ -73,14 +73,18 @@ img { display: block; max-width: 100%; }
 .logo { display: flex; align-items: center; padding: 4px var(--s1) var(--s3); min-height: 64px; flex: none; }
 .logo img { height: 30px; width: auto; }
 .logo .dark-only { display: none; } [data-theme="dark"] .logo .light-only { display: none; } [data-theme="dark"] .logo .dark-only { display: block; }
-.sidebar .nav { display: grid; gap: 4px; margin-top: var(--s1); height: auto; padding: 0; border-bottom: 0; justify-content: normal; }
-.nav a { display: flex; align-items: center; gap: 12px; height: 40px; white-space: nowrap; padding: 0 12px; border-radius: var(--r-btn); color: var(--muted); font-weight: 700; font-size: var(--fs-14);
+.sidebar .nav { display: grid; gap: 2px; margin-top: var(--s1); height: auto; padding: 0; border-bottom: 0; justify-content: normal; }
+.nav > div[role="group"] { display: grid; gap: 2px; }
+.nav-group { font-size: 12px; font-weight: 700; letter-spacing: 0; color: var(--muted); padding: var(--s2) 12px 6px; }
+.nav > div[role="group"]:first-of-type { margin-top: 0; }
+.nav a { display: flex; align-items: center; gap: 12px; height: 40px; white-space: nowrap; padding: 0 12px; border-radius: var(--r-btn); color: var(--muted); font-weight: 600; font-size: var(--fs-14);
   transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); position: relative; }
 .nav a:hover { background: var(--hover); color: var(--text); }
-.nav a.on { background: var(--text); color: var(--bg); }
+.nav a.on { background: var(--text); color: var(--bg); font-weight: 700; }
 .nav .badge { margin-left: auto; min-width: 22px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); background: var(--t-coral); color: var(--t-ink); font-size: 11px; font-weight: 800; display: none; place-items: center; }
 .nav .badge.show { display: grid; }
-.sys { margin-top: auto; border-top: 1px solid var(--border); padding-top: var(--s2); display: grid; gap: 12px; }
+.sys { padding-top: var(--s2); margin-top: var(--s1); display: grid; gap: 12px; }
+.sys-foot { margin-top: auto; border-top: 1px solid var(--border); padding-top: var(--s2); }
 .sys h4 { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 800; padding: 0 4px; }
 .sys-row { display: grid; grid-template-columns: 8px 1fr; column-gap: 10px; align-items: center; padding: 0 4px; }
 .sys-row .lbl { font-size: var(--fs-12); color: var(--muted); }
@@ -100,7 +104,7 @@ img { display: block; max-width: 100%; }
 .org-m { width: 28px; height: 28px; border-radius: 8px; background: var(--text); color: var(--bg) !important; display: grid; place-items: center; font-size: 12px; font-weight: 800; }
 .env { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: var(--r-pill); border: 2px solid var(--text); color: var(--text); font-size: var(--fs-12); font-weight: 800; letter-spacing: .1em; white-space: nowrap; }
 .env i { width: 7px; height: 7px; border-radius: 50%; background: var(--text); }
-.sample { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: var(--r-pill); border: 2px solid var(--border); color: var(--muted); font-size: var(--fs-12); font-weight: 800; letter-spacing: .1em; white-space: nowrap; text-transform: uppercase; }
+.sample { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: var(--r-pill); border: 2px solid var(--border); color: var(--muted); font-size: var(--fs-13); font-weight: 700; letter-spacing: 0; white-space: nowrap; }
 .sample:hover { border-color: var(--text); color: var(--text); } .sample .i { width: 14px; height: 14px; }
 .help { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); box-shadow: inset 0 0 0 2px var(--border); background: transparent; transition: all var(--t-fast); }
 .help:hover { color: var(--text); box-shadow: inset 0 0 0 2px var(--text); }
@@ -124,7 +128,7 @@ img { display: block; max-width: 100%; }
 .results a small { color: var(--muted); font-size: var(--fs-12); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .results .none { padding: 16px; color: var(--muted); text-align: center; }
 .live { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: var(--r-pill); border: 2px solid var(--border); background: transparent;
-  font-weight: 800; font-size: var(--fs-12); letter-spacing: .12em; color: var(--muted); transition: all var(--t) var(--ease); }
+  font-weight: 700; font-size: var(--fs-13); letter-spacing: 0; color: var(--muted); transition: all var(--t) var(--ease); }
 .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .live.off { color: var(--coral-text); border-color: var(--coral-text); } .live.off i { background: var(--coral-text); }
 .live.on { color: var(--text); border-color: var(--text); }
@@ -137,6 +141,15 @@ img { display: block; max-width: 100%; }
 .now b { display: block; font-size: var(--fs-16); font-weight: 800; font-variant-numeric: tabular-nums; }
 .now span { font-size: var(--fs-12); color: var(--muted); }
 .content { padding: var(--s3) var(--s4) var(--s4); flex: 1; min-width: 0; }
+
+/* help / session menu (progressive disclosure for env, licence, clock) */
+.help { position: relative; }
+.helpmenu { position: absolute; top: calc(var(--topbar-h) - 12px); right: var(--s4); width: 280px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-panel); box-shadow: var(--shadow-lg); padding: var(--s1); z-index: 40; display: grid; gap: 2px; animation: pop var(--t) var(--ease); }
+.helpmenu-h { font-size: 12px; font-weight: 700; color: var(--muted); padding: 10px 10px 4px; }
+.helpmenu-h:first-child { padding-top: 6px; }
+.helpmenu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: var(--r-btn); font-size: var(--fs-13); color: var(--muted); }
+a.helpmenu-row:hover { background: var(--hover); color: var(--text); }
+.helpmenu-row b { color: var(--text); font-weight: 700; }
 
 /* ================================================================ components */
 .card { background: var(--surface); border-radius: var(--r-panel); border: 1px solid var(--border); padding: 0; }
@@ -293,17 +306,25 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
       <img class="dark-only" src="/static/thirty/logo/thirty-lockup-reverse.svg" alt="Thirty">
     </a>
     <nav class="nav" aria-label="Main">
-      {% for key, href, label, ic in NAV %}
-      <a href="{{ href }}" class="{{ 'on' if page == key }}" {% if page == key %}aria-current="page"{% endif %}>{{ icon(ic) }}{{ label }}{% if key == 'home' %}<span class="badge" id="nav-queue"></span>{% endif %}</a>
+      {% for group, items in NAV_GROUPS %}
+      <p class="nav-group" id="nav-group-{{ loop.index }}">{{ group }}</p>
+      <div role="group" aria-labelledby="nav-group-{{ loop.index }}">
+        {% for key, href, label, ic in items %}
+        <a href="{{ href }}" class="{{ 'on' if page == key }}" {% if page == key %}aria-current="page"{% endif %}>{{ icon(ic) }}{{ label }}{% if key == 'home' %}<span class="badge" id="nav-queue"></span>{% endif %}</a>
+        {% endfor %}
+        {% if group == 'Settings' %}
+        <div class="sys">
+          <div class="sys-row"><i class="led" id="sy-model"></i><span class="lbl" id="sy-model-l">{{ 'Agent' if DEMO_MODE else 'Local model' }}</span><span class="val" id="sy-model-v">Checking…</span></div>
+          <div class="sys-row" id="row-tg" {% if not LOCAL_AGENT %}hidden{% endif %}><i class="led" id="sy-tg"></i><span class="lbl">Telegram agent</span><span class="val" id="sy-tg-v">Checking…</span></div>
+          <div class="sys-row" id="row-sync" {% if not LOCAL_AGENT %}hidden{% endif %}><i class="led" id="sy-sync"></i><span class="lbl">Sandbox sync</span><span class="val" id="sy-sync-v">Checking…</span></div>
+          <div class="sys-row"><i class="led ok"></i><span class="lbl">Data folder</span><span class="val" title="{{ DATA_DIR }}">Local <small>app data</small></span></div>
+          <div class="cloud0"><span class="badge-local">{{ "Cloud model (demo, sample data)" if CLOUD_AGENT else "0 bytes to cloud AI" }}</span></div>
+        </div>
+        {% endif %}
+      </div>
       {% endfor %}
     </nav>
-    <div class="sys">
-      <h4>System</h4>
-      <div class="sys-row"><i class="led" id="sy-model"></i><span class="lbl" id="sy-model-l">{{ 'Agent' if DEMO_MODE else 'Local model' }}</span><span class="val" id="sy-model-v">Checking…</span></div>
-      <div class="sys-row" id="row-tg" {% if not LOCAL_AGENT %}hidden{% endif %}><i class="led" id="sy-tg"></i><span class="lbl">Telegram agent</span><span class="val" id="sy-tg-v">Checking…</span></div>
-      <div class="sys-row" id="row-sync" {% if not LOCAL_AGENT %}hidden{% endif %}><i class="led" id="sy-sync"></i><span class="lbl">Sandbox sync</span><span class="val" id="sy-sync-v">Checking…</span></div>
-      <div class="sys-row"><i class="led ok"></i><span class="lbl">Data folder</span><span class="val" title="{{ DATA_DIR }}">Local <small>app data</small></span></div>
-      <div class="cloud0"><span class="badge-local">0 bytes to cloud AI</span></div>
+    <div class="sys sys-foot">
       <button class="theme" id="theme" type="button" aria-pressed="false">{{ icon('moon') }}<span id="theme-l">Dark mode</span></button>
     </div>
   </aside>
@@ -317,12 +338,24 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
         <kbd>/</kbd>
         <div class="results" id="results"></div>
       </div>
-      <div class="live" id="live" role="status"><i></i>LIVE</div>
-      {% if DEMO_MODE %}<a class="sample" href="/demo" title="{{ 'Sample agent on invented complaints. No model is configured.' if WS.mode == 'explore' else 'The sample agent answers with rule-based results. Choose a real agent under Plugins.' }}">{{ icon('play') }}{{ 'Sample data' if WS.mode == 'explore' else 'Sample agent' }}</a>{% endif %}
-      {% if LICENCE.state != 'licensed' %}<a class="sample" href="/settings/licence" title="{{ LICENCE.label }}">{{ icon('key') }}{{ 'Evaluation' if LICENCE.state == 'evaluation' else 'Licence' }}</a>{% endif %}
-      <span class="env"><i></i>{{ WS.env_short }}</span>
-      <div class="now"><b id="clock-t">--:--:--</b><span id="clock-d"></span></div>
-      <button class="help" id="help" aria-label="Help" title="Keyboard: / search · Esc close">{{ icon('help') }}</button>
+      {# One status pill per screen: in demo mode it reads "Sample data", otherwise the live indicator. #}
+      {% if DEMO_MODE %}
+      <a class="sample" href="/demo" title="{{ 'Sample agent on invented complaints. No model is configured.' if WS.mode == 'explore' else 'The sample agent answers with rule-based results. Choose a real agent under Plugins.' }}">{{ icon('play') }}{{ 'Sample data' if WS.mode == 'explore' else 'Sample agent' }}</a>
+      <div class="live" id="live" role="status" hidden><i></i>Live</div>
+      {% else %}
+      <div class="live" id="live" role="status"><i></i>Live</div>
+      {% endif %}
+      <button class="help" id="help" aria-label="Help and session details" aria-haspopup="true" aria-expanded="false" title="Help · session details">{{ icon('help') }}</button>
+      <div class="helpmenu" id="helpmenu" role="menu" aria-labelledby="help" hidden>
+        <p class="helpmenu-h">This session</p>
+        <div class="helpmenu-row"><span>Environment</span><b>{{ WS.env_short }}</b></div>
+        {% if LICENCE.state != 'licensed' %}<a class="helpmenu-row" href="/settings/licence" role="menuitem"><span>Licence</span><b>{{ 'Evaluation' if LICENCE.state == 'evaluation' else 'Unlicensed' }}</b></a>{% else %}<div class="helpmenu-row"><span>Licence</span><b>Licensed</b></div>{% endif %}
+        <div class="helpmenu-row"><span>Local time</span><b class="num" id="clock-t">--:--:--</b></div>
+        <div class="helpmenu-row"><span>Date</span><b id="clock-d">—</b></div>
+        <p class="helpmenu-h">Keyboard</p>
+        <div class="helpmenu-row"><span>Search</span><b>/</b></div>
+        <div class="helpmenu-row"><span>Close panel</span><b>Esc</b></div>
+      </div>
     </header>
     <main class="content {% block content_class %}{% endblock %}">
       {% if LICENCE.state in ('expired', 'grace') %}<div class="empty" role="alert" style="display:grid;grid-template-columns:auto 1fr auto;text-align:left;align-items:center;gap:12px;padding:12px 16px;border:2px solid var(--t-amber);border-radius:var(--r-panel);margin-bottom:var(--s3)"><div class="art" style="width:32px;height:32px;border-radius:8px;background:var(--t-amber);color:var(--t-ink)">{{ icon('key') }}</div><div><b>{{ LICENCE.label }}</b><p style="margin:0;max-width:none">{{ 'Reviews are read-only until a renewed key is installed.' if LICENCE.state == 'expired' else 'Install a renewed key before the grace period ends; after that reviews become read-only.' }}</p></div><a class="btn btn-secondary btn-sm" href="/settings/licence">Licence &amp; updates</a></div>{% endif %}
@@ -381,6 +414,20 @@ V.dueChip = function (r) {
 V.memChip = function (r) {
   if (!r.mem) return "";
   return '<span class="chip mem" title="' + esc(r.memory) + '">' + ICONS.brain + r.mem.count + " prior on " + esc(r.mem.key) + (r.mem.issue ? " · " + esc(r.mem.issue) : "") + "</span>";
+};
+/* one plain line of secondary facts for a feed card: priority, confidence, device memory, deadline */
+V.priorityWord = function (p) { return { URGENT: "Urgent", HIGH: "High priority", NORMAL: "Normal priority" }[p] || V.label(p); };
+V.queueMeta = function (r) {
+  var parts = [V.priorityWord(r.priority)];
+  if (r.due_date && r.open) { var ms = V.dueEnd(r.due_date) - Date.now(); parts.push(ms < 0 ? V.dueShort(ms) : "due in " + V.dueShort(ms)); }
+  return esc(parts.join("  ·  "));
+};
+V.feedMeta = function (r) {
+  var parts = [V.priorityWord(r.priority)];
+  if (r.confidence != null) parts.push(r.confidence + "% confidence");
+  if (r.mem) parts.push(r.mem.count + " prior on " + r.mem.key);
+  if (r.due_date && r.open) { var ms = V.dueEnd(r.due_date) - Date.now(); parts.push(ms < 0 ? V.dueShort(ms) : "due in " + V.dueShort(ms)); }
+  return esc(parts.join("  ·  "));
 };
 V.SOURCES = {{ SOURCES|tojson }};
 V.srcChip = function (src) { if (!src) return ""; var s = V.SOURCES[src] || [src, "inbox"];
@@ -546,7 +593,14 @@ if (/^#c=/.test(location.hash)) V.openDrawer(decodeURIComponent(location.hash.sl
   document.addEventListener("click", function (e) { if (!e.target.closest(".search")) res.classList.remove("show"); });
 })();
 
-$("help").onclick = function () { V.toast("Shortcuts: / search · Esc close panel · click any complaint for details"); };
+(function () {
+  var btn = $("help"), menu = $("helpmenu");
+  function close() { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); }
+  function open() { menu.hidden = false; btn.setAttribute("aria-expanded", "true"); }
+  btn.onclick = function (e) { e.stopPropagation(); if (menu.hidden) open(); else close(); };
+  document.addEventListener("click", function (e) { if (!menu.hidden && !e.target.closest("#helpmenu") && e.target !== btn) close(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !menu.hidden) { e.stopPropagation(); close(); btn.focus(); } }, true);
+})();
 /* ================================================================ clock, live indicator, system health */
 (function () {
   function tick() { var d = new Date();

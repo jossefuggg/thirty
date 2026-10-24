@@ -47,7 +47,7 @@
     <h1>Every complaint, on the clock.</h1>
     <p class="lead">Thirty reads each medical device complaint the minute it arrives, scores it, decides what the FDA must be told under 21 CFR 803, and drafts the Form 3500A. A named person reviews, approves and files. Thirty drafts; a human files.</p>
     <div class="req" style="margin-bottom:32px"><b>What happens on this machine</b>
-      <ul><li>All data stays in your app-data folder: <code>{{ data_dir }}</code></li><li>The agent runs locally. 0 bytes to cloud AI.</li><li>Everything you choose here can be changed later in Settings.</li></ul></div>
+      <ul><li>All data stays in your app-data folder: <code>{{ data_dir }}</code></li><li>{{ "Cloud model (demo). Complaint text leaves this machine." if CLOUD_AGENT else "The agent runs locally. 0 bytes to cloud AI." }}</li><li>Everything you choose here can be changed later in Settings.</li></ul></div>
     <div class="row"><button class="btn btn-accent btn-lg" data-next>Get started</button></div>
   </section>
 
@@ -93,7 +93,7 @@
     <div class="row"><button class="btn btn-secondary" data-back>Back</button><button class="btn btn-accent btn-lg right" id="finish">Open Thirty</button><span class="res" id="finish-res"></span></div>
   </section>
 </main>
-<footer class="foot"><span class="badge-local">0 bytes to cloud AI</span><span>Thirty {{ version }} · data folder {{ data_dir }}</span></footer>
+<footer class="foot"><span class="badge-local">{{ "Cloud model (demo, sample data)" if CLOUD_AGENT else "0 bytes to cloud AI" }}</span><span>Thirty {{ version }} · data folder {{ data_dir }}</span></footer>
 <script>
 (function () {
   var $ = function (s, r) { return (r || document).querySelector(s); }, all = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };

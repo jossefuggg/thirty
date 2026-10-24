@@ -12,13 +12,14 @@ is no orphaned code.
 ## Tasks
 
 - [ ] 1. Create the Claude agent module scaffold and HTTP transport
-  - Create `thirty/agents/claude_model.py` with the module docstring and imports (`json`, `os`, `re`, `time`, `requests`, `from .base import Agent, UNREADABLE`, `from . import local_model as lm`)
-  - Define module constants `API_URL = "https://api.anthropic.com/v1/messages"`, `ANTHROPIC_VERSION = "2023-06-01"`, `DEFAULT_MODEL = "claude-sonnet-5-5"`
-  - Implement `resolve_key(api_key)`: return the stripped setting value when it has a non-whitespace char, else stripped `ANTHROPIC_API_KEY` env, else `""`
-  - Implement `_extract_json(text)`: strip Markdown code fences with a regex, then delegate to `lm._json`
-  - Define `class ClaudeAgent(Agent)` with `id`/`name` and `__init__(self, api_key="", model="", timeout=60)` storing `api_key`, `model` (default `DEFAULT_MODEL`), `timeout` (float)
-  - Implement `_messages(self, prompt, max_tokens, temperature=0.1)`: raise `RuntimeError` when `resolve_key` is empty; POST to `API_URL` with `x-api-key` + `anthropic-version` + `content-type` headers, the `timeout`, and body `{model, max_tokens, temperature, messages:[{role:"user", content:prompt}]}`; call `raise_for_status()`; return `content[0]["text"]` or `""`
-  - _Requirements: 1.5, 1.6, 2.1, 2.2, 2.3, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
+  - [ ] 1.1 Create `thirty/agents/claude_model.py` scaffold and the `_messages` HTTP helper
+    - Add the module docstring and imports (`json`, `os`, `re`, `time`, `requests`, `from .base import Agent, UNREADABLE`, `from . import local_model as lm`)
+    - Define module constants `API_URL = "https://api.anthropic.com/v1/messages"`, `ANTHROPIC_VERSION = "2023-06-01"`, `DEFAULT_MODEL = "claude-sonnet-5-5"`
+    - Implement `resolve_key(api_key)`: return the stripped setting value when it has a non-whitespace char, else stripped `ANTHROPIC_API_KEY` env, else `""`
+    - Implement `_extract_json(text)`: strip Markdown code fences with a regex, then delegate to `lm._json`
+    - Define `class ClaudeAgent(Agent)` with `id`/`name` and `__init__(self, api_key="", model="", timeout=60)` storing `api_key`, `model` (default `DEFAULT_MODEL`), `timeout` (float)
+    - Implement `_messages(self, prompt, max_tokens, temperature=0.1)`: raise `RuntimeError` when `resolve_key` is empty; POST to `API_URL` with `x-api-key` + `anthropic-version` + `content-type` headers, the `timeout`, and body `{model, max_tokens, temperature, messages:[{role:"user", content:prompt}]}`; call `raise_for_status()`; return `content[0]["text"]` or `""`
+    - _Requirements: 1.5, 1.6, 2.1, 2.2, 2.3, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
 - [ ] 2. Implement the agent pipeline methods and health check
   - [ ] 2.1 Implement `classify`, `draft_report`, and `follow_up_questions`
@@ -124,7 +125,7 @@ is no orphaned code.
 ```json
 {
   "waves": [
-    { "id": 0, "tasks": ["1"] },
+    { "id": 0, "tasks": ["1.1"] },
     { "id": 1, "tasks": ["2.1", "2.2", "5.1"] },
     { "id": 2, "tasks": ["3.1", "5.2", "6"] },
     { "id": 3, "tasks": ["3.2", "7.1", "7.2", "7.3", "7.4", "7.5", "8.1", "8.2", "8.3", "9.1"] },

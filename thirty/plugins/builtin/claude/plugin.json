@@ -1,0 +1,14 @@
+{
+  "id": "claude",
+  "name": "Claude agent",
+  "version": "1.0.0",
+  "description": "Classifies complaints and drafts the Form 3500A with Anthropic's Claude via the Messages API. Demo feature: sends complaint text to a cloud model, so it runs on invented sample data only.",
+  "capabilities": ["agent"],
+  "settings": [
+    {"key": "api_key", "label": "Anthropic API key", "type": "secret", "default": "",
+     "help": "Falls back to the ANTHROPIC_API_KEY environment variable when left blank."},
+    {"key": "model", "label": "Model", "type": "string", "default": "claude-sonnet-5-5",
+     "help": "Anthropic model id."},
+    {"key": "timeout", "label": "Timeout (seconds)", "type": "number", "default": 60}
+  ]
+}
