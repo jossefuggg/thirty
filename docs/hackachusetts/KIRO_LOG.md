@@ -16,3 +16,5 @@ Thirty 1.2.1 existed before today. Everything below was built today in Kiro on t
 | 15:25 | Hooks | Run-tests hook fired on every edit; compliance-guard hook checked integrations.html changes against the do-not-say list automatically | Continuous checks with no manual step |
 | 15:25 | Quick Spec | Public-demo spec found that app start-up only ran under __main__, so gunicorn would have served an empty app; moved init to import time | Caught a deploy failure before deploying |
 | 15:38 | Quick Spec | Public demo: render.yaml, gunicorn, locked public mode (14 write routes refuse), banner, no secrets rendered, mobile complaint page; 96 tests pass; Kiro booted gunicorn to verify | Judges can test on their own phones |
+| 15:55 | Kiro CLI | Installed kiro-cli and used it from the terminal to draft SUBMISSION.md from the log and specs | Compared CLI (fast, one-shot, scriptable) with the IDE (specs, hooks, visual diffs) |
+| 15:55 | Kiro CLI + hooks | Used kiro-cli to draft SUBMISSION.md from the log and specs; the compliance-guard hook also fired inside the CLI and flagged one line, which we fixed | Hooks follow the work across IDE and CLI |
