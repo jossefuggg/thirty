@@ -10,3 +10,4 @@ Thirty 1.2.1 existed before today. Everything below was built today in Kiro on t
 | 13:00 | Specs | Spec 1 (Claude agent plugin): requirements first, Autopilot off to review each stage | |
 | 13:15 | Specs + PBT | Spec 1 design and task list generated; property-based tests requested for malformed model output | Plan reviewed before any code was written |
 | 13:30 | Agent hooks | run-tests (shell command on save) and compliance-guard (agent checks the do-not-say list) | Tests run on every save for free; wording mistakes are caught before the demo |
+| 14:25 | Hooks + tests | The run-tests hook kept failing one test; cause: tests read runtime files from the repo. Kiro isolated the test data folder in conftest.py and proved the fix with a hostile plugins.json | Clean test runs for the rest of the day |
