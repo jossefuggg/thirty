@@ -57,6 +57,9 @@
   --t-amber-text: #F7C766;  --t-amber-tint: rgba(242, 177, 52, 0.16);
   --t-neutral-tint: rgba(255, 255, 255, 0.08);
   --t-steel-tint: var(--t-neutral-tint);
+  /* small text ON a 16% tint (pills/chips): a step lighter than the deck tints so it holds 4.5:1
+     even where a card sits over the brightest glow. Large text and links keep the deck tints above. */
+  --t-coral-on: #FFAB99; --t-teal-on: #69DAC8; --t-blue-on: #A8C3FF; --t-violet-on: #C5BBFF; --t-amber-on: #F7C766;
 
   /* glass */
   --t-glass-bg: rgba(255, 255, 255, 0.06);
@@ -111,6 +114,7 @@
   --t-coral-text: #C2381A;  --t-coral-tint: rgba(255, 90, 60, 0.12);
   --t-amber-text: #7E5B00;  --t-amber-tint: rgba(242, 177, 52, 0.18);
   --t-neutral-tint: rgba(20, 24, 31, 0.06);
+  --t-coral-on: #C2381A; --t-teal-on: #136E60; --t-blue-on: #2457C5; --t-violet-on: #5847D0; --t-amber-on: #7E5B00;
   --t-glass-bg: rgba(255, 255, 255, 0.70);
   --t-glass-border: rgba(20, 24, 31, 0.08);
   --t-glass-shadow: 0 20px 40px rgba(20, 30, 45, 0.08);
@@ -125,7 +129,8 @@
 }
 
 /* ---------- base ---------- */
-html { background: var(--t-bg-1); color: var(--t-fg); }
+/* the gradient lives on <html> (the canvas) so the fixed .bg-fx layer (z-index -1) paints above it and below content */
+html { background: linear-gradient(160deg, var(--t-bg-1) 0%, var(--t-bg-2) 100%) fixed; background-color: var(--t-bg-1); color: var(--t-fg); min-height: 100%; }
 body {
   margin: 0;
   font-family: var(--t-font-ui);
@@ -134,10 +139,44 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   color: var(--t-fg);
-  background: var(--t-page-bg);
-  background-color: var(--t-bg-1);
-  background-attachment: fixed;
+  background: transparent;
 }
+
+/* ---------- page background layer: glows + ribbon ----------
+   One fixed layer behind everything (<div class="bg-fx">), never clipped by a container and never
+   interactive. The ribbon sits top-right and runs off the screen edge; mask-image fades its edges.
+   Light mode hides the ribbon. Motion uses transform/opacity only and runs only when the user
+   has not asked for reduced motion. */
+.bg-fx { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; contain: strict; }
+.bg-fx i { position: absolute; display: block; }
+.bg-fx .glow { border-radius: 50%; }
+.bg-fx .g1 { width: 1500px; height: 1000px; left: -560px; top: -520px; background: radial-gradient(ellipse at center, var(--t-glow-blue) 0%, transparent 68%); }
+.bg-fx .g2 { width: 1400px; height: 1100px; right: -520px; top: -420px; background: radial-gradient(ellipse at center, var(--t-glow-violet) 0%, transparent 68%); }
+.bg-fx .g3 { width: 1300px; height: 900px; right: 8%; bottom: -620px; background: radial-gradient(ellipse at center, var(--t-glow-blue) 0%, transparent 68%); opacity: .7; }
+.bg-fx .ribbon {
+  top: -22vh; right: -12vw; width: min(1180px, 78vw); aspect-ratio: 16 / 9;
+  background: url("../img/brand/thirty-ribbon-dark.webp") right top / contain no-repeat;
+  opacity: .35;
+  -webkit-mask-image: radial-gradient(ellipse 58% 70% at 76% 40%, #000 34%, transparent 76%);
+          mask-image: radial-gradient(ellipse 58% 70% at 76% 40%, #000 34%, transparent 76%);
+  transform-origin: 80% 20%;
+}
+/* smaller, static ribbon (used behind the /report hero) */
+.bg-fx.bg-fx-static .ribbon { top: -4vh; right: -18vw; width: min(720px, 110vw); opacity: .3; }
+.bg-fx.bg-fx-static i { animation: none !important; }
+[data-theme="light"] .bg-fx .ribbon, .t-light .bg-fx .ribbon { display: none; }
+@media (max-width: 640px) { .bg-fx .ribbon { right: -40vw; width: 130vw; opacity: .28; } }
+@media (prefers-reduced-motion: no-preference) {
+  .bg-fx .ribbon { will-change: transform; animation: t-ribbon-drift 22s ease-in-out infinite alternate; }
+  .bg-fx .glow { will-change: opacity; animation: t-glow-pulse 18s ease-in-out infinite alternate; }
+  .bg-fx .g2 { animation-duration: 24s; animation-delay: -8s; }
+  .bg-fx .g3 { animation-duration: 21s; animation-delay: -4s; }
+}
+@keyframes t-ribbon-drift {
+  from { transform: translate3d(0, 0, 0) rotate(0deg); }
+  to   { transform: translate3d(-14px, 10px, 0) rotate(-1.6deg); }
+}
+@keyframes t-glow-pulse { from { opacity: .72; } to { opacity: 1; } }
 a { color: var(--t-blue-text); text-decoration-color: var(--t-blue); text-underline-offset: 3px; }
 a:hover { color: var(--t-fg); }
 hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
@@ -211,18 +250,18 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
   font-family: var(--t-font-ui); font-weight: 700; font-size: 12px; letter-spacing: 0; text-transform: none; line-height: 1;
   border: 1px solid transparent; white-space: nowrap;
 }
-.pill-reportable { background: var(--t-coral-tint); color: var(--t-coral-text); }
-.pill-needs-info { background: var(--t-amber-tint); color: var(--t-amber-text); }
-.pill-approved { background: var(--t-teal-tint); color: var(--t-teal-text); }
+.pill-reportable { background: var(--t-coral-tint); color: var(--t-coral-on); }
+.pill-needs-info { background: var(--t-amber-tint); color: var(--t-amber-on); }
+.pill-approved { background: var(--t-teal-tint); color: var(--t-teal-on); }
 .pill-not-reportable, .pill-neutral { background: var(--t-neutral-tint); color: var(--t-fg); }
-.pill-five-day, .pill-overdue { background: var(--t-coral-tint); color: var(--t-coral-text); border-color: var(--t-coral); }
+.pill-five-day, .pill-overdue { background: var(--t-coral-tint); color: var(--t-coral-on); border-color: var(--t-coral); }
 .pill-lg { height: 32px; padding: 0 14px; font-size: 13px; }
 
 /* privacy badge: teal */
 .badge-local {
   display: inline-flex; align-items: center; gap: 10px;
   height: 36px; padding: 0 14px; border-radius: var(--t-radius-pill);
-  background: var(--t-teal-tint); color: var(--t-teal-text); border: 1px solid rgba(43, 181, 160, 0.35);
+  background: var(--t-teal-tint); color: var(--t-teal-on); border: 1px solid rgba(43, 181, 160, 0.35);
   font-weight: 700; font-size: 13px;
 }
 .badge-local::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--t-teal); box-shadow: 0 0 0 4px var(--t-teal-tint); }

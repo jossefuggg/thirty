@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block content_class %}legacy{% endblock %}
-{% block page_header %}{% endblock %}
 {% block head %}
 <style>
   .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-bottom: 24px; }
@@ -39,7 +38,6 @@
 {% endblock %}
 
 {% block body %}
-<h1>Demo Control</h1>
 {% if SAMPLE_DATA %}
 <p class="lede">Sample data is on: no model is configured, so the <b>{{ AGENT.name }}</b> answers with pre-written results. Reset the sample data, or replay {{ commands.replay.split('·')[1].split('incoming')[0].strip() }} incoming complaints through the pipeline and watch them arrive on the Command Center.</p>
 {% else %}

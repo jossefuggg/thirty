@@ -105,9 +105,10 @@ def main():
             page.keyboard.press("Escape")
             # dark mode
             page.click("#theme"); page.wait_for_timeout(500)
-            page.screenshot(path=os.path.join(a.out, "13-command-center-dark.png"), full_page=True); print("wrote 13-command-center-dark")
+            # dark is the default; the toggle switches to light
+            page.screenshot(path=os.path.join(a.out, "13-command-center-light.png"), full_page=True); print("wrote 13-command-center-light")
             page.goto(base + f"/complaint/{ids[1]}", wait_until="networkidle"); page.wait_for_timeout(1000)
-            page.screenshot(path=os.path.join(a.out, "14-complaint-detail-dark.png"), full_page=True); print("wrote 14-complaint-detail-dark")
+            page.screenshot(path=os.path.join(a.out, "14-complaint-detail-light.png"), full_page=True); print("wrote 14-complaint-detail-light")
             page.click("#theme"); page.wait_for_timeout(300)
             # demo replay running: loading states on the Demo page and the Command Center feed
             page.goto(base + "/demo", wait_until="networkidle"); page.click("#b-replay"); page.wait_for_timeout(2500)

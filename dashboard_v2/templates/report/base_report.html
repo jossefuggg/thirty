@@ -17,22 +17,19 @@
 {% macro ring(size=72) -%}
 <svg class="rp-ring" width="{{ size }}" height="{{ size }}" viewBox="0 0 72 72"
      role="img" aria-label="Thirty" focusable="false">
-  <defs>
-    <linearGradient id="rp-ring-coral" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FF7A5C"/>
-      <stop offset="1" stop-color="#FF5A3C"/>
-    </linearGradient>
-  </defs>
-  {# faint full track #}
-  <circle cx="36" cy="36" r="28" fill="none" stroke="#D5DAE1" stroke-width="6"
-          opacity="0.55"/>
-  {# the glowing first-five-days segment: ~1/6 of the ring, starting at 12 o'clock #}
-  <circle cx="36" cy="36" r="28" fill="none" stroke="url(#rp-ring-coral)"
-          stroke-width="6" stroke-linecap="round"
-          stroke-dasharray="30 146" transform="rotate(-90 36 36)"/>
+  {# faint full track — inherits color: var(--t-fg) from .rp-ring #}
+  <circle cx="36" cy="36" r="28" fill="none" stroke="currentColor" stroke-width="6"
+          opacity="0.18"/>
+  {# the glowing first-five-days segment: ~1/6 of the ring, starting at 12 o'clock.
+     .rp-ring-seg sets color: var(--t-coral), so stroke="currentColor" is the coral token. #}
+  <g class="rp-ring-seg">
+    <circle cx="36" cy="36" r="28" fill="none" stroke="currentColor"
+            stroke-width="6" stroke-linecap="round"
+            stroke-dasharray="30 146" transform="rotate(-90 36 36)"/>
+  </g>
   <text x="36" y="36" text-anchor="middle" dominant-baseline="central"
         font-family="Manrope, -apple-system, Segoe UI, Arial, sans-serif"
-        font-weight="800" font-size="20" fill="#14181F">30</text>
+        font-weight="800" font-size="20" fill="currentColor">30</text>
 </svg>
 {%- endmacro %}
 <!doctype html>
@@ -46,10 +43,12 @@
 <link rel="apple-touch-icon" href="/static/thirty/logo/apple-touch-icon-180.png">
 {# thirty.css provides the @font-face (Manrope) and brand tokens; report.css is
    the scoped mobile-first layer for these public pages. Order matters. #}
+<script>/* dark by default, light only when chosen (same rule as the console) */(function(){var t="dark";try{if(localStorage.getItem("thirty-theme")==="light")t="light";}catch(e){}document.documentElement.setAttribute("data-theme",t);})();</script>
 <link rel="stylesheet" href="/static/thirty/css/thirty.css">
 <link rel="stylesheet" href="/static/thirty/css/report.css">
 </head>
 <body class="rp-body">
+  <div class="bg-fx bg-fx-static" aria-hidden="true"><i class="glow g1"></i><i class="glow g2"></i><i class="ribbon"></i></div>
   <main class="rp-frame {% block body_class %}{% endblock %}" id="rp-main">
     {% block content %}{% endblock %}
   </main>

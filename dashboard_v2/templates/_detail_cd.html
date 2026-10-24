@@ -6,9 +6,13 @@
         {% set frac = 0 if frac < 0 else (1 if frac > 1 else frac) %}
         <div class="cd-ring" role="img" aria-label="Reporting deadline">
           <svg viewBox="0 0 160 160" aria-hidden="true">
-            <defs><filter id="cdglow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+            <defs>
+              <filter id="cdglow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              <linearGradient id="cdgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3D7BFF"/><stop offset="1" stop-color="#8B7CF6"/></linearGradient>
+            </defs>
             <circle cx="80" cy="80" r="70" fill="none" stroke="var(--track)" stroke-width="12"/>
-            <circle cx="80" cy="80" r="70" fill="none" stroke="var(--text)" stroke-width="12" stroke-linecap="round" stroke-dasharray="{{ CIRC }}" stroke-dashoffset="{{ (CIRC * (1 - frac))|round(1) }}"/>
+            {# progress ring: brand gradient; coral under 7 days #}
+            <circle cx="80" cy="80" r="70" fill="none" stroke="{{ 'var(--t-coral)' if r.days_left <= 7 else 'url(#cdgrad)' }}" stroke-width="12" stroke-linecap="round" stroke-dasharray="{{ CIRC }}" stroke-dashoffset="{{ (CIRC * (1 - frac))|round(1) }}"/>
             <circle cx="80" cy="80" r="70" fill="none" stroke="var(--t-coral)" stroke-width="12" stroke-linecap="round" stroke-dasharray="{{ (CIRC * ([5 / total, 1]|min))|round(1) }} {{ CIRC }}" filter="url(#cdglow)"/>
           </svg>
           <div class="cd {{ 'over' if r.days_left < 0 else 'red' if r.days_left <= 7 else 'orange' if r.days_left <= 14 else 'green' }}{{ ' five' if r.deadline_days|string == '5' }}" id="cd" data-due="{{ r.due_date }}" data-five="{{ '1' if r.deadline_days|string == '5' else '0' }}">
@@ -17,8 +21,8 @@
         </div>
         <p class="cd-sub d">due {{ r.due_label }} · {{ r.deadline_days }}-day report</p>
         {% elif r.due_date %}
-        <div class="cd-ring"><svg viewBox="0 0 160 160" aria-hidden="true"><circle cx="80" cy="80" r="70" fill="none" stroke="var(--t-steel-tint)" stroke-width="12"/><circle cx="80" cy="80" r="70" fill="none" stroke="var(--text)" stroke-width="12" stroke-linecap="round" stroke-dasharray="{{ CIRC }}" stroke-dashoffset="0"/></svg>
-          <div class="cd green"><div class="n" style="font-size:var(--fs-20)">{{ icon('check') }}</div></div></div>
+        <div class="cd-ring"><svg viewBox="0 0 160 160" aria-hidden="true"><circle cx="80" cy="80" r="70" fill="none" stroke="var(--track)" stroke-width="12"/><circle cx="80" cy="80" r="70" fill="none" stroke="var(--t-teal)" stroke-width="12" stroke-linecap="round" stroke-dasharray="{{ CIRC }}" stroke-dashoffset="0"/></svg>
+          <div class="cd green" style="--cd: var(--t-teal-text)"><div class="n" style="font-size:var(--fs-20)">{{ icon('check') }}</div></div></div>
         <p class="cd-sub d">Approved · was due {{ r.due_label }} · {{ r.deadline_days }}-day report</p>
         {% else %}
         <div class="cd-ring"><svg viewBox="0 0 160 160" aria-hidden="true"><circle cx="80" cy="80" r="70" fill="none" stroke="var(--track)" stroke-width="12"/></svg>

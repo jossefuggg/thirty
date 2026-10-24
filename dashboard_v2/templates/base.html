@@ -44,8 +44,9 @@
   --f-urgent: var(--t-violet); --f-reportable: var(--t-coral); --f-needs: var(--t-amber); --f-notrep: var(--t-fg-2); --f-pending: var(--t-fg-2); --f-approved: var(--t-teal); --f-info: var(--t-amber); --f-logged: var(--t-fg-2);
 }
 *, *::before, *::after { box-sizing: border-box; }
+input[type=checkbox], input[type=radio] { accent-color: var(--t-blue); }
 html { margin: 0; }
-body { margin: 0; min-height: 100vh; background: var(--t-page-bg); background-color: var(--t-bg-1); background-attachment: fixed; color: var(--text); font: 500 var(--fs-14)/1.5 var(--font); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body { margin: 0; min-height: 100vh; background: transparent; color: var(--text); font: 500 var(--fs-14)/1.5 var(--font); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 h1, h2, h3, h4, p, ul, ol, figure, dl, dd, blockquote { margin: 0; }
 h1, h2, h3 { font-size: inherit; font-weight: inherit; font-family: inherit; letter-spacing: 0; line-height: inherit; }
 ul, ol { padding: 0; list-style: none; }
@@ -237,15 +238,15 @@ a.helpmenu-row:hover { background: var(--hover); color: var(--text); }
 .pill::first-letter { text-transform: uppercase; }
 .pill .i { width: 13px; height: 13px; stroke-width: 2.5; }
 /* priority: violet highlight for urgent, neutral otherwise (coral is reserved for REPORTABLE / overdue / under 7 days) */
-.p-URGENT { background: var(--t-violet-tint); color: var(--t-violet-text); }
+.p-URGENT { background: var(--t-violet-tint); color: var(--t-violet-on); }
 .p-HIGH { background: var(--t-neutral-tint); color: var(--text); }
 .p-NORMAL { background: var(--t-neutral-tint); color: var(--muted); }
-.d-REPORTABLE { background: var(--t-coral-tint); color: var(--t-coral-text); }
-.d-NEEDS_INFO { background: var(--t-amber-tint); color: var(--t-amber-text); }
+.d-REPORTABLE { background: var(--t-coral-tint); color: var(--t-coral-on); }
+.d-NEEDS_INFO { background: var(--t-amber-tint); color: var(--t-amber-on); }
 .d-NOT_REPORTABLE { background: var(--t-neutral-tint); color: var(--text); }
 .s-pend { background: var(--t-neutral-tint); color: var(--muted); }
-.s-appr { background: var(--t-teal-tint); color: var(--t-teal-text); }
-.s-info { background: var(--t-amber-tint); color: var(--t-amber-text); }
+.s-appr { background: var(--t-teal-tint); color: var(--t-teal-on); }
+.s-info { background: var(--t-amber-tint); color: var(--t-amber-on); }
 .s-log { background: var(--t-neutral-tint); color: var(--muted); }
 .pill.cat { background: var(--t-neutral-tint); color: var(--text); }
 .pill-sm { height: 22px; padding: 0 8px; font-size: 11px; letter-spacing: 0; }
@@ -254,9 +255,9 @@ a.helpmenu-row:hover { background: var(--hover); color: var(--text); }
 .chip .i { width: 13px; height: 13px; }
 .chip.mem { background: var(--t-neutral-tint); color: var(--muted); font-family: var(--font); font-weight: 700; }
 .chip.due-green { background: var(--t-neutral-tint); color: var(--text); }
-.chip.due-orange { background: var(--t-blue-tint); color: var(--t-blue-text); }
-.chip.due-red { background: var(--t-coral-tint); color: var(--coral-text); }
-.chip.due-over { background: var(--t-coral-tint); color: var(--coral-text); border-color: var(--t-coral); }
+.chip.due-orange { background: var(--t-blue-tint); color: var(--t-blue-on); }
+.chip.due-red { background: var(--t-coral-tint); color: var(--t-coral-on); }
+.chip.due-over { background: var(--t-coral-tint); color: var(--t-coral-on); border-color: var(--t-coral); }
 
 /* buttons: thirty.css .btn is the base; these are the console aliases */
 .btn .i { width: 18px; height: 18px; }
@@ -367,6 +368,9 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
 /* legacy page helpers (demo + 404 pages) */
 .legacy .lede { color: var(--muted); margin: 6px 0 24px; font-size: var(--fs-16); }
 .legacy h1 { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-36); letter-spacing: -.03em; color: var(--text); }
+.legacy .ph h1 { font-size: 60px; letter-spacing: -.04em; }
+@media (max-width: 1200px) { .legacy .ph h1 { font-size: 44px; } }
+@media (max-width: 640px) { .legacy .ph h1 { font-size: 34px; } }
 .legacy .card { padding: 24px; } .legacy .card-h { padding: 0 0 16px; border: 0; height: auto; }
 .legacy h2, .legacy .card-h h2 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; font-weight: 800; }
 .legacy .btn-teal { background: var(--text); color: var(--bg); } .legacy .btn-navy { background: var(--text); color: var(--bg); }
@@ -381,6 +385,7 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
 {% block head %}{% endblock %}
 </head>
 <body>
+<div class="bg-fx" aria-hidden="true"><i class="glow g1"></i><i class="glow g2"></i><i class="glow g3"></i><i class="ribbon"></i></div>
 <div class="app">
   <div class="nav-scrim" id="nav-scrim" hidden></div>
   <aside class="sidebar" id="sidebar">
@@ -395,7 +400,17 @@ tr.state td { padding: 0 !important; border: 0 !important; } tr.state td .empty 
         {% for key, href, label, ic in items %}
         <a href="{{ href }}" class="{{ 'on' if page == key }}" {% if page == key %}aria-current="page"{% endif %} aria-label="{{ label }}" title="{{ label }}" data-tip="{{ label }}">{{ icon(ic) }}<span class="nav-lbl">{{ label }}</span>{% if key == 'home' %}<span class="badge" id="nav-queue"></span>{% endif %}</a>
         {% endfor %}
+        {% if group == 'Work' %}
+        {# the public reporter page opens in a new tab; it has its own layout, so it is never the active console page #}
+        <a href="/report" target="_blank" rel="noopener" class="{{ 'on' if page == 'report' }}" {% if page == 'report' %}aria-current="page"{% endif %} aria-label="Report a device problem (public page, opens in a new tab)" title="Report a device problem (public page)" data-tip="Report a device problem (public page)">{{ icon('external') }}<span class="nav-lbl">Report a device problem (public page)</span></a>
+        {% endif %}
       </div>
+      {% if group == 'Work' %}
+      <hr class="nav-div" aria-hidden="true">
+      <div role="group" aria-label="Plan">
+        <a href="/readiness" class="{{ 'on' if page == 'readiness' }}" {% if page == 'readiness' %}aria-current="page"{% endif %} aria-label="Device readiness" title="Device readiness" data-tip="Device readiness">{{ icon('scale') }}<span class="nav-lbl">Device readiness</span></a>
+      </div>
+      {% endif %}
       {% endfor %}
     </nav>
     <div class="sys-foot">

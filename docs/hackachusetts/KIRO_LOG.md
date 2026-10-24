@@ -20,3 +20,4 @@ Thirty 1.2.1 existed before today. Everything below was built today in Kiro on t
 | 15:55 | Kiro CLI + hooks | Used kiro-cli to draft SUBMISSION.md from the log and specs; the compliance-guard hook also fired inside the CLI and flagged one line, which we fixed | Hooks follow the work across IDE and CLI |
 | 16:25 | Specs (verification) | Spec 2 checked an interrupted task before trusting it and found a broken redirect (url_for pointed to a non-existent route); after answering a question the page would have crashed | Verify interrupted work, do not assume |
 | 16:25 | Parallel sessions | 3 Kiro sessions at once (front door, readiness, console layout); each owns its files and shared-file edits are sequenced, the last one waiting for our go | No overwritten work |
+| 17:45 | Specs | Spec 2 complete: 31 of 33 tasks, /report mounted additively; caught a test regression from new template folders; 172 tests pass | Main feature live |

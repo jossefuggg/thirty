@@ -1,133 +1,88 @@
 /* =====================================================================
    report.css — scoped, mobile-first stylesheet for the public reporter
    Front_Door (the /report flow). Loaded AFTER thirty.css, which provides
-   the @font-face (Manrope) and the brand tokens referenced below:
-     --t-coral #FF5A3C, --t-ink #14181F, --t-amber #F2B134, greys, radii.
-   Fallback hexes are given so these pages still read if a token is absent.
+   the @font-face (Manrope + JetBrains Mono) and all theme tokens used here.
+   Dark is the default theme; light is [data-theme="light"]. Every colour is a
+   thirty.css token — NO hard-coded colour literals live in this file, so both
+   themes track automatically and text holds 4.5:1 contrast.
 
-   Design: premium "mood-board" health dashboard —
-     - cool grey ground; content floats in one large rounded glass frame
-       (radius ~28px, soft deep shadow), ~24px margin on desktop
-     - full-bleed on phones (<= 640px)
-     - Manrope 800 headlines, large (clamp 40–64px), tight tracking
-     - coral pill = the one key action per screen; neutral/outline = secondary
-     - every button / option / link-button is >= 44x44px; body text >= 16px
-   Mobile-first: base rules target the phone; min-width queries scale up.
+   Layout: one centred column, max-width 640px on desktop (full width + 20px
+   padding on phones), starting ~64px from the top; the app ribbon (.bg-fx)
+   shows through behind it. Coral = the one key action per screen; the
+   secondary / "I don't know" control is a glass pill. Every tap target is
+   >= 44px and body text is >= 16px. Mobile-first: base rules target the phone.
    ===================================================================== */
 
-/* ---------- reset-ish base (phone first) ---------- */
 *, *::before, *::after { box-sizing: border-box; }
 
 .rp-body {
   margin: 0;
   min-height: 100vh;
-  font-family: var(--t-font-ui, "Manrope", -apple-system, "Segoe UI", Arial, sans-serif);
+  font-family: var(--t-font-ui);
   font-weight: 500;
-  font-size: 16px;                 /* R2 UI: body text never below 16px */
+  font-size: 16px;                 /* body text never below 16px */
   line-height: 1.5;
-  color: var(--t-ink, #14181F);
-  background:
-    radial-gradient(1200px 800px at 80% -10%, rgba(255,90,60,0.06), transparent 60%),
-    linear-gradient(180deg, var(--t-bg-1, #EEF1F4), var(--t-bg-2, #F7F8FA));
+  color: var(--t-fg);
+  background: transparent;         /* the page background lives on <html> (thirty.css) + .bg-fx */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
 
-/* ---------- the one big glass frame ---------- */
+/* ---------- one centred column ---------- */
 .rp-frame {
-  /* full-bleed on phones: the frame is the whole screen */
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
   min-height: 100vh;
-  margin: 0;
-  padding: 24px max(16px, env(safe-area-inset-left)) calc(32px + env(safe-area-inset-bottom));
-  background: var(--t-frame-bg, rgba(255,255,255,0.72));
-  border-radius: 0;
-  box-shadow: none;
+  padding: 64px 20px calc(40px + env(safe-area-inset-bottom));   /* ~64px from the top; 20px sides on phones */
   display: flex;
   flex-direction: column;
   gap: 24px;
+  background: transparent;
 }
-
 @media (min-width: 641px) {
-  .rp-body { padding: 0; }
-  .rp-frame {
-    max-width: 760px;
-    margin: 24px auto;                        /* ~24px margin on desktop */
-    min-height: calc(100vh - 48px);
-    padding: 40px 48px 48px;
-    border: 1px solid var(--t-glass-border, rgba(255,255,255,0.6));
-    border-radius: var(--t-radius-frame, 28px);
-    box-shadow: var(--t-frame-shadow, 0 32px 80px rgba(20,30,45,0.12));
-    backdrop-filter: var(--t-glass-blur, blur(18px));
-    -webkit-backdrop-filter: var(--t-glass-blur, blur(18px));
-  }
+  .rp-frame { padding: 64px 0 56px; }   /* the 640px cap already provides the side gutters */
 }
 
-/* ---------- header: the small glass "30" ring + label ---------- */
-.rp-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+/* ---------- header: the small glass "30" ring + wordmark ---------- */
+.rp-head { display: flex; align-items: center; gap: 12px; }
 .rp-ring {
+  color: var(--t-fg);                 /* the "30" + faint track inherit via currentColor */
   flex: 0 0 auto;
   display: block;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.65);
-  box-shadow: 0 6px 18px rgba(20,30,45,0.10);
+  border-radius: var(--t-radius-pill);
+  background: var(--t-glass-bg);
+  border: 1px solid var(--t-glass-border);
+  box-shadow: var(--t-glass-shadow);
   padding: 4px;
 }
-.rp-wordmark {
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  font-size: 18px;
-  color: var(--t-ink, #14181F);
-}
-.rp-wordmark small {
-  display: block;
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--t-slate, #5B6573);
-  letter-spacing: 0;
-}
+.rp-ring .rp-ring-seg { color: var(--t-coral); }   /* the glowing first-five-days segment */
+.rp-wordmark { font-weight: 800; letter-spacing: -0.01em; font-size: 18px; color: var(--t-fg); }
+.rp-wordmark small { display: block; font-weight: 600; font-size: 13px; color: var(--t-fg-2); letter-spacing: 0; }
 
 /* ---------- typography ---------- */
-.rp-eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--t-slate, #5B6573);
-  margin: 0 0 8px;
-}
+.rp-eyebrow { text-transform: uppercase; letter-spacing: 0.2em; font-size: 11px; font-weight: 700; color: var(--t-fg-2); margin: 0 0 8px; }
 .rp-title {
-  font-family: var(--t-font-display, "Manrope", sans-serif);
+  font-family: var(--t-font-display);
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
   line-height: 1.04;
-  font-size: clamp(40px, 9vw, 64px);          /* large, max two lines by copy */
+  font-size: clamp(36px, 8vw, 56px);   /* large, max two lines by copy */
   margin: 0;
-  color: var(--t-ink, #14181F);
+  color: var(--t-fg);
   text-wrap: balance;
 }
-.rp-lede {
-  font-size: 18px;
-  color: var(--t-slate, #5B6573);
-  margin: 12px 0 0;
-  max-width: 48ch;
-}
-.rp-section-title {
-  font-weight: 800;
-  font-size: 20px;
-  letter-spacing: -0.01em;
-  margin: 0 0 12px;
-}
+.rp-lede { font-size: 18px; color: var(--t-fg-2); margin: 12px 0 0; max-width: 48ch; }
+.rp-section-title { font-weight: 800; font-size: 20px; letter-spacing: -0.01em; margin: 0 0 12px; color: var(--t-fg); }
 
 /* ---------- cards ---------- */
 .rp-card {
-  background: var(--t-glass-bg, rgba(255,255,255,0.7));
-  border: 1px solid var(--t-glass-border, rgba(255,255,255,0.6));
-  border-radius: var(--t-radius-lg, 16px);
-  box-shadow: var(--t-glass-shadow, 0 20px 40px rgba(20,30,45,0.08));
+  background: var(--t-glass-bg);
+  border: 1px solid var(--t-glass-border);
+  border-radius: var(--t-radius-lg);
+  box-shadow: var(--t-glass-shadow);
+  backdrop-filter: var(--t-glass-blur);
+  -webkit-backdrop-filter: var(--t-glass-blur);
   padding: 20px;
 }
 .rp-card-lg { padding: 24px; }
@@ -135,237 +90,144 @@
 /* ---------- forms ---------- */
 .rp-form { display: flex; flex-direction: column; gap: 20px; }
 .rp-field { display: flex; flex-direction: column; gap: 8px; }
-.rp-label {
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--t-ink, #14181F);
-}
-.rp-hint { font-size: 14px; color: var(--t-slate, #5B6573); margin: 0; }
+.rp-label { font-weight: 700; font-size: 15px; color: var(--t-fg); }
+.rp-hint { font-size: 14px; color: var(--t-fg-2); margin: 0; }
 
 .rp-input, .rp-textarea, .rp-select {
   width: 100%;
-  min-height: 48px;                            /* >= 44px tap target */
+  min-height: 48px;
   font: inherit;
-  font-size: 16px;                             /* also stops iOS zoom-on-focus */
-  color: var(--t-ink, #14181F);
-  background: rgba(255,255,255,0.9);
-  border: 1.5px solid var(--t-stone, #D5DAE1);
-  border-radius: var(--t-radius, 12px);
+  font-size: 16px;                    /* also stops iOS zoom-on-focus */
+  color: var(--t-fg);
+  background: var(--t-input-bg);
+  border: 1px solid var(--t-line);
+  border-radius: var(--t-radius);
   padding: 12px 14px;
 }
 .rp-textarea { min-height: 140px; resize: vertical; line-height: 1.5; }
-.rp-input:focus, .rp-textarea:focus, .rp-select:focus,
 .rp-input:focus-visible, .rp-textarea:focus-visible, .rp-select:focus-visible {
   outline: none;
-  border-color: var(--t-coral, #FF5A3C);
-  box-shadow: 0 0 0 3px rgba(255,90,60,0.25);
+  border-color: var(--t-coral);
+  box-shadow: var(--t-focus);
 }
 
 /* ---------- buttons / pills ---------- */
 .rp-btn {
-  -webkit-appearance: none;
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 48px;                            /* R2 UI: >= 44px */
-  min-width: 48px;
+  -webkit-appearance: none; appearance: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; min-width: 48px;
   padding: 12px 22px;
-  font: inherit;
-  font-weight: 700;
-  font-size: 16px;
-  line-height: 1.2;
-  border-radius: var(--t-radius-pill, 999px);
-  border: 1.5px solid transparent;
-  cursor: pointer;
-  text-decoration: none;
+  font: inherit; font-weight: 700; font-size: 16px; line-height: 1.2;
+  border-radius: var(--t-radius-pill);
+  border: 1px solid transparent;
+  cursor: pointer; text-decoration: none;
   transition: background 150ms ease, border-color 150ms ease, transform 100ms ease;
 }
 .rp-btn:active { transform: translateY(1px); }
+.rp-btn:focus-visible { outline: none; box-shadow: var(--t-focus); }
 
-/* coral pill — the single key action per screen */
-.rp-btn-primary {
-  background: var(--t-coral, #FF5A3C);
-  color: #fff;
-}
-.rp-btn-primary:hover { background: var(--t-coral-hover, #E84E31); }
+/* coral pill — the single key action per screen (dark ink text on coral) */
+.rp-btn-primary { background: var(--t-coral); color: var(--t-primary-fg); }
+.rp-btn-primary:hover { background: var(--t-coral-hover); }
 
-/* neutral / outline pill — secondary + "I don't know" */
-.rp-btn-ghost {
-  background: rgba(255,255,255,0.7);
-  color: var(--t-ink, #14181F);
-  border-color: var(--t-stone, #D5DAE1);
-}
-.rp-btn-ghost:hover { background: #fff; border-color: var(--t-slate, #5B6573); }
+/* glass pill — secondary + "I don't know" */
+.rp-btn-ghost { background: var(--t-glass-bg); color: var(--t-fg); border-color: var(--t-secondary-border); }
+.rp-btn-ghost:hover { border-color: var(--t-fg-2); }
 
 .rp-btn-block { width: 100%; }
 
-/* visible keyboard focus for every interactive control (coral/ink) */
-.rp-btn:focus-visible,
-.rp-pill:focus-visible,
-.rp-icon-btn:focus-visible,
-a:focus-visible {
-  outline: 3px solid var(--t-coral, #FF5A3C);
-  outline-offset: 2px;
-}
-
 /* ---------- choice pills (interview + reporter type + language) ---------- */
 .rp-pills { display: flex; flex-wrap: wrap; gap: 12px; }
-
-/* a radio rendered as a large pill button */
 .rp-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  min-width: 48px;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 48px; min-width: 48px;
   padding: 12px 20px;
-  font-weight: 700;
-  font-size: 16px;
-  border-radius: var(--t-radius-pill, 999px);
-  border: 1.5px solid var(--t-stone, #D5DAE1);
-  background: rgba(255,255,255,0.7);
-  color: var(--t-ink, #14181F);
-  cursor: pointer;
-  user-select: none;
+  font-weight: 700; font-size: 16px;
+  border-radius: var(--t-radius-pill);
+  border: 1px solid var(--t-secondary-border);
+  background: var(--t-glass-bg);
+  color: var(--t-fg);
+  cursor: pointer; user-select: none;
 }
 .rp-pill input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.rp-pill:hover { border-color: var(--t-slate, #5B6573); }
-.rp-pill:has(input:checked) {
-  border-color: var(--t-coral, #FF5A3C);
-  background: var(--t-coral-tint, rgba(255,90,60,0.12));
-  color: var(--t-coral-text, #C2381A);
-}
-.rp-pill:has(input:focus-visible) {
-  outline: 3px solid var(--t-coral, #FF5A3C);
-  outline-offset: 2px;
-}
+.rp-pill:hover { border-color: var(--t-fg-2); }
+.rp-pill:has(input:checked) { border-color: var(--t-coral); background: var(--t-coral-tint); color: var(--t-coral-on); }
+.rp-pill:has(input:focus-visible) { outline: none; box-shadow: var(--t-focus); }
 
 /* ---------- device picker ---------- */
 .rp-devices { display: grid; grid-template-columns: 1fr; gap: 12px; }
 @media (min-width: 481px) { .rp-devices { grid-template-columns: 1fr 1fr; } }
-
 .rp-device {
-  display: block;
-  padding: 14px 16px;
-  border: 1.5px solid var(--t-stone, #D5DAE1);
-  border-radius: var(--t-radius, 12px);
-  background: rgba(255,255,255,0.7);
+  display: block; padding: 14px 16px;
+  border: 1px solid var(--t-secondary-border);
+  border-radius: var(--t-radius);
+  background: var(--t-glass-bg);
   cursor: pointer;
 }
 .rp-device input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.rp-device:has(input:checked) {
-  border-color: var(--t-coral, #FF5A3C);
-  background: var(--t-coral-tint, rgba(255,90,60,0.10));
-}
-.rp-device:has(input:focus-visible) {
-  outline: 3px solid var(--t-coral, #FF5A3C);
-  outline-offset: 2px;
-}
-.rp-device-brand { font-weight: 700; }
-.rp-device-meta { font-size: 14px; color: var(--t-slate, #5B6573); margin-top: 2px; }
+.rp-device:has(input:checked) { border-color: var(--t-coral); background: var(--t-coral-tint); }
+.rp-device:has(input:focus-visible) { outline: none; box-shadow: var(--t-focus); }
+.rp-device-brand { font-weight: 700; color: var(--t-fg); }
+.rp-device-meta { font-size: 14px; color: var(--t-fg-2); margin-top: 2px; }
 
 /* the pre-filled device chip on landing */
 .rp-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  display: inline-flex; align-items: center; gap: 8px;
   padding: 8px 14px;
-  border-radius: var(--t-radius-pill, 999px);
-  background: var(--t-coral-tint, rgba(255,90,60,0.12));
-  color: var(--t-coral-text, #C2381A);
-  font-weight: 700;
-  font-size: 15px;
+  border-radius: var(--t-radius-pill);
+  background: var(--t-coral-tint); color: var(--t-coral-on);
+  font-weight: 700; font-size: 15px;
 }
 
 /* ---------- progress (interview) ---------- */
 .rp-progress { display: flex; align-items: center; gap: 10px; }
-.rp-progress-track {
-  flex: 1 1 auto;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--t-stone, #D5DAE1);
-  overflow: hidden;
-}
-.rp-progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--t-coral, #FF5A3C);
-  transition: width 200ms ease;
-}
-.rp-progress-text { font-size: 13px; color: var(--t-slate, #5B6573); white-space: nowrap; }
+.rp-progress-track { flex: 1 1 auto; height: 6px; border-radius: var(--t-radius-pill); background: var(--t-track); overflow: hidden; }
+.rp-progress-fill { height: 100%; border-radius: var(--t-radius-pill); background: var(--t-coral); transition: width 200ms ease; }
+.rp-progress-text { font-family: var(--t-font-mono); font-size: 13px; color: var(--t-fg-2); white-space: nowrap; }
 
 /* ---------- review summary ---------- */
 .rp-summary { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
-.rp-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--t-stone, #D5DAE1);
-}
+.rp-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; padding: 14px 0; border-bottom: 1px solid var(--t-line); }
 .rp-row:last-child { border-bottom: none; }
-.rp-row-label { flex: 1 1 40%; font-weight: 700; color: var(--t-ink, #14181F); }
-.rp-row-value { flex: 1 1 50%; color: var(--t-slate, #5B6573); word-break: break-word; }
+.rp-row-label { flex: 1 1 40%; font-weight: 700; color: var(--t-fg); }
+.rp-row-value { flex: 1 1 50%; color: var(--t-fg-2); word-break: break-word; }
 .rp-row-value.is-unknown { font-style: italic; }
 .rp-row-edit { flex: 0 0 auto; }
 .rp-edit-form { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-top: 10px; }
 .rp-edit-form .rp-input { flex: 1 1 200px; }
 
 /* ---------- notices / errors ---------- */
-.rp-note {
-  padding: 14px 16px;
-  border-radius: var(--t-radius, 12px);
-  font-size: 15px;
-}
-.rp-note-amber {
-  background: var(--t-amber-tint, rgba(242,177,52,0.18));
-  color: var(--t-amber-text, #8A6400);
-  border: 1px solid rgba(242,177,52,0.5);
-}
-.rp-note-error {
-  background: var(--t-coral-tint, rgba(255,90,60,0.12));
-  color: var(--t-coral-text, #C2381A);
-  border: 1px solid rgba(255,90,60,0.4);
-}
-.rp-note-info {
-  background: var(--t-steel-tint, rgba(138,150,166,0.14));
-  color: var(--t-slate, #5B6573);
-}
+.rp-note { padding: 14px 16px; border-radius: var(--t-radius); font-size: 15px; }
+.rp-note-amber { background: var(--t-amber-tint); color: var(--t-amber-text); border: 1px solid var(--t-amber-tint); }
+.rp-note-error { background: var(--t-coral-tint); color: var(--t-coral-text); border: 1px solid var(--t-coral-tint); }
+.rp-note-info { background: var(--t-neutral-tint); color: var(--t-fg); }
 
 /* ---------- done / reference ---------- */
 .rp-ref {
-  font-family: var(--t-mono, ui-monospace, Menlo, monospace);
-  font-weight: 800;
+  font-family: var(--t-font-mono);
+  font-weight: 700;
   font-size: clamp(28px, 7vw, 40px);
   letter-spacing: 0.02em;
-  color: var(--t-ink, #14181F);
-  background: #fff;
-  border: 1.5px dashed var(--t-stone, #D5DAE1);
-  border-radius: var(--t-radius-lg, 16px);
+  color: var(--t-fg);
+  background: var(--t-glass-bg);
+  border: 1px dashed var(--t-secondary-border);
+  border-radius: var(--t-radius-lg);
   padding: 20px;
   text-align: center;
   word-break: break-all;
 }
 
 /* ---------- footer actions row ---------- */
-.rp-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+.rp-actions { display: flex; flex-direction: column; gap: 12px; }
 @media (min-width: 481px) {
   .rp-actions { flex-direction: row; align-items: center; }
   .rp-actions .rp-spacer { flex: 1 1 auto; }
 }
 
 /* small print, links */
-.rp-fine { font-size: 13px; color: var(--t-slate, #5B6573); }
-.rp-link { color: var(--t-coral-text, #C2381A); font-weight: 700; }
+.rp-fine { font-size: 13px; color: var(--t-fg-2); }
+.rp-link { color: var(--t-coral-text); font-weight: 700; }
 
-/* respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .rp-btn, .rp-progress-fill { transition: none; }
 }

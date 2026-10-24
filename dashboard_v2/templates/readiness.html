@@ -1,96 +1,92 @@
 {% extends "base.html" %}
 {% block content_class %}rd-page{% endblock %}
+{# The hero below is the page title ("Is your health feature a medical device?"),
+   with "Device readiness" as its small label, so suppress base.html's default
+   page header (its duplicate <h1>{{ title }}</h1> and the org eyebrow). #}
+{% block page_header %}{% endblock %}
 {% block head %}
 <style>
-  /* Device readiness - dark pitch-deck look. Self-contained so it survives the
-     concurrent base.html / thirty.css rewrite; the exact pitch-deck values are
-     pinned here, with --t-* tokens kept as fallbacks where they exist. The app
-     is dark by default; these styles read the same in light or dark because the
-     page paints its own dark ground. We do not edit thirty.css or base.html. */
+  /* Device readiness - styled entirely with the app's theme tokens (thirty.css),
+     so every colour switches correctly between dark (default) and light. We do
+     not hard-code any text/background/border/glass colour, and we do not edit
+     thirty.css or base.html. Layout (centred 1440px column, 48px padding) comes
+     from the shared .content wrapper - we don't override it. */
   .rd-page {
     --rd-gap: 20px;
     --rd-card-pad: 24px;
 
-    /* dark ground: #0F141B -> #18202B with soft blue + violet radial glows */
-    --rd-bg-1: #0F141B;
-    --rd-bg-2: #18202B;
-    --rd-glow-blue: rgba(61,123,255,0.26);
-    --rd-glow-violet: rgba(139,124,246,0.22);
+    --rd-fg: var(--t-fg);
+    --rd-fg-2: var(--t-fg-2);
 
-    /* text */
-    --rd-fg: #F2F4F7;
-    --rd-fg-2: #A9B3C1;
+    --rd-glass-bg: var(--t-glass-bg);
+    --rd-glass-border: var(--t-glass-border);
+    --rd-glass-blur: var(--t-glass-blur);
+    --rd-glass-shadow: var(--t-glass-shadow);
+    --rd-radius: var(--t-radius-lg);
+    --rd-line: var(--t-line);
+    --rd-panel: var(--t-panel);
+    --rd-input-bg: var(--t-input-bg);
+    --rd-track: var(--t-track);
 
-    /* glass */
-    --rd-glass-bg: rgba(255,255,255,0.06);
-    --rd-glass-border: rgba(255,255,255,0.12);
-    --rd-glass-blur: blur(18px);
-    --rd-glass-shadow: 0 20px 40px rgba(0,0,0,0.28);
-    --rd-radius: 16px;
-    --rd-line: rgba(255,255,255,0.12);
+    /* accents (accent-text tints are AA in both themes per thirty.css) */
+    --rd-blue: var(--t-blue);        --rd-blue-text: var(--t-blue-text);  --rd-blue-tint: var(--t-blue-tint);
+    /* a darker brand blue used only where white text sits on it (selected
+       pills), so the label clears 4.5:1 in both themes (#3D7BFF gives white
+       only 3.84:1). Matches the brand blue used for AA text on light. */
+    --rd-blue-strong: #2457C5;
+    --rd-teal: var(--t-teal);        --rd-teal-text: var(--t-teal-text);  --rd-teal-tint: var(--t-teal-tint);
+    --rd-coral: var(--t-coral);      --rd-coral-text: var(--t-coral-text);
+    --rd-amber: var(--t-amber);      --rd-amber-text: var(--t-amber-text); --rd-amber-tint: var(--t-amber-tint);
 
-    /* accents */
-    --rd-blue: #3D7BFF;      --rd-blue-text: #8FB2FF;
-    --rd-violet: #8B7CF6;
-    --rd-teal: #2BB5A0;      --rd-teal-text: #5FD8C4;
-    --rd-coral: var(--t-coral, #FF5A3C);   /* device / high-risk results only */
-    --rd-amber: var(--t-amber, #F2B134);   /* Borderline only */
+    --rd-primary-bg: var(--t-primary-bg);  --rd-primary-fg: var(--t-primary-fg);  --rd-primary-hover: var(--t-primary-hover);
 
-    /* primary pill: paper on ink text */
-    --rd-primary-bg: #F2F4F7;
-    --rd-primary-fg: #14181F;
-
-    --rd-pill: var(--t-radius-pill, 999px);
-    --rd-font: var(--t-font-display, "Manrope", -apple-system, "Segoe UI", Arial, sans-serif);
-    --rd-mono: var(--t-font-mono, "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace);
+    --rd-pill: var(--t-radius-pill);
+    --rd-font: var(--t-font-display);
+    --rd-mono: var(--t-font-mono);
 
     color: var(--rd-fg);
   }
 
-  /* Fill the window like the rest of the app and scroll the page normally:
-     neutralise any width cap / inner scroll box the content wrapper may impose
-     (we must not edit base.html / thirty.css, so override from the page class). */
-  .rd-page { width: 100%; max-width: none; height: auto; min-height: 0; overflow: visible; padding: 0; }
-
-  /* The page paints its own dark gradient + glows so the pitch-deck mood holds
-     regardless of the surrounding theme. Fixed so it reads as a backdrop. */
-  .rd-page::before {
-    content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none;
-    background:
-      radial-gradient(1100px 620px at 12% -8%, var(--rd-glow-blue), transparent 60%),
-      radial-gradient(1000px 680px at 100% 8%, var(--rd-glow-violet), transparent 62%),
-      linear-gradient(160deg, var(--rd-bg-1) 0%, var(--rd-bg-2) 100%);
-  }
-
-  /* Centered, full-window container: max 1440px, 48px side padding. */
-  .rd { max-width: 1440px; margin: 0 auto; padding: 32px 48px 64px; }
-
-  /* Desktop two-column grid: left ~60% (questions), right ~40% (sticky result).
-     The hero spans both columns. Below 1100px this collapses to one column. */
+  /* Two-column grid inside the shared .content column: left ~60% (questions),
+     right ~40% (sticky result). The hero spans both. The centred 1440px / 48px
+     column and the page background come from .content / body (thirty.css), so
+     we add no width cap, padding, or page background of our own. */
   .rd-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--rd-gap); align-items: start; }
   .rd-hero { grid-column: 1 / -1; }
   .rd-left { display: grid; gap: var(--rd-gap); min-width: 0; }
   .rd-right { display: grid; gap: var(--rd-gap); min-width: 0; position: sticky; top: 24px; align-self: start; }
 
-  /* Hero: Manrope 800 headline, tight tracking, dial badge beside it, and a
-     soft image backdrop behind the hero ONLY (never behind text blocks). */
-  .rd-hero { position: relative; display: grid; gap: 14px; padding: 28px 28px 30px; border-radius: 20px; overflow: hidden; isolation: isolate; }
-  .rd-hero::before {   /* the hero-only backdrop image */
-    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-    background-image: url("/static/thirty/img/brand/thirty-bg-03-hero.jpg");
-    background-size: cover; background-position: center;
-    opacity: 0.22;
-  }
-  .rd-hero::after {    /* darkening wash so headline text stays AA over the image */
-    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-    background: linear-gradient(180deg, rgba(15,20,27,0.55) 0%, rgba(15,20,27,0.78) 100%);
-  }
+  /* Hero: Manrope 800 headline, tight tracking, dial badge beside it. In DARK
+     mode a soft brand image sits behind the hero only (never behind text
+     blocks), with a wash for AA contrast; in LIGHT mode the image is dropped in
+     favour of a soft light-glass hero so text stays legible. */
+  .rd-hero { position: relative; display: grid; gap: 14px; padding: 28px 28px 30px; border-radius: 20px; overflow: hidden; isolation: isolate;
+    background: var(--rd-glass-bg); border: 1px solid var(--rd-glass-border); }
   .rd-hero-head { display: flex; align-items: center; gap: 18px; }
-  .rd-dial { flex: 0 0 auto; width: 160px; height: 160px; object-fit: contain; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.35)); }
+  .rd-dial { flex: 0 0 auto; width: 160px; height: 160px; object-fit: contain; }
   .rd-hero-copy { display: grid; gap: 10px; min-width: 0; }
   .rd-eyebrow { font-family: var(--rd-font); font-weight: 800; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--rd-blue-text); }
   .rd-hero h1 { font-family: var(--rd-font); font-weight: 800; font-size: clamp(34px, 7vw, 64px); line-height: 0.96; letter-spacing: -0.04em; margin: 0; color: var(--rd-fg); }
   .rd-hero p { font-size: 16px; line-height: 1.6; color: var(--rd-fg-2); max-width: 720px; margin: 0; }
+
+  /* Dark-mode only: brand image backdrop behind the hero + a dark wash so the
+     headline/intro stay AA over the image. Keyed on both the attribute and the
+     class the app uses, and default-dark (no attribute) also gets it. */
+  [data-theme="dark"] .rd-hero::before, .t-dark .rd-hero::before,
+  html:not([data-theme="light"]):not(.t-light) .rd-hero::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background-image: url("/static/thirty/img/brand/thirty-bg-03-hero.webp");
+    background-size: cover; background-position: center; opacity: 0.22;
+  }
+  [data-theme="dark"] .rd-hero::after, .t-dark .rd-hero::after,
+  html:not([data-theme="light"]):not(.t-light) .rd-hero::after {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: linear-gradient(180deg, rgba(15,20,27,0.55) 0%, rgba(15,20,27,0.80) 100%);
+  }
+  /* Light mode: never show the photo behind text; the soft light-glass hero
+     background above is enough. (Explicitly suppress the pseudo-elements.) */
+  [data-theme="light"] .rd-hero::before, .t-light .rd-hero::before,
+  [data-theme="light"] .rd-hero::after, .t-light .rd-hero::after { content: none; background: none; }
 
   /* Pre-answer preview in the right rail (before any question is answered). */
   .rd-preview { display: grid; gap: 14px; }
@@ -103,8 +99,8 @@
 
   /* Disclaimer band - top and bottom of the result. Amber accent (advisory). */
   .rd-disclaimer { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: 12px;
-    background: rgba(242,177,52,0.14); border: 1px solid rgba(242,177,52,0.28); color: var(--rd-fg); font-size: 13px; font-weight: 700; line-height: 1.5; }
-  .rd-disclaimer svg { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 1px; color: var(--rd-amber); }
+    background: var(--rd-amber-tint); border: 1px solid var(--rd-amber); color: var(--rd-fg); font-size: 13px; font-weight: 700; line-height: 1.5; }
+  .rd-disclaimer svg { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 1px; color: var(--rd-amber-text); }
 
   /* Frosted glass card. */
   .glass { background: var(--rd-glass-bg); -webkit-backdrop-filter: var(--rd-glass-blur); backdrop-filter: var(--rd-glass-blur);
@@ -122,55 +118,56 @@
 
   /* Pill option chips - big tap targets (>=44px). Selected = blue accent. */
   .pill { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 20px; border-radius: var(--rd-pill);
-    border: 1px solid var(--rd-line); background: rgba(255,255,255,0.04); color: var(--rd-fg); font-family: var(--rd-font); font-weight: 700; font-size: 15px;
+    border: 1px solid var(--rd-line); background: var(--rd-input-bg); color: var(--rd-fg); font-family: var(--rd-font); font-weight: 700; font-size: 15px;
     cursor: pointer; transition: border-color .15s, background .15s, color .15s; user-select: none; }
   .pill:hover { border-color: var(--rd-blue-text); }
-  .pill[aria-pressed="true"], .pill.on { background: var(--rd-blue); color: #fff; border-color: var(--rd-blue); }
-  .pill:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--rd-bg-1), 0 0 0 6px var(--rd-blue); }
+  .pill[aria-pressed="true"], .pill.on { background: var(--rd-blue-strong); color: #FFFFFF; border-color: var(--rd-blue-strong); }
+  .pill:focus-visible { outline: none; box-shadow: var(--t-focus); }
 
   .btn-pill { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 28px; border-radius: var(--rd-pill);
     border: 1px solid transparent; font-family: var(--rd-font); font-weight: 800; font-size: 16px; cursor: pointer; text-decoration: none; transition: background .15s, color .15s, border-color .15s, opacity .15s; }
   .btn-primary { background: var(--rd-primary-bg); color: var(--rd-primary-fg); }
-  .btn-primary:hover { background: #fff; color: var(--rd-primary-fg); }
-  .btn-accent { background: var(--rd-coral); color: #14181F; }   /* ONE key action per screen */
-  .btn-accent:hover { background: #E84E31; color: #14181F; }
+  .btn-primary:hover { background: var(--rd-primary-hover); color: var(--rd-primary-fg); }
+  .btn-accent { background: var(--rd-coral); color: var(--t-ink); }   /* ONE key action per screen */
+  .btn-accent:hover { background: var(--t-coral-hover); color: var(--t-ink); }
   .btn-ghost { background: transparent; color: var(--rd-fg); border-color: var(--rd-line); }
   .btn-ghost:hover { border-color: var(--rd-blue-text); }
   .btn-pill[disabled], .btn-pill.is-disabled { background: transparent; color: var(--rd-fg-2); border-color: var(--rd-line); cursor: not-allowed; opacity: .6; }
 
   .rd-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 
-  /* Result. Coral only for device/high-risk; amber only for Borderline. */
+  /* Result. Coral only for device/high-risk; amber only for Borderline. Both use
+     the AA accent-text tokens so they read in light and dark. */
   .verdict { font-family: var(--rd-font); font-weight: 800; font-size: clamp(24px, 5vw, 36px); line-height: 1.08; letter-spacing: -0.03em; margin: 6px 0 8px; color: var(--rd-fg); }
-  .verdict.is-device { color: var(--rd-coral); }
-  .verdict.is-borderline { color: var(--rd-amber); }
+  .verdict.is-device { color: var(--rd-coral-text); }
+  .verdict.is-borderline { color: var(--rd-amber-text); }
   .headline { font-size: 16px; line-height: 1.6; color: var(--rd-fg); margin: 0 0 16px; }
   .drivers { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; }
   .drivers li { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; color: var(--rd-fg); }
   .drivers li::before { content: ""; flex: 0 0 auto; width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: var(--rd-blue); }
   .paths { display: grid; gap: 8px; margin: 0 0 8px; }
-  .path { padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--rd-line); background: rgba(61,123,255,0.06); font-size: 14px; color: var(--rd-fg); }
+  .path { padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--rd-line); background: var(--rd-blue-tint); font-size: 14px; color: var(--rd-fg); }
   .path b { font-weight: 800; color: var(--rd-blue-text); }
   .cites { font-size: 13px; color: var(--rd-fg-2); line-height: 1.6; margin-top: 10px; }
   .cites a { color: var(--rd-blue-text); }
 
   /* Signals. Counts + product codes in JetBrains Mono. */
-  .signal-notice { font-size: 12px; color: var(--rd-fg-2); line-height: 1.5; margin: 0 0 16px; padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--rd-line); }
+  .signal-notice { font-size: 12px; color: var(--rd-fg-2); line-height: 1.5; margin: 0 0 16px; padding: 10px 14px; border-radius: 12px; background: var(--rd-panel); border: 1px solid var(--rd-line); }
   .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--rd-gap); }
   .sig-block h3 { font-family: var(--rd-font); font-weight: 800; font-size: 13px; letter-spacing: .1em; margin: 0 0 10px; text-transform: uppercase; color: var(--rd-fg-2); }
   .bars { display: grid; gap: 8px; }
   .bar { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; font-size: 14px; color: var(--rd-fg); }
   .bar .bt { overflow: hidden; text-overflow: ellipsis; }
   .bar .bn { font-family: var(--rd-mono); font-weight: 600; font-size: 13px; color: var(--rd-teal-text); }
-  .bar .track { grid-column: 1 / -1; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .bar .track { grid-column: 1 / -1; height: 8px; border-radius: 999px; background: var(--rd-track); overflow: hidden; }
   .bar .fill { height: 100%; background: var(--rd-blue); border-radius: 999px; }
   .wlf { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-  .wlf li { padding: 12px 14px; border-radius: 12px; background: rgba(61,123,255,0.08); border: 1px solid rgba(61,123,255,0.18); display: grid; gap: 2px; }
+  .wlf li { padding: 12px 14px; border-radius: 12px; background: var(--rd-blue-tint); border: 1px solid var(--rd-line); display: grid; gap: 2px; }
   .wlf .wl-l { font-weight: 700; font-size: 14px; color: var(--rd-fg); }
   .wlf .wl-m { font-size: 12px; color: var(--rd-fg-2); }
   .wlf .wl-m b { font-family: var(--rd-mono); font-weight: 600; color: var(--rd-teal-text); }
   .recalls { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-  .recalls li { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--rd-line); background: rgba(255,255,255,0.04); font-size: 14px; color: var(--rd-fg); }
+  .recalls li { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--rd-line); background: var(--rd-panel); font-size: 14px; color: var(--rd-fg); }
   .recalls .rd-date { font-family: var(--rd-mono); font-weight: 600; font-size: 13px; color: var(--rd-fg-2); }
   .recalls a { font-size: 13px; color: var(--rd-blue-text); }
   .years { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; color: var(--rd-fg); }
@@ -179,39 +176,34 @@
 
   /* Code picker. Search + code list; codes shown in mono. */
   .code-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-  .code-row input[type="search"], .code-row select { min-height: 48px; padding: 0 16px; border-radius: var(--rd-pill); border: 1px solid var(--rd-line); background: rgba(255,255,255,0.04); color: var(--rd-fg); font-size: 15px; }
+  .code-row input[type="search"], .code-row select { min-height: 48px; padding: 0 16px; border-radius: var(--rd-pill); border: 1px solid var(--rd-line); background: var(--rd-input-bg); color: var(--rd-fg); font-size: 15px; }
   .code-row input[type="search"] { min-width: 220px; flex: 1; }
   .code-row select { font-family: var(--rd-mono); font-size: 13px; }
   .code-row input::placeholder { color: var(--rd-fg-2); }
 
   /* Checklist. */
   .checklist { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
-  .ci { display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--rd-line); background: rgba(255,255,255,0.03); }
+  .ci { display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--rd-line); background: var(--rd-panel); }
   .ci .dot { width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--rd-fg-2); }
   .ci.has-thirty .dot { background: var(--rd-teal); }
   .ci .ct { font-size: 15px; font-weight: 700; line-height: 1.4; color: var(--rd-fg); }
   .ci .cc { font-size: 12px; color: var(--rd-fg-2); margin-top: 4px; line-height: 1.5; }
   .ci .tag { display: inline-block; margin-top: 8px; padding: 4px 12px; border-radius: var(--rd-pill); font-size: 12px; font-weight: 800; }
-  .ci .tag.handles { background: rgba(43,181,160,0.16); color: var(--rd-teal-text); border: 1px solid rgba(43,181,160,0.32); }
-  .ci .tag.flags { background: rgba(242,177,52,0.14); color: var(--rd-amber); border: 1px solid rgba(242,177,52,0.28); }
+  .ci .tag.handles { background: var(--rd-teal-tint); color: var(--rd-teal-text); border: 1px solid var(--rd-teal); }
+  .ci .tag.flags { background: var(--rd-amber-tint); color: var(--rd-amber-text); border: 1px solid var(--rd-amber); }
 
   .hidden { display: none !important; }
 
   /* Below 1100px: single column. The result rail stops being sticky and flows
-     after the questions. */
+     after the questions. (Side padding + centring come from the shared .content
+     column, which already eases to 32px below 1200px - we don't re-pad here.) */
   @media (max-width: 1100px) {
     .rd-grid { grid-template-columns: 1fr; }
     .rd-right { position: static; top: auto; }
   }
 
-  /* Tablet / narrow: ease the side padding in. */
-  @media (max-width: 820px) {
-    .rd { padding: 24px 24px 56px; }
-  }
-
   /* 390px / small phone. */
   @media (max-width: 560px) {
-    .rd { gap: 16px; padding: 16px 16px 48px; }
     .rd-grid { gap: 16px; }
     .rd-hero { padding: 20px 18px 22px; }
     .rd-hero-head { flex-direction: column; align-items: flex-start; gap: 12px; }
@@ -236,9 +228,9 @@
 
   <header class="rd-hero">
     <div class="rd-hero-head">
-      <img class="rd-dial" src="/static/thirty/img/brand/thirty-dial-30-days.png" alt="" width="160" height="160" aria-hidden="true">
+      <img class="rd-dial" src="/static/thirty/img/brand/thirty-dial-30-days.webp" alt="" width="160" height="160" aria-hidden="true">
       <div class="rd-hero-copy">
-        <span class="rd-eyebrow">Plan · decision support</span>
+        <span class="rd-eyebrow">Device readiness</span>
         <h1>Is your health feature<br>a medical device?</h1>
         <p>Answer six plain-language questions. You get a likely category, what has already gone wrong with similar devices in public FDA data, and exactly what starts on day one if it is a device - and which of those Thirty handles.</p>
       </div>

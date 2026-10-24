@@ -7,12 +7,6 @@
   #cc-err .empty { padding: 12px 16px; grid-template-columns: auto auto 1fr auto; display: grid; text-align: left; align-items: center; gap: 12px; border: 2px solid var(--t-amber); border-radius: var(--r-panel); }
   #cc-err .empty .art { width: 32px; height: 32px; border-radius: 8px; } #cc-err .empty .art .i { width: 18px; height: 18px; } #cc-err .empty p { margin: 0; max-width: none; }
 
-  /* header backdrop: the team ribbon, low opacity, on the right of the header only (never behind the headline text) */
-  .cc-page .ph::before { content: ""; position: absolute; z-index: 0; pointer-events: none; right: calc(var(--content-pad) * -1); top: -48px; width: min(720px, 60%); height: 240px;
-    background: url("/static/thirty/img/brand/thirty-ribbon-dark.webp") right center / cover no-repeat; opacity: .42;
-    -webkit-mask-image: linear-gradient(to left, #000 35%, transparent 95%); mask-image: linear-gradient(to left, #000 35%, transparent 95%); }
-  [data-theme="light"] .cc-page .ph::before { opacity: .22; }
-
   /* hero: the team dial + most urgent clock on the left, the next 3 deadlines on the right */
   .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--s4); align-items: center; padding: var(--s3) var(--s4); }
   .hero-l { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: var(--s3); align-items: center; min-width: 0; }
@@ -32,15 +26,13 @@
   .next .due.soon, .next .due.over { color: var(--t-coral-text); }
   .next .none { color: var(--muted); font-size: var(--fs-14); }
   @media (max-width: 1100px) { .hero { grid-template-columns: 1fr; } .next { border-left: 0; padding-left: 0; border-top: 1px solid var(--border); padding-top: var(--s3); } }
-  @media (max-width: 640px) { .hero { padding: var(--s3); } .hero-l { grid-template-columns: 112px minmax(0, 1fr); gap: var(--s2); } .dial { width: 112px; height: 112px; } .hero-clock { font-size: 28px; } .cc-page .ph::before { width: 70%; opacity: .3; } }
+  @media (max-width: 640px) { .hero { padding: var(--s3); } .hero-l { grid-template-columns: 112px minmax(0, 1fr); gap: var(--s2); } .dial { width: 112px; height: 112px; } .hero-clock { font-size: 28px; } }
 
   /* compact number tiles with a 14-day sparkline; Overdue is the only solid-coral tile */
   .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s2); }
   .kpi { padding: 16px 18px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; position: relative; overflow: hidden; border-radius: var(--r-panel); }
   .kpi .lbl { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); align-self: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .kpi .ic { display: grid; place-items: center; color: var(--muted); } .kpi .ic .i { width: 18px; height: 18px; }
-  .cc-page .ph::before { }
-  @media (max-width: 640px) { .cc-page .ph::before { right: 0; top: -24px; } }
   .kpi .v { grid-column: 1; font-family: var(--mono); font-weight: 700; font-size: 44px; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--text); margin-top: 4px; }
   .kpi .foot { grid-column: 1 / 3; display: grid; grid-template-columns: minmax(0, 1fr) 96px; align-items: end; gap: 10px; height: 28px; margin-top: 10px; }
   .kpi .delta { font-size: var(--fs-12); color: var(--muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -267,30 +259,29 @@ var AGENT_NAME = {{ AGENT.name|tojson }};
     var sig = (k.spark || []).join(",") + color; if (sp && card.dataset.sp !== sig) { card.dataset.sp = sig; sp.innerHTML = live ? V.spark(k.spark, color) : ""; }
   }
 
-  /* hero: the single most-urgent open, reportable item drives the 30-day ring + clock. Data is already in /api/state. */
-  var CIRC = 2 * Math.PI * 52;  // r=52
+  /* hero: open clocks from /api/state (already sorted by due date). The first drives the big clock, the next 3 the list. */
+  function dueText(ms) { return ms < 0 ? V.dueShort(ms) : V.dueShort(ms) + " left"; }
+  /* write markup only when it changed, so a focused link inside keeps keyboard focus across polls */
+  function setHTML(el, html) { if (el.dataset.sig !== html) { el.dataset.sig = html; el.innerHTML = html; } }
   function hero(s) {
-    var open = (s.feed || []).concat(s.queue || []).filter(function (r) { return r.due_date && r.open; });
-    var seen = {}, uniq = [];
-    open.forEach(function (r) { if (!seen[r.id]) { seen[r.id] = 1; uniq.push(r); } });
-    uniq.sort(function (a, b) { return V.dueEnd(a.due_date) - V.dueEnd(b.due_date); });
-    var r = uniq[0];
-    var elapsed = $("ring-elapsed"), five = $("ring-five"), n = $("ring-n"), clock = $("hero-clock"), sub = $("hero-sub");
+    var open = (s.clock || []).filter(function (r) { return r.due_date && r.open !== false; })
+      .sort(function (a, b) { return V.dueEnd(a.due_date) - V.dueEnd(b.due_date); });
+    var r = open[0], clock = $("hero-clock"), sub = $("hero-sub"), list = $("next-list");
     if (!r) {
-      clock.textContent = "No open deadlines"; clock.classList.remove("over");
+      clock.textContent = "No open deadlines"; clock.classList.remove("over", "soon");
       sub.textContent = "Reportable complaints with a running clock appear here.";
-      n.textContent = "30"; elapsed.setAttribute("stroke-dashoffset", CIRC); return;
+      list.innerHTML = '<li class="none">Nothing else due.</li>'; return;
     }
-    var total = (r.deadline_days && +r.deadline_days) || 30;
-    var ms = V.dueEnd(r.due_date) - Date.now(), daysLeft = ms / V.DAY;
-    var frac = Math.max(0, Math.min(1, (total - daysLeft) / total));   // elapsed share
-    elapsed.setAttribute("stroke-dasharray", CIRC);
-    elapsed.setAttribute("stroke-dashoffset", (CIRC * (1 - frac)).toFixed(1));
-    five.setAttribute("stroke-dasharray", (CIRC * Math.min(1, 5 / total)).toFixed(1) + " " + CIRC);
-    n.textContent = ms < 0 ? "0" : Math.ceil(daysLeft);
-    clock.textContent = V.dueShort(ms);
-    clock.classList.toggle("over", ms < 0);
-    sub.innerHTML = '<a class="lnk" href="/complaint/' + encodeURIComponent(r.id) + '" data-open="' + esc(r.id) + '">#' + esc(r.id) + " · " + esc(r.device || "Device not specified") + "</a> · " + esc(V.label(r.decision)) + " · " + r.deadline_days + "-day report";
+    var ms = V.dueEnd(r.due_date) - Date.now();
+    clock.textContent = dueText(ms);
+    clock.classList.toggle("over", ms < 0); clock.classList.toggle("soon", ms >= 0 && ms <= 7 * V.DAY);
+    setHTML(sub, '<a class="lnk" href="/complaint/' + encodeURIComponent(r.id) + '" data-open="' + esc(r.id) + '"><span class="mono">#' + esc(r.id) + "</span> · " + esc(r.device || "Device not specified") + "</a> · " + esc(r.deadline_days) + "-day report");
+    var next = open.slice(1, 4);
+    setHTML(list, next.length ? next.map(function (x) {
+      var m = V.dueEnd(x.due_date) - Date.now(), c = m < 0 ? "over" : m <= 7 * V.DAY ? "soon" : "";
+      return '<li><a href="/complaint/' + encodeURIComponent(x.id) + '" data-open="' + esc(x.id) + '"><span class="id">#' + esc(x.id) + '</span><span class="dv">' + esc(x.device || "Device not specified") +
+        '</span><span class="due ' + c + '">' + esc(dueText(m)) + "</span></a></li>";
+    }).join("") : '<li class="none">Nothing else due.</li>');
   }
 
   function refresh() {

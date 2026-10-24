@@ -8,13 +8,16 @@
   .crumb a { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-weight: 700; } .crumb a:hover { color: var(--text); }
   .crumb .i { width: 16px; height: 16px; }
   .head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-  .head h2 { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-36); letter-spacing: -.03em; line-height: 1.1; }
+  .head h2 { font-family: var(--font-display); font-weight: 800; font-size: 56px; letter-spacing: -.04em; line-height: 1.04; }
+  @media (max-width: 1200px) { .head h2 { font-size: 44px; } }
+  .crumb { font-size: 11px !important; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+  .crumb a { font-weight: 700 !important; }
   .head .id { font: 700 var(--fs-20)/1 var(--mono); color: var(--muted); }
   .meta { display: flex; gap: 8px 24px; flex-wrap: wrap; color: var(--muted); font-size: var(--fs-14); margin-bottom: var(--s3); }
   .meta b { color: var(--text); font-weight: 700; }
 
   /* ---------- layout: single readable column ---------- */
-  .dt { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); align-items: start; max-width: 920px; }
+  .dt { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); align-items: start; }
   .cb { padding: var(--s3); }
   .k { font-size: var(--fs-13); font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); }
 
@@ -22,7 +25,7 @@
   .verdict { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s4); padding: var(--s4); align-items: center; }
   @media (max-width: 760px) { .verdict { grid-template-columns: 1fr; gap: var(--s3); padding: var(--s3); } .verdict-side { order: -1; } }
   .verdict-main { min-width: 0; }
-  .verdict-eyebrow { font-size: var(--fs-13); font-weight: 700; color: var(--muted); margin: 0 0 6px; }
+  .verdict-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
   .verdict-word { font-family: var(--font-display); font-weight: 800; font-size: 52px; letter-spacing: -.035em; line-height: 1; margin: 0; display: flex; align-items: center; gap: 12px; }
   .verdict-word .i { width: 40px; height: 40px; flex: none; }
   .verdict.REPORTABLE .verdict-word { color: var(--t-coral); }
@@ -42,15 +45,17 @@
 
   /* deadline ring on the side of the verdict */
   .verdict-side { display: grid; justify-items: center; gap: 8px; }
-  .cd-ring { width: 150px; height: 150px; position: relative; filter: drop-shadow(0 8px 20px rgba(20,30,45,.12)); }
+  .cd-ring { width: 150px; height: 150px; position: relative; filter: drop-shadow(0 10px 24px rgba(0,0,0,.28)); }
   .cd-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
   .cd { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; text-align: center; }
-  .cd .n { font-family: var(--font-display); font-weight: 800; font-size: 44px; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--cd); }
+  .cd .n { font-family: var(--mono); font-weight: 700; font-size: 34px; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--cd); }
   .cd .n small { font-family: var(--font); font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); display: block; margin-top: 2px; }
   .cd .d { font-size: var(--fs-13); color: var(--muted); font-weight: 700; max-width: 150px; }
   .cd.green, .cd.orange { --cd: var(--text); } .cd.red, .cd.over, .cd.five { --cd: var(--t-coral); } .cd.na { --cd: var(--muted); }
   .track { height: 10px; border-radius: var(--r-pill); background: var(--track); overflow: hidden; }
-  .track i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--text); }
+  .track i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--t-grad); }
+  .banner.ok { background: var(--t-teal-tint) !important; color: var(--t-teal-text) !important; border-color: rgba(43,181,160,.4) !important; }
+  .banner.ok span { color: var(--text) !important; opacity: .8; }
   .track.low i { background: var(--muted); }
   .verdict-pdf.btn-lg { min-width: 200px; }
   .verdict-noform { color: var(--muted); font-size: var(--fs-14); font-weight: 700; }
