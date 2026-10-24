@@ -10,7 +10,7 @@ import copy, csv, datetime as dt, io, json, os, re, secrets, shutil, signal, sub
 from collections import defaultdict
 
 import requests
-from flask import Flask, abort, jsonify, redirect, render_template, request, send_from_directory
+from flask import Flask, abort, jsonify, make_response, redirect, render_template, request, send_from_directory
 
 if getattr(sys, "frozen", False):  # PyInstaller build (desktop app): everything is unpacked under _MEIPASS
     CODE_DIR = sys._MEIPASS
@@ -796,7 +796,8 @@ def _globals():
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 
-SETUP_FREE = ("/setup", "/api/setup", "/api/plugins", "/api/health", "/static/", "/readiness", "/api/readiness")
+SETUP_FREE = ("/setup", "/api/setup", "/api/plugins", "/api/health", "/static/", "/readiness", "/api/readiness",
+              "/report", "/start")  # the public, no-login reporter Front_Door (and its /report/* sub-paths) must be reachable before first-run setup
 
 
 # Write endpoints that configure the console or drive the demo. All refuse in the public demo so a
@@ -853,8 +854,28 @@ def api_setup():
     return jsonify(ok=True, setup=st, agent=get_agent().name)
 
 
+START_COOKIE = "thirty_start_seen"
+REPO_URL = "https://github.com/jossefuggg/thirty"
+SUBMISSION_URL = "https://github.com/jossefuggg/thirty/blob/hackachusetts/docs/hackachusetts/SUBMISSION.md"
+
+
+def _needs_start(public_demo, cookies):
+    """A public-demo visitor who has not seen the start page yet is sent there first."""
+    return bool(public_demo) and cookies.get(START_COOKIE) != "1"
+
+
+@app.route("/start")
+def start_page():
+    resp = make_response(render_template("start.html", page="start", title="Start",
+                                         repo_url=REPO_URL, submission_url=SUBMISSION_URL))
+    resp.set_cookie(START_COOKIE, "1", path="/", samesite="Lax", httponly=True)
+    return resp
+
+
 @app.route("/")
 def home():
+    if _needs_start(PUBLIC_DEMO, request.cookies):
+        return redirect("/start")
     return render_template("home.html", page="home", title="Command Center")
 
 

@@ -1,0 +1,50 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Wire the route, cookie and home guard": [
+      {
+        "executionId": "2c949af3-cfda-4f7b-8d19-4f08e51b8a3f",
+        "chatSessionId": "sess_98c0fc92-8a91-4fdc-a944-5f0ce188aa7a",
+        "timestamp": 1792882501725
+      },
+      {
+        "executionId": "2c949af3-cfda-4f7b-8d19-4f08e51b8a3f",
+        "chatSessionId": "sess_98c0fc92-8a91-4fdc-a944-5f0ce188aa7a",
+        "timestamp": 1792882505075
+      }
+    ],
+    "2.1 Write `dashboard_v2/templates/start.html` per the design skeleton": [
+      {
+        "executionId": "2c949af3-cfda-4f7b-8d19-4f08e51b8a3f",
+        "chatSessionId": "sess_98c0fc92-8a91-4fdc-a944-5f0ce188aa7a",
+        "timestamp": 1792882501769
+      },
+      {
+        "executionId": "2c949af3-cfda-4f7b-8d19-4f08e51b8a3f",
+        "chatSessionId": "sess_98c0fc92-8a91-4fdc-a944-5f0ce188aa7a",
+        "timestamp": 1792882505663
+      }
+    ],
+    "3.1 Update `tests/test_public_demo.py`": [
+      {
+        "executionId": "2c949af3-cfda-4f7b-8d19-4f08e51b8a3f",
+        "chatSessionId": "sess_98c0fc92-8a91-4fdc-a944-5f0ce188aa7a",
+        "timestamp": 1792882501873
+      }
+    ],
+    "4.1 Write example tests in `tests/test_start_page.py`": [
+      {
+        "executionId": "2c949af3-cfda-4f7b-8d19-4f08e51b8a3f",
+        "chatSessionId": "sess_98c0fc92-8a91-4fdc-a944-5f0ce188aa7a",
+        "timestamp": 1792882501900
+      }
+    ],
+    "6. Final checkpoint": [
+      {
+        "executionId": "2c949af3-cfda-4f7b-8d19-4f08e51b8a3f",
+        "chatSessionId": "sess_98c0fc92-8a91-4fdc-a944-5f0ce188aa7a",
+        "timestamp": 1792882501932
+      }
+    ]
+  }
+}

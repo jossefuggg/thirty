@@ -583,3 +583,81 @@ def test_console_mounts_reporter_and_submits_reporter_source_complaint(tmp_path)
             rows = [r for r in _csv.DictReader(f) if r["vigil_id"] == ref]
         assert len(rows) == 1
         assert rows[0]["source"] == "reporter"
+
+
+# =========================================================================
+# First-run setup gate: the public /report Front_Door must be reachable on a
+# FRESH install before setup is completed (SETUP_FREE allowlist), while normal
+# pages still redirect to /setup. Proven on the real console app.
+# =========================================================================
+def test_report_is_reachable_before_first_run_setup(tmp_path):
+    """On a fresh install (setup NOT completed, not a public demo), GET /report
+    returns 200 — not a redirect to /setup — because /report is on SETUP_FREE.
+    A normal page still redirects to /setup, proving the gate is active."""
+    data_dir = str(tmp_path)
+    saved_env = {k: os.environ.get(k) for k in (
+        "VIGIL_DIR", "THIRTY_AGENT", "THIRTY_SAMPLE_DELAY", "THIRTY_SKIP_RUNTIME_INIT",
+        "THIRTY_PUBLIC_DEMO", "VIGIL_CONSOLE_ACTIONS", "VIGIL_CONSOLE_SETTINGS", "VIGIL_CONSOLE_INTAKE",
+    )}
+    saved_intake = {"INTAKE": _intake.INTAKE, "RAW": _intake.RAW, "INDEX": _intake.INDEX,
+                    "process": _intake.vigil.process, "start_worker": _intake.start_worker}
+    saved_agent = _agents.get_agent()
+    prev_mod = sys.modules.get("console_fresh_install")
+    try:
+        os.environ["VIGIL_DIR"] = data_dir            # fresh temp dir: no setup.json -> setup required
+        os.environ["THIRTY_AGENT"] = "sample"
+        os.environ["THIRTY_SAMPLE_DELAY"] = "0"
+        os.environ["THIRTY_SKIP_RUNTIME_INIT"] = "1"  # import side-effect free; we mount explicitly
+        os.environ.pop("THIRTY_PUBLIC_DEMO", None)    # NOT the public demo, so the first-run gate is active
+        os.environ["VIGIL_CONSOLE_ACTIONS"] = os.path.join(data_dir, "actions.csv")
+        os.environ["VIGIL_CONSOLE_SETTINGS"] = os.path.join(data_dir, "settings.json")
+        os.environ["VIGIL_CONSOLE_INTAKE"] = os.path.join(data_dir, "intake.json")
+        _agents.set_agent(None)
+
+        spec = _ilu.spec_from_file_location(
+            "console_fresh_install", os.path.join(ROOT, "dashboard_v2", "app.py"))
+        app_module = _ilu.module_from_spec(spec)
+        sys.modules["console_fresh_install"] = app_module
+        spec.loader.exec_module(app_module)
+        app_module.app.config["TESTING"] = True
+
+        # Fresh install: setup is genuinely required, and the public-demo lock is off.
+        assert app_module.tsetup.required() is True
+        assert app_module.PUBLIC_DEMO is False
+
+        # Neutralise the runtime's threads/model/seeding, then mount intake + reporter.
+        app_module.ensure_sample_data = lambda *a, **k: None
+        app_module.health_loop = lambda *a, **k: None
+        app_module.start_intake_worker = lambda *a, **k: None
+        _intake.INTAKE = os.path.join(data_dir, "intake")
+        _intake.RAW = os.path.join(_intake.INTAKE, "raw")
+        _intake.INDEX = os.path.join(_intake.INTAKE, "index.csv")
+        _intake.vigil.process = lambda *a, **k: None
+        _intake.start_worker = lambda *a, **k: None
+        app_module.init_runtime()
+
+        client = app_module.app.test_client()
+
+        # A normal page is gated to /setup (proves the first-run gate is active).
+        home = client.get("/")
+        assert home.status_code == 302
+        assert "/setup" in home.headers["Location"]
+
+        # /report (and its sub-paths) bypass the gate: 200, not a redirect.
+        report = client.get("/report")
+        assert report.status_code == 200, f"expected 200, got {report.status_code} -> {report.headers.get('Location')}"
+        report_slug = client.get("/report/AF")
+        assert report_slug.status_code == 200
+    finally:
+        for k, v in saved_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        _intake.INTAKE = saved_intake["INTAKE"]; _intake.RAW = saved_intake["RAW"]; _intake.INDEX = saved_intake["INDEX"]
+        _intake.vigil.process = saved_intake["process"]; _intake.start_worker = saved_intake["start_worker"]
+        _agents.set_agent(saved_agent)
+        if prev_mod is None:
+            sys.modules.pop("console_fresh_install", None)
+        else:
+            sys.modules["console_fresh_install"] = prev_mod

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-A public landing page at `/start` for the Thirty console. The page introduces Thirty in one headline and one sentence, then offers three doors: the reporter front door (`/report`), the quality-team console (`/`), and the device readiness check (`/readiness`). It needs no login, works in the public demo, and is exempt from the first-run setup redirect and from the public-demo locks. It uses the same dark pitch-deck look as the readiness page (thirty.css tokens, ribbon background, glass cards) in a centred 1440px column that also works at 390px width.
+A public landing page at `/start` for the Thirty console. The page carries a top bar (brand mark, in-page nav, two call-to-action pills), a pitch-deck hero (large Manrope headline, one sentence, decorative ribbon and badge art), then offers three doors: the reporter front door (`/report`), the quality-team console (`/`), and the device readiness check (`/readiness`). It needs no login, works in the public demo, and is exempt from the first-run setup redirect and from the public-demo locks. It uses the same dark pitch-deck look as the readiness page (thirty.css tokens, ribbon background, glass cards) in a centred 1440px column that also works at 390px width.
 
 In the public demo only, the first visit to `/` in a browser session redirects to `/start`, so judges land on the landing page; the console stays one click away. The first visit is tracked with a plain browser-session cookie, not the Flask session.
 
@@ -45,7 +45,7 @@ Scope is `/start` and the `/` redirect only. No link back to `/start` is added t
 1. THE Start_Page SHALL show the label text "Thirty" above the headline.
 2. THE Start_Page SHALL show the headline text "Every complaint, on the clock." in Instrument Serif.
 3. THE Start_Page SHALL show the sentence "Medical device complaint reporting: complete at the bedside, decided on time, approved by a named person." below the headline.
-4. THE Start_Page SHALL show the Dial_Image beside the hero text, with a non-empty `alt` attribute.
+4. THE Start_Page SHALL show the Dial_Image with a non-empty `alt` attribute, beside the hero text on wide viewports and above it in the single-column layout.
 
 ### Requirement 3: Door cards
 

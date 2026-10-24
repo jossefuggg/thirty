@@ -7,7 +7,7 @@ Add a public landing page at `GET /start` to the Flask console (`dashboard_v2/ap
 ## Tasks
 
 - [ ] 1. Add the `/start` route and the public-demo redirect in `dashboard_v2/app.py`
-  - [ ] 1.1 Wire the route, cookie and home guard
+  - [-] 1.1 Wire the route, cookie and home guard
     - Add `make_response` to the existing `from flask import ...` line
     - Append `"/start"` to the `SETUP_FREE` tuple; leave `LOCKED_ENDPOINTS` unchanged
     - Next to `home()`, add the constants `START_COOKIE = "thirty_start_seen"`, `REPO_URL` and `SUBMISSION_URL` (values from design.md)
@@ -17,7 +17,7 @@ Add a public landing page at `GET /start` to the Flask console (`dashboard_v2/ap
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 6.1, 6.2, 6.3, 7.1, 7.2, 7.3_
 
 - [ ] 2. Create the landing page template
-  - [ ] 2.1 Write `dashboard_v2/templates/start.html` per the design skeleton
+  - [-] 2.1 Write `dashboard_v2/templates/start.html` per the design skeleton
     - `{% extends "base.html" %}`; set `content_class` to `st-page`; empty the `page_header` block
     - Do not add a `bg-fx` div; `base.html` already renders it with `aria-hidden="true"`
     - In the `head` block `<style>`, add the inline `@font-face` for "Instrument Serif" from `/static/thirty/fonts/instrument-serif-400.woff2`, plus the `st-` rules and the `.glass` rule built only from `thirty.css` tokens, including the 980px and 640px media queries
@@ -28,13 +28,13 @@ Add a public landing page at `GET /start` to the Flask console (`dashboard_v2/ap
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3, 5.4, 5.5_
 
 - [ ] 3. Keep the public-demo tests working
-  - [ ] 3.1 Update `tests/test_public_demo.py`
+  - [~] 3.1 Update `tests/test_public_demo.py`
     - Change the `pclient` fixture to call `c.set_cookie("thirty_start_seen", "1")` before returning the client, so the existing `GET /` tests still get 200
     - Add a round-trip test with a fresh cookie-less `public_console.app.test_client()`: `GET /` is 302 with `Location` ending in `/start`; `GET /start` is 200 and its `Set-Cookie` contains `thirty_start_seen=1`; the same client then gets 200 on `GET /`
     - _Requirements: 6.1, 7.1, 7.2, 8.2, 8.4_
 
 - [ ] 4. Add the landing page test module
-  - [ ] 4.1 Write example tests in `tests/test_start_page.py`
+  - [~] 4.1 Write example tests in `tests/test_start_page.py`
     - Use the existing `console` / `client` fixtures from `tests/conftest.py`; toggle state with `monkeypatch.setattr(console, "PUBLIC_DEMO", ...)` and `monkeypatch.setattr(console.tsetup, "required", lambda: True)`
     - `test_start_200_normal` (1.1, 8.1); `test_start_200_public_demo`, including `"start_page" not in LOCKED_ENDPOINTS` (1.3, 8.2); `test_start_bypasses_setup`: `/start` is 200 and `/` is still 302 to `/setup` (1.2)
     - `test_start_links`: `href="/report"`, `href="/"`, `href="/readiness"` (3.2–3.4, 8.3)
@@ -68,7 +68,7 @@ Add a public landing page at `GET /start` to the Flask console (`dashboard_v2/ap
     - After the 1440px loop, open a 390×844 context, load `/start`, assert `document.documentElement.scrollWidth <= window.innerWidth`, and save `27-start-mobile.png`
     - _Requirements: 5.3, 5.4_
 
-- [ ] 6. Final checkpoint
+- [~] 6. Final checkpoint
   - Run `pytest` and confirm zero failures, including the updated `tests/test_public_demo.py`. Ask the user if questions arise.
   - _Requirements: 8.5_
 

@@ -15,7 +15,9 @@ No new dependency, no new stylesheet, no JavaScript on the page, no data written
 | Decision | Choice | Why |
 |---|---|---|
 | Template base | `{% extends "base.html" %}` with `page_header` emptied | `readiness.html` (the style reference) extends `base.html`. Same chrome, tokens and `bg-fx` layer; one less place to keep in sync. |
-| Ribbon background | Inherited from `base.html` (line 388), not repeated | `base.html` already renders `<div class="bg-fx" aria-hidden="true">…</div>`. A second copy would stack two fixed layers. |
+| Ribbon background | Inherited from `base.html` (line 388), not repeated | `base.html` already renders `<div class="bg-fx" aria-hidden="true">` with three `glow` elements and one `ribbon`. A second copy would stack two fixed layers. |
+| 1440px column | Inherited from `base.html` `.content` (line 166, `max-width: var(--content-max)` with `--content-max: 1440px` on line 25, `margin: 0 auto`) | Same column as every console page; at narrow widths `base.html` drops `.content` padding to `var(--s2)`. |
+| Glass card | `.glass` rule defined inline in the page `<style>` | `thirty.css` has no `.glass` class (its glass panel is `.card`); `readiness.html` defines `.glass` the same way. The rule uses only the existing `--t-glass-bg`, `--t-glass-blur`, `--t-glass-border`, `--t-glass-shadow` and `--t-radius-lg` tokens. |
 | Headline font | Inline `@font-face` for "Instrument Serif" in the page `<style>` | `thirty.css` maps `--t-font-display` to Manrope and declares no Instrument Serif face, but `static/thirty/fonts/instrument-serif-400.woff2` ships. An inline rule keeps "no stylesheet beyond thirty.css". |
 | First-visit tracking | Plain cookie `thirty_start_seen=1`, `Path=/`, no `Expires`/`Max-Age`, `SameSite=Lax`, `HttpOnly` | Browser-session lifetime; no JS reads it, so `HttpOnly`; `Lax` keeps it on top-level navigation. Not signed: it holds no secret and only steers one redirect. |
 | Redirect status | `302` via `flask.redirect("/start")` | Temporary by nature; browsers do not cache a bare 302. |
@@ -264,6 +266,7 @@ Tag each property test with a comment:
 | `test_start_three_doors` | exactly 3 `class="st-door` anchors; titles and the "nurses, patients and staff" and "4 languages" text; no `<a` nested inside a door | 3.1–3.5 |
 | `test_start_demo_strip` | strip text, Repo_URL link, "How we built it with Kiro" link to Submission_URL, both with `target="_blank"` and `rel="noopener"` | 4.1–4.4 |
 | `test_start_style_rules` | exactly one `<link rel="stylesheet">` (`thirty.css`); one `bg-fx` with `aria-hidden="true"`; the template source has one `btn-accent` and no `amber` | 5.1, 5.2, 5.5 |
+| `test_start_cookie_attributes` | `Set-Cookie` is `thirty_start_seen=1` with `Path=/`, no `Expires`, no `Max-Age`; no Flask session cookie is set | 6.1–6.3 |
 | `test_home_redirect_public_demo` | `PUBLIC_DEMO=True`: no cookie is 302 to `/start`; with cookie it is 200 | 7.1, 7.2, 8.4 |
 | `test_home_normal_ignores_cookie` | `PUBLIC_DEMO=False`: 200 with and without the cookie | 7.3 |
 
@@ -271,7 +274,7 @@ Plus the round-trip test in `tests/test_public_demo.py` on the real public-demo 
 
 ### Layout checks (smoke)
 
-Req 5.3 (1440px column) comes from `base.html` `.content`. Req 5.4 (single column at 390px, no horizontal scroll) is a layout check: verify by hand at 390px, or with Playwright (already in `requirements-dev.txt`) that `document.documentElement.scrollWidth <= innerWidth` at a 390×844 viewport. Optionally add `("start", "/start")` to `tools/screenshots.py`.
+Req 5.3 (1440px column) comes from `base.html` `.content`. Req 5.4 (single column at 390px, no horizontal scroll) is a layout check: verify by hand at 390px, or with Playwright (already in `requirements-dev.txt`) that `document.documentElement.scrollWidth <= innerWidth` at a 390×844 viewport. Optionally add `("27-start", "/start")` to the `shots` list in `tools/screenshots.py` (the last existing shot is `26-audit-chain`), plus a 390×844 `27-start-mobile.png`.
 
 ### Final gate
 
