@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Run tests",
+      "trigger": "PostFileSave",
+      "description": "Runs the pytest suite when a Python file in thirty/, dashboard_v2/, tests/ or intake.py is saved.",
+      "matcher": "(^|/)(thirty|dashboard_v2|tests)/.*\\.py$|(^|/)intake\\.py$",
+      "action": {
+        "type": "command",
+        "command": ".venv/bin/python -m pytest -q -x"
+      }
+    }
+  ]
+}

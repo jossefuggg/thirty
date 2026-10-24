@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Compliance guard",
+      "trigger": "PostFileSave",
+      "description": "Checks changed docs/templates against the hackathon compliance rules without editing the file.",
+      "matcher": "(^|/)dashboard_v2/templates/.*|(^|/)README\\.md$|(^|/)docs/.*",
+      "action": {
+        "type": "agent",
+        "prompt": "Review the file that was just saved for hackathon compliance. Read the \"Never say\" list in .kiro/steering/hackathon.md and check the changed text against it. Also enforce the badge rule: the phrase \"0 bytes to cloud AI\" must not appear while the Claude agent is active. Point out every matching line (with line numbers and the offending text) and suggest a compliant rewrite for each. Do not edit the file yourself — only report findings and suggestions. If nothing matches, say the file is compliant."
+      }
+    }
+  ]
+}
