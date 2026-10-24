@@ -1,0 +1,279 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Scaffold the `thirty/reporter/` package": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889603
+      },
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867897082
+      },
+      {
+        "executionId": "4bcb7a83-0beb-4a2c-876f-635f7521dc6f",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792869259751
+      }
+    ],
+    "1.2 Implement the pure interview state model in `thirty/reporter/interview.py`": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889635
+      },
+      {
+        "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
+        "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
+        "timestamp": 1792867994798
+      },
+      {
+        "executionId": "4bcb7a83-0beb-4a2c-876f-635f7521dc6f",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792869266150
+      },
+      {
+        "executionId": "4bcb7a83-0beb-4a2c-876f-635f7521dc6f",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792869353872
+      }
+    ],
+    "1.3 Implement field mapping and the loop driver in `thirty/reporter/interview.py`": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889705
+      },
+      {
+        "executionId": "4bcb7a83-0beb-4a2c-876f-635f7521dc6f",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792869416718
+      },
+      {
+        "executionId": "4bcb7a83-0beb-4a2c-876f-635f7521dc6f",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792869994296
+      }
+    ],
+    "4.1 Add the two methods to the base in `thirty/agents/base.py`": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889727
+      },
+      {
+        "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
+        "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
+        "timestamp": 1792867995886
+      },
+      {
+        "executionId": "4bcb7a83-0beb-4a2c-876f-635f7521dc6f",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792869361185
+      },
+      {
+        "executionId": "4bcb7a83-0beb-4a2c-876f-635f7521dc6f",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792869411241
+      }
+    ],
+    "4.2 Implement the SampleAgent methods in `thirty/agents/sample.py`": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889750
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792870793219
+      }
+    ],
+    "4.3 Implement the model-backed agent methods in `thirty/agents/local_model.py` and `thirty/agents/claude_model.py`": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889777
+      }
+    ],
+    "5. Checkpoint - pure logic and agents": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889799
+      }
+    ],
+    "7.1 Create the blueprint, session store, and landing/start routes": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889824
+      }
+    ],
+    "7.2 Implement the interview and review routes": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889853
+      }
+    ],
+    "7.3 Implement confirm, done, and receipt routes with bilingual text and intake submission": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889876
+      }
+    ],
+    "9.1 Create the Front_Door template partials and mobile stylesheet": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889902
+      }
+    ],
+    "9.2 Create the integrations QR panel partial `dashboard_v2/templates/integrations/_qr_panel.html`": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889962
+      }
+    ],
+    "9.3 Create the console badge/score include partials": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867889992
+      }
+    ],
+    "9.4 Wire the partials into the shared templates via small named includes only": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867890026
+      }
+    ],
+    "11. Final checkpoint - run the full suite": [
+      {
+        "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792867890050
+      }
+    ],
+    "2.1 Write unit tests for the QR generator": [
+      {
+        "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
+        "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
+        "timestamp": 1792867988868
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792870459794
+      }
+    ],
+    "3.1 Write unit tests for the receipt builder": [
+      {
+        "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
+        "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
+        "timestamp": 1792867988929
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792870788515
+      }
+    ],
+    "4.4 Add agent tests to `tests/test_agents.py`": [
+      {
+        "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
+        "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
+        "timestamp": 1792867989020
+      }
+    ],
+    "6.1 **[PBT]** Property 1 — Question-loop termination": [
+      {
+        "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
+        "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
+        "timestamp": 1792867989052
+      }
+    ],
+    "6.2 **[PBT]** Property 2 — UNKNOWN preservation": [
+      {
+        "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
+        "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
+        "timestamp": 1792867989083
+      }
+    ],
+    "6.3 **[PBT]** Property 3 — Single complaint on submit": [
+      {
+        "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
+        "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
+        "timestamp": 1792867989118
+      }
+    ],
+    "7.4 Write route unit/integration tests in `tests/test_front_door.py`": [
+      {
+        "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
+        "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
+        "timestamp": 1792867989151
+      }
+    ],
+    "8.1 Add console tests to `tests/test_console.py`": [
+      {
+        "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
+        "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
+        "timestamp": 1792867989184
+      }
+    ],
+    "10.1 Write a wiring/integration test": [
+      {
+        "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
+        "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
+        "timestamp": 1792867989219
+      }
+    ],
+    "1. Create the reporter package and pure interview state model": [
+      {
+        "executionId": "4bcb7a83-0beb-4a2c-876f-635f7521dc6f",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792869994370
+      }
+    ],
+    "2. Implement the pure-Python QR→SVG generator in `thirty/reporter/qr.py`": [
+      {
+        "executionId": "4bcb7a83-0beb-4a2c-876f-635f7521dc6f",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792869999225
+      },
+      {
+        "executionId": "f1de81be-9e9f-4ac5-a2a1-34974a04df37",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792870108355
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792870278584
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792870457224
+      }
+    ],
+    "3. Implement the fpdf2 PDF receipt builder in `thirty/reporter/receipt.py`": [
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792870464120
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792870786292
+      }
+    ]
+  }
+}

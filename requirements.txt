@@ -2,6 +2,10 @@
 flask>=3.0
 requests>=2.31
 fpdf2>=2.7
+# production WSGI server for the public demo deploy (Render); not used by the desktop app
+gunicorn>=21.2
+# pure-Python QR encoder for the reporter Front_Door integrations panel; offline, no dependencies
+segno>=1.6
 # optional signal libraries used by the rules layer; the code degrades gracefully without them
 vaderSentiment>=3.3
 rapidfuzz>=3.0

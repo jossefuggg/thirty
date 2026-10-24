@@ -33,6 +33,8 @@
   .out .idle { color: var(--t-slate-dark); }
   .err { color: var(--coral-text); font-weight: 700; min-height: 1.4em; margin: -8px 0 14px; }
   @media (max-width: 1280px) { .grid3 { grid-template-columns: 1fr; } }
+  /* public demo: demo controls are read-only */
+  .grid3.ro .ctl .btn { pointer-events: none; opacity: .5; }
 </style>
 {% endblock %}
 
@@ -44,7 +46,9 @@
 <p class="lede">Reset to a clean slate, replay the curated complaints through the pipeline, and watch the agent's output. Open the Command Center on a second screen to see complaints arrive.</p>
 {% endif %}
 
-<div class="grid3">
+{% if PUBLIC_DEMO %}<p class="lede" style="display:flex;gap:8px;align-items:center">{{ icon('shield') }}<b>Locked in the public demo:</b> replay and reset are disabled. The sample data is already loaded.</p>{% endif %}
+
+<div class="grid3 {{ 'ro' if PUBLIC_DEMO }}">
   <section class="card ctl">
     <h3>{{ icon('reset') }}{{ 'Reset sample data' if SAMPLE_DATA else 'Reset' }}</h3>
     {% if SAMPLE_DATA %}<p>Rewrites the 40 sample complaints, their drafted Form 3500A PDFs and the device history with dates relative to today. Reviewer actions made on sample data are discarded.{% if seeded %} Last reset: {{ fmt_day(seeded) }}.{% endif %}</p>

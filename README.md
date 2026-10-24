@@ -118,3 +118,37 @@ Dark mode: the moon button in the sidebar.
 
 Public FDA data via openFDA (MAUDE device reports) can be imported as long-term memory. All sample
 complaints, companies, devices and people in this repository are invented.
+## Deploy the public demo
+
+Thirty can run as a public, read-only demo so judges can scan a QR code and open it on a phone. The demo
+runs on the sample agent with invented sample data; every settings surface is locked and nothing is sent
+to the FDA.
+
+Steps (Render, free web service):
+
+1. Push this repository to GitHub.
+2. In the [Render dashboard](https://dashboard.render.com), choose **New → Blueprint** and point it at the
+   repo. Render reads [`render.yaml`](render.yaml) and creates a free web service that builds with
+   `pip install -r requirements.txt` and starts with
+   `gunicorn --chdir dashboard_v2 app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4`.
+3. The blueprint sets `THIRTY_AGENT=sample`, `THIRTY_PUBLIC_DEMO=1`, `VIGIL_DIR=/tmp/thirty-data` and
+   `PYTHON_VERSION=3.12.7`. One worker only: the app keeps its system of record in CSV files guarded by a
+   flock and runs a background intake thread, so a single process owns that state.
+4. After the first deploy, copy the service URL (e.g. `https://thirty-public-demo.onrender.com`) and set it
+   as the `THIRTY_PUBLIC_URL` environment variable in the Render dashboard, then redeploy. QR codes and
+   shareable links use this as their base so they resolve from a phone.
+
+What the public demo changes (`THIRTY_PUBLIC_DEMO=1`):
+
+- The sample agent is forced; Settings, Plugins, Licence, Integrations and Demo Control are read-only and
+  show "Locked in the public demo". No secret fields are rendered.
+- First-run setup is skipped and the invented sample data is seeded on start.
+- Every page carries a thin banner: "Public demo: invented sample data, sample agent, nothing is sent to
+  the FDA".
+
+Notes:
+
+- Render's free tier spins the service down when idle; the first request after a pause takes a few seconds.
+- Data lives in `/tmp` and is reset on every deploy or restart — that is intentional for a throwaway demo.
+- The reporter confirmation page gains a "See what the quality team sees" button linking to the complaint
+  detail page; that page is mobile-first and usable on a 390px phone (added with the reporter front door).

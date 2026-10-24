@@ -3,7 +3,7 @@ else (e.g. a complaint typed into the intake form while in demo mode), and a sho
 console's loading states are visible. Returns exactly the shapes the local model agent returns."""
 import os, re, time
 
-from .base import Agent
+from .base import Agent, COMPLETE
 from .. import sample_data
 
 _SERIOUS = re.compile(r"\b(death|died|fatal|hospital\w*|emergency|ER\b|ambulance|burn\w*|unconscious|cyanotic|resuscitat\w*|injur\w*)", re.I)

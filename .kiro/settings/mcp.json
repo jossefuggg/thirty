@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "/Users/jossef/PycharmProjects/thirty/.venv/bin/python",
+      "args": ["-m", "mcp_server_fetch"],
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

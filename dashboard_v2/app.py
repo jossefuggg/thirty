@@ -26,6 +26,24 @@ from thirty.filelock import lock as _flock, unlock as _funlock, LockBusy  # noqa
 
 VIGIL_DIR = tconfig.data_dir()  # the data folder (VIGIL_DIR env; defaults to the repository root)
 demo_mode = tconfig.demo_mode  # the sample agent is active (no model configured); can change at runtime
+PUBLIC_DEMO = tconfig.public_demo()  # deployed as a locked public demo: every settings surface is read-only
+PUBLIC_URL = tconfig.public_url()  # base URL for QR codes / shareable links (phone), e.g. https://…onrender.com
+PUBLIC_DEMO_BANNER = "Public demo: invented sample data, sample agent, nothing is sent to the FDA"
+
+
+def public_base():
+    """Base URL for links shown to a phone: THIRTY_PUBLIC_URL when set, else this request's host."""
+    if PUBLIC_URL:
+        return PUBLIC_URL
+    try:
+        return request.host_url.rstrip("/")
+    except RuntimeError:  # no request context (startup)
+        return ""
+
+
+def _locked():
+    """JSON 403 used by every write route while the public demo is live."""
+    return jsonify(error="Locked in the public demo"), 403
 
 
 def sample_data_mode():
@@ -714,7 +732,7 @@ NAV = [item for _group, items in NAV_GROUPS for item in items]
 def _globals():
     from markupsafe import Markup
     return {"health": HEALTH, "ICON": STEP_ICONS, "ICONS": ICONS, "NAV": NAV, "NAV_GROUPS": NAV_GROUPS, "VERSION": VERSION, "WS": workspace(), "SOURCES": SOURCES,
-            "DEMO_MODE": demo_mode(), "SAMPLE_DATA": sample_data_mode(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name}, "LICENCE": licensing.check().status(),
+            "DEMO_MODE": demo_mode(), "SAMPLE_DATA": sample_data_mode(), "PUBLIC_DEMO": PUBLIC_DEMO, "PUBLIC_DEMO_BANNER": PUBLIC_DEMO_BANNER, "PUBLIC_BASE": public_base(), "AGENT": {"id": tconfig.agent_id(), "name": get_agent().name}, "LICENCE": licensing.check().status(),
             "fmt_day": fmt_day, "LOCAL_AGENT": tconfig.agent_id() == "local", "CLOUD_AGENT": tconfig.agent_id() == "claude", "DATA_DIR": VIGIL_DIR, "TODAY": dt.date.today().isoformat(), "JURISDICTIONS": tjur.JURISDICTIONS,
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
@@ -722,9 +740,28 @@ def _globals():
 SETUP_FREE = ("/setup", "/api/setup", "/api/plugins", "/api/health", "/static/")
 
 
+# Write endpoints that configure the console or drive the demo. All refuse in the public demo so a
+# judge on a shared deployment cannot change the agent, edit integrations, touch the licence or reset.
+LOCKED_ENDPOINTS = {
+    "api_setup", "api_settings_imap", "api_settings_connector", "api_settings_mapping", "api_rotate_key",
+    "api_licence_install", "api_licence_remove", "api_desktop", "api_workspace",
+    "api_plugins_active", "api_plugins_update", "api_plugins_test", "api_demo_action",
+}
+
+
+@app.before_request
+def _public_demo_lock():
+    """In the public demo every settings/plugins/licence/integrations write and the demo controls are read-only."""
+    if PUBLIC_DEMO and request.endpoint in LOCKED_ENDPOINTS:
+        return _locked()
+
+
 @app.before_request
 def _first_run():
-    """Until first-run setup is complete, every page goes to /setup (API calls answer 409)."""
+    """Until first-run setup is complete, every page goes to /setup (API calls answer 409).
+    The public demo skips setup entirely (completed on start), so this never redirects there."""
+    if PUBLIC_DEMO:
+        return
     if tsetup.required() and not request.path.startswith(SETUP_FREE):
         if request.path.startswith("/api/"):
             return jsonify(error="setup required", setup="/setup"), 409
@@ -1723,8 +1760,12 @@ def integration_status():
 @app.route("/integrations")
 def integrations_page():
     st = load_settings()
-    return render_template("integrations.html", page="integrations", title="Integrations", st=st, status=integration_status(),
-                           CONNECTORS=CONNECTORS, VIGIL_FIELDS=VIGIL_FIELDS, endpoint=request.host_url.rstrip("/") + "/api/complaints",
+    status = integration_status()
+    if PUBLIC_DEMO:  # never hand a secret to the template, and render the page read-only
+        st = {"api_key": "", "mapping": st.get("mapping") or [], "imap": {}, "connectors": {k: {} for k, *_ in CONNECTORS}}
+        status = {**status, "imap": {}, "imap_has_password": False}
+    return render_template("integrations.html", page="integrations", title="Integrations", st=st, status=status,
+                           CONNECTORS=CONNECTORS, VIGIL_FIELDS=VIGIL_FIELDS, endpoint=public_base() + "/api/complaints",
                            sample=json.dumps(dict(SAMPLE_COMPLAINT, id="CASE-10042", event_date="2026-09-28"), indent=2))
 
 
@@ -1908,8 +1949,22 @@ def _shutdown(*_):
     sys.exit(0)
 
 
-if __name__ == "__main__":
-    signal.signal(signal.SIGTERM, _shutdown)
+_init_once = threading.Lock()
+_initialised = False
+
+
+def init_runtime():
+    """Seed data, point vigil.py at the data folder, start the health + intake threads and mount intake.py.
+    Safe to call from __main__ (dev) or at import time (gunicorn in the public demo); runs its work once."""
+    global _initialised
+    with _init_once:
+        if _initialised:
+            return
+        _initialised = True
+    if PUBLIC_DEMO:
+        # The public demo has no first-run flow: complete setup in explore mode and seed invented data on start.
+        if tsetup.required():
+            tsetup.complete("explore", org=tsetup.SAMPLE_ORG, unit=tsetup.SAMPLE_UNIT, agent="sample")
     ensure_sample_data()
     vigil()  # point vigil.py at the data folder before any worker (console or intake.py) can process a complaint
     threading.Thread(target=health_loop, daemon=True).start()
@@ -1919,6 +1974,17 @@ if __name__ == "__main__":
             intake_mod().init_app(app)  # mounts POST /api/v1/complaints (+ /csv, status) and intake.py's worker
         except Exception as e:
             print("intake.py endpoints not mounted:", type(e).__name__, e, flush=True)
+
+
+# Under gunicorn (the public demo) app.py is imported, not run as __main__: initialise at import time so the
+# background threads, sample data and intake endpoints are ready before the first request. In dev, __main__ runs it.
+if os.environ.get("THIRTY_SKIP_RUNTIME_INIT") != "1":
+    init_runtime()
+
+
+if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, _shutdown)
+    init_runtime()  # no-op if already initialised at import
     port = int(os.environ.get("VIGIL_CONSOLE_PORT", 5001))
     print(f"Thirty console on http://localhost:{port}  (data: {VIGIL_DIR} · agent: {get_agent().name}{' · demo mode' if demo_mode() else ''})", flush=True)
     app.run(host="127.0.0.1", port=port, debug=False, threaded=True)

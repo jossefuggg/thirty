@@ -43,10 +43,16 @@
   .model-line .i { width: 16px; height: 16px; color: var(--muted); }
   .verdict-reason { font-size: 17px; line-height: 1.6; color: var(--text); max-width: 72ch; margin: 0; }
   /* the verdict card owns the one primary action: drop the two-up grid, let it breathe */
-  .hero-b #f-review .rv-acts { grid-template-columns: auto auto; justify-content: start; }
+  .verdict-acts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .verdict-acts > #f-review { display: contents; }
+  .hero-b #f-review .rv-acts { display: inline-flex; gap: 12px; justify-content: start; }
   .hero-b #f-review .rv-acts .btn { width: auto; min-width: 200px; }
   .hero-b #f-review .rv-b { padding: 0; }
   .hero-b #f-review .card-h { display: none; }
+  .verdict-pdf { display: inline-flex; align-items: center; gap: 8px; }
+  .verdict-pdf.btn-lg { min-width: 200px; }
+  .verdict-noform { color: var(--muted); font-size: var(--fs-14); font-weight: 700; }
+  .verdict-noform .i { width: 18px; height: 18px; color: var(--muted); }
 
   /* ---------- decision record: collapsed to one line ---------- */
   .rec-panel { overflow: hidden; }
@@ -210,6 +216,24 @@
   @keyframes glowc { 0%, 30% { box-shadow: 0 0 0 3px var(--border); } }
 
   @media (max-width: 1280px) { .facts, .parts { grid-template-columns: 1fr 1fr; } }
+  /* phone (<=640px): the verdict card — decision, reason, deadline, Form 3500A link and Approve — must fit a
+     390px screen with no horizontal scroll. Stack the countdown under the decision and make actions full width. */
+  @media (max-width: 640px) {
+    .dt { max-width: none; gap: var(--s2); }
+    .head h2 { font-size: var(--fs-28); }
+    .meta { gap: 6px 16px; }
+    .hero-top { grid-template-columns: 1fr; gap: var(--s2); }
+    .cd { text-align: left; } .cd .n { font-size: 44px; }
+    .hero-b, .hero-top, .cb, .cbpad, .tabpanel { padding: var(--s2); }
+    .facts, .parts { grid-template-columns: 1fr; }
+    .verdict-reason, .why p { font-size: var(--fs-16); }
+    .verdict-acts { flex-direction: column; align-items: stretch; }
+    .verdict-acts .btn, .verdict-pdf.btn-lg { width: 100%; min-width: 0; }
+    .hero-b #f-review .rv-acts { display: flex; flex-direction: column; gap: 12px; }
+    .hero-b #f-review .rv-acts .btn { width: 100%; min-width: 0; }
+    .tabstrip { overflow-x: auto; flex-wrap: nowrap; }
+    .two { grid-template-columns: 1fr; }
+  }
   @media print {
     .dt { max-width: none; }
     /* print shows everything: reveal each tab panel and the decision record */
@@ -277,7 +301,11 @@
     </div>
     <div class="hero-b">
       <p class="verdict-reason">{{ r.reason }}</p>
-      <div id="f-review">{% include "_detail_review.html" %}</div>
+      <div class="verdict-acts">
+        <div id="f-review">{% include "_detail_review.html" %}</div>
+        {% if r.pdf %}<a class="btn btn-secondary btn-lg verdict-pdf" href="/reports/{{ r.id }}.pdf" target="_blank">{{ icon('file') }}Open Form 3500A draft (PDF)</a>
+        {% elif not r.reportable %}<span class="verdict-pdf verdict-noform">{{ icon('file') }}No FDA form needed</span>{% endif %}
+      </div>
       <p class="model-line">{{ icon('cpu') }}Classified by {{ AGENT.name }} on this machine · {{ r.conf }}% confidence · 0 bytes sent to cloud AI</p>
     </div>
   </section>

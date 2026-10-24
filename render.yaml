@@ -1,0 +1,29 @@
+# Render blueprint for the Thirty public demo (free web service).
+# Judges scan a QR code on their phone and land on the running console.
+#
+# Public demo locks every settings surface, forces the sample agent and seeds invented
+# sample data on start. Nothing is sent to the FDA and no model is called.
+#
+# One worker only: the app keeps its system of record in CSV files guarded by a flock and
+# runs a background intake thread, so a single process owns that state. Threads give the
+# polling console enough concurrency.
+services:
+  - type: web
+    name: thirty-public-demo
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --chdir dashboard_v2 app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4
+    envVars:
+      - key: THIRTY_AGENT
+        value: sample
+      - key: THIRTY_PUBLIC_DEMO
+        value: "1"
+      - key: VIGIL_DIR
+        value: /tmp/thirty-data
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      # Set this in the Render dashboard to your service's public URL (e.g. https://thirty-public-demo.onrender.com)
+      # so QR codes and shareable links resolve from a phone.
+      - key: THIRTY_PUBLIC_URL
+        sync: false

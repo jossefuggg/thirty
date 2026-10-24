@@ -56,17 +56,23 @@
       <div class="ic-b">
         <div class="kv">
           <span>Endpoint</span><div class="copyrow"><code id="ep">POST {{ endpoint }}</code><button class="btn btn-sm btn-secondary" data-copy="{{ endpoint }}">{{ icon('copy') }}Copy</button></div>
+          {% if not PUBLIC_DEMO %}
           <span>API key</span><div class="copyrow"><input id="key" type="password" value="{{ st.api_key }}" readonly aria-label="API key">
             <button class="btn btn-sm btn-secondary" id="key-show">Show</button><button class="btn btn-sm btn-secondary" id="key-copy">{{ icon('copy') }}Copy</button>
             <button class="btn btn-sm btn-secondary" id="key-rot" title="Generate a new key; the old one stops working">{{ icon('reset') }}Rotate</button></div>
+          {% else %}
+          <span>API key</span><code style="font:12px var(--mono);color:var(--muted)">Locked in the public demo</code>
+          {% endif %}
           <span>Auth header</span><code style="font:12px var(--mono);color:var(--text-2)">X-API-Key: &lt;key&gt; &nbsp;or&nbsp; Authorization: Bearer &lt;key&gt;</code>
         </div>
+        {% if not PUBLIC_DEMO %}
         <div class="curl-wrap"><pre class="curl" id="curl"></pre><button class="btn btn-sm btn-ghost" id="curl-copy">{{ icon('copy') }}Copy</button></div>
         <div style="display:flex;align-items:center;gap:16px">
           <div class="stats"><div><b id="rest-n">{{ status.rest.count }}</b>Received</div><div><b id="rest-last">–</b>Last received</div></div>
           <span class="result" id="test-res" style="margin-left:auto"></span>
           <button class="btn btn-accent" id="test">{{ icon('send') }}Send test complaint</button>
         </div>
+        {% endif %}
         <p class="note">Accepts one object or a list. Fields: id, text (required), device, event_date, received, event_type, outcomes, manufacturer, product_code, reporter. Other field names are translated by the mapping below. Responds 202 with the queued items.</p>
       </div>
     </section>
@@ -89,6 +95,9 @@
       <section class="card">
         <div class="ic-h"><span class="lg">{{ icon('mail') }}</span><div><b>Email inbox (IMAP)</b><small>Complaints sent to a shared mailbox</small></div>
           <span class="pill pill-sm {{ 's-appr' if status.imap_connected else 'p-avail' }}" id="imap-pill">{{ 'Connected' if status.imap_connected else 'Not configured' }}</span></div>
+        {% if PUBLIC_DEMO %}
+        <div class="ic-b"><p class="note">Locked in the public demo.</p></div>
+        {% else %}
         <form class="ic-b" id="imap" autocomplete="off">
           <div class="fgrid">
             <div class="field"><label>IMAP host</label><input class="input" name="host" value="{{ status.imap.host or '' }}" placeholder="imap.northwind-medical.example"></div>
@@ -101,6 +110,7 @@
           <div style="display:flex;gap:8px;align-items:center"><span class="result" id="imap-res"></span>
             <button type="button" class="btn btn-secondary" id="imap-off" style="margin-left:auto">Disconnect</button><button class="btn btn-primary">Save</button></div>
         </form>
+        {% endif %}
       </section>
     </div>
   </div>
@@ -111,7 +121,7 @@
     <section class="card conn">
       <span class="lg">{{ name[:2]|upper }}</span><b>{{ name }}</b><small>{{ kind }}</small>
       <div class="foot"><span class="pill pill-sm {{ 'p-conf' if status.connectors[key] else 'p-avail' }}" id="cp-{{ key }}">{{ 'Configured · not connected' if status.connectors[key] else 'Available' }}</span>
-        <button class="btn btn-sm btn-secondary" data-cfg="{{ key }}">Configure</button></div>
+        {% if PUBLIC_DEMO %}<span class="note" style="margin-left:auto">Locked in the public demo</span>{% else %}<button class="btn btn-sm btn-secondary" data-cfg="{{ key }}">Configure</button>{% endif %}</div>
     </section>
     {% endfor %}
   </div>
@@ -120,8 +130,12 @@
   <section class="card">
     <div class="card-h"><h2>Source field → Thirty field</h2><span class="aside">Applied to file uploads and REST payloads. Fields already named like Thirty fields pass through.</span></div>
     <table class="tbl map"><thead><tr><th style="width:40%">Source field</th><th></th><th>Thirty field</th><th></th></tr></thead><tbody id="map"></tbody></table>
+    {% if not PUBLIC_DEMO %}
     <div style="display:flex;gap:8px;padding:10px var(--s3)"><button class="btn btn-secondary btn-sm" id="map-add">Add row</button><button class="btn btn-secondary btn-sm" id="map-reset">Reset to defaults</button>
       <span class="result" id="map-res" style="margin-left:auto;align-self:center"></span><button class="btn btn-primary btn-sm" id="map-save">Save mapping</button></div>
+    {% else %}
+    <div style="padding:10px var(--s3)"><span class="note">Locked in the public demo.</span></div>
+    {% endif %}
   </section>
 </div>
 
@@ -133,6 +147,7 @@
 </div></div>
 {% endblock %}
 {% block scripts %}
+{% if not PUBLIC_DEMO %}
 <script>
 (function () {
   var EP = {{ endpoint|tojson }}, SAMPLE = {{ sample|tojson }}, CONN = {{ CONNECTORS|tojson }}, CFG = {{ st.connectors|tojson }};
@@ -240,4 +255,5 @@
   if (location.hash === "#upload") $("upload").scrollIntoView();
 })();
 </script>
+{% endif %}
 {% endblock %}

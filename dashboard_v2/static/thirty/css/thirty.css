@@ -1,8 +1,9 @@
 /* =====================================================================
-   Thirty — web UI stylesheet  (Paper & Coral)
+   Thirty — web UI stylesheet  (Clinical Glass)
    Drop-in: <link rel="stylesheet" href="css/thirty.css">
-   Fonts: Instrument Serif (display) + Manrope (everything else).
-   Either load them from Google Fonts or self-host the files in /fonts.
+   Mood: clinical, calm, premium medical hardware.
+   Cool light-grey ground, frosted-glass surfaces, Manrope throughout.
+   Fonts: Manrope only (headlines 800, body 500). Self-host in /fonts.
    ===================================================================== */
 
 /* ---------- fonts (self-hosted; delete this block if you use Google Fonts) ---------- */
@@ -10,59 +11,72 @@
 @font-face { font-family: "Manrope"; font-weight: 600; font-display: swap; src: url("../fonts/manrope-600.woff2") format("woff2"); }
 @font-face { font-family: "Manrope"; font-weight: 700; font-display: swap; src: url("../fonts/manrope-700.woff2") format("woff2"); }
 @font-face { font-family: "Manrope"; font-weight: 800; font-display: swap; src: url("../fonts/manrope-800.woff2") format("woff2"); }
-@font-face { font-family: "Instrument Serif"; font-weight: 400; font-display: swap; src: url("../fonts/instrument-serif-400.woff2") format("woff2"); }
-@font-face { font-family: "Instrument Serif"; font-weight: 400; font-style: italic; font-display: swap; src: url("../fonts/instrument-serif-400-italic.woff2") format("woff2"); }
 
 /* ---------- tokens ---------- */
 :root {
-  /* palette */
-  --t-paper: #F7F5F0;
-  --t-ink: #15181D;
+  /* palette — cool clinical greys, coral as the single signal, steel for neutrals */
+  --t-paper: #F2F4F7;        /* mid of the background gradient */
+  --t-bg-1: #EEF1F4;         /* gradient top */
+  --t-bg-2: #F7F8FA;         /* gradient bottom */
+  --t-ink: #14181F;
   --t-coral: #FF5A3C;
-  --t-slate: #5B6470;
-  --t-stone: #DDD8CE;
-  --t-amber: #F2B134;
-  --t-ink-hover: #2A2F37;
+  --t-steel: #8A96A6;        /* neutral pills + charts */
+  --t-slate: #5B6573;        /* secondary text (AA on glass) */
+  --t-stone: #D5DAE1;        /* hairlines */
+  --t-amber: #F2B134;        /* NEEDS INFO only */
+  --t-ink-hover: #262D38;
   --t-coral-hover: #E84E31;
-  --t-coral-text: #C2381A;   /* coral for small text on paper: passes AA (5.0:1). On ink use plain coral. */
-  --t-stone-light: #EDEAE3;
-  --t-slate-dark: #B9BEC6;
-  --t-line-dark: #3A414B;
+  --t-coral-text: #C2381A;   /* coral for small text on light glass: passes AA. On ink use plain coral. */
+  --t-stone-light: #E4E8ED;
+  --t-slate-dark: #AEB7C3;
+  --t-line-dark: #2A313C;
+
+  /* glass surfaces — translucent white, blurred backdrop, white inner border, deep soft shadow */
+  --t-glass-bg: rgba(255, 255, 255, 0.70);
+  --t-glass-border: rgba(255, 255, 255, 0.60);
+  --t-glass-blur: blur(18px);
+  --t-glass-shadow: 0 20px 40px rgba(20, 30, 45, 0.08);
 
   /* semantic (light) */
-  --t-bg: var(--t-paper);
+  --t-bg: var(--t-bg-2);     /* opaque solid ground for overlays that must not be see-through */
   --t-fg: var(--t-ink);
   --t-fg-2: var(--t-slate);
   --t-line: var(--t-stone);
   --t-panel: var(--t-stone-light);
   --t-track: var(--t-stone);
-  --t-card: #FFFFFF;
+  --t-card: var(--t-glass-bg);
 
-  /* type */
-  --t-font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  /* type — Manrope only; display is Manrope 800 */
+  --t-font-display: "Manrope", -apple-system, "Segoe UI", Arial, sans-serif;
   --t-font-ui: "Manrope", -apple-system, "Segoe UI", Arial, sans-serif;
 
   /* shape + rhythm */
-  --t-radius: 10px;      /* buttons, inputs, cards */
-  --t-radius-lg: 14px;   /* panels, images */
+  --t-radius: 12px;      /* buttons, inputs */
+  --t-radius-lg: 16px;   /* cards, panels, images */
   --t-radius-pill: 999px;
   --t-space: 8px;        /* everything is a multiple of 8 */
-  --t-focus: 0 0 0 3px var(--t-paper), 0 0 0 6px var(--t-coral);
+  --t-focus: 0 0 0 3px var(--t-bg-2), 0 0 0 6px var(--t-coral);
 }
 [data-theme="dark"], .t-dark {
-  --t-bg: var(--t-ink);
-  --t-fg: var(--t-paper);
+  --t-paper: #0F141B;
+  --t-bg-1: #0D121A;
+  --t-bg-2: #141A23;
+  --t-bg: #121821;
+  --t-glass-bg: rgba(26, 33, 44, 0.55);
+  --t-glass-border: rgba(255, 255, 255, 0.08);
+  --t-glass-shadow: 0 20px 44px rgba(0, 0, 0, 0.45);
+  --t-fg: #ECEFF3;
   --t-fg-2: var(--t-slate-dark);
   --t-line: var(--t-line-dark);
-  --t-panel: #1E2229;
+  --t-panel: #1A212B;
   --t-track: var(--t-line-dark);
-  --t-card: #1A1E24;
+  --t-card: var(--t-glass-bg);
   --t-coral-text: var(--t-coral);
-  --t-focus: 0 0 0 3px var(--t-ink), 0 0 0 6px var(--t-coral);
+  --t-focus: 0 0 0 3px var(--t-bg-1), 0 0 0 6px var(--t-coral);
 }
 
 /* ---------- base ---------- */
-html { background: var(--t-bg); color: var(--t-fg); }
+html { background: var(--t-bg-1); color: var(--t-fg); }
 body {
   margin: 0;
   font-family: var(--t-font-ui);
@@ -70,29 +84,31 @@ body {
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  background: var(--t-bg);
   color: var(--t-fg);
+  background: var(--t-bg-1);
+  background-image: linear-gradient(160deg, var(--t-bg-1) 0%, var(--t-bg-2) 100%);
+  background-attachment: fixed;
 }
 a { color: var(--t-fg); text-decoration-color: var(--t-coral); text-underline-offset: 3px; }
 a:hover { color: var(--t-coral-text); }
 hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 
-/* ---------- type scale ---------- */
-.t-display, h1 { font-family: var(--t-font-display); font-weight: 400; font-size: 72px; line-height: 1.0; letter-spacing: -0.015em; margin: 0 0 24px; }
-.t-h2, h2      { font-family: var(--t-font-display); font-weight: 400; font-size: 48px; line-height: 1.05; letter-spacing: -0.01em; margin: 0 0 16px; }
-.t-h3, h3      { font-family: var(--t-font-ui); font-weight: 800; font-size: 24px; line-height: 1.2; letter-spacing: -0.01em; margin: 0 0 8px; }
+/* ---------- type scale (Manrope 800 headlines, tight tracking) ---------- */
+.t-display, h1 { font-family: var(--t-font-display); font-weight: 800; font-size: 64px; line-height: 1.02; letter-spacing: -0.03em; margin: 0 0 24px; }
+.t-h2, h2      { font-family: var(--t-font-display); font-weight: 800; font-size: 40px; line-height: 1.08; letter-spacing: -0.025em; margin: 0 0 16px; }
+.t-h3, h3      { font-family: var(--t-font-ui); font-weight: 800; font-size: 24px; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 8px; }
 .t-lead        { font-size: 20px; line-height: 1.5; color: var(--t-fg-2); }
 .t-body, p     { font-size: 16px; line-height: 1.55; }
 .t-small       { font-size: 14px; line-height: 1.5; color: var(--t-fg-2); }
-.t-eyebrow     { font-size: 12px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--t-fg-2); }
-.t-number      { font-family: var(--t-font-display); font-weight: 400; font-size: 96px; line-height: 0.95; letter-spacing: -0.03em; }
+.t-eyebrow     { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--t-fg-2); }
+.t-number      { font-family: var(--t-font-display); font-weight: 800; font-size: 88px; line-height: 0.95; letter-spacing: -0.04em; }
 .t-coral       { color: var(--t-coral); }       /* big numbers and display only */
 .t-coral-text  { color: var(--t-coral-text); }  /* coral for small text */
 .t-muted       { color: var(--t-fg-2); }
 @media (max-width: 720px) {
-  .t-display, h1 { font-size: 48px; }
-  .t-h2, h2 { font-size: 34px; }
-  .t-number { font-size: 64px; }
+  .t-display, h1 { font-size: 44px; }
+  .t-h2, h2 { font-size: 32px; }
+  .t-number { font-size: 60px; }
 }
 
 /* ---------- buttons ---------- */
@@ -110,10 +126,11 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 .btn:focus-visible { outline: none; box-shadow: var(--t-focus); }
 .btn[disabled], .btn.is-disabled { cursor: not-allowed; pointer-events: none; }
 
-/* Primary — the default button. Ink on paper, paper on ink. */
-.btn-primary { background: var(--t-fg); color: var(--t-bg); }
-.btn-primary:hover { background: var(--t-ink-hover); color: var(--t-paper); }
-.t-dark .btn-primary:hover, [data-theme="dark"] .btn-primary:hover { background: #E9E6DF; color: var(--t-ink); }
+/* Primary — ink with white text. */
+.btn-primary { background: var(--t-ink); color: #FFFFFF; }
+.btn-primary:hover { background: var(--t-ink-hover); color: #FFFFFF; }
+.t-dark .btn-primary, [data-theme="dark"] .btn-primary { background: #FFFFFF; color: var(--t-ink); }
+.t-dark .btn-primary:hover, [data-theme="dark"] .btn-primary:hover { background: #E7EBF0; color: var(--t-ink); }
 .btn-primary[disabled], .btn-primary.is-disabled { background: var(--t-track); color: var(--t-fg-2); }
 
 /* Accent — ONE per screen, the action that moves the clock: Approve, Start, Book a demo. Coral with ink text (passes AA; paper text on coral does not). */
@@ -121,9 +138,9 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 .btn-accent:hover { background: var(--t-coral-hover); color: var(--t-ink); }
 .btn-accent[disabled], .btn-accent.is-disabled { background: var(--t-track); color: var(--t-fg-2); }
 
-/* Secondary — outlined. */
-.btn-secondary { background: transparent; color: var(--t-fg); border-color: var(--t-fg); }
-.btn-secondary:hover { background: var(--t-panel); }
+/* Secondary — white glass with a hairline border. */
+.btn-secondary { background: var(--t-glass-bg); color: var(--t-fg); border-color: var(--t-line); -webkit-backdrop-filter: var(--t-glass-blur); backdrop-filter: var(--t-glass-blur); }
+.btn-secondary:hover { border-color: var(--t-fg-2); background: var(--t-glass-bg); }
 .btn-secondary[disabled], .btn-secondary.is-disabled { color: var(--t-fg-2); border-color: var(--t-line); }
 
 /* Ghost — text only, for tertiary actions in rows and toolbars. */
@@ -136,8 +153,8 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 .btn-danger:hover { background: var(--t-coral); color: var(--t-ink); }
 
 /* sizes */
-.btn-sm { height: 36px; padding: 0 14px; font-size: 14px; border-radius: 8px; }
-.btn-lg { height: 56px; padding: 0 28px; font-size: 17px; border-radius: 12px; }
+.btn-sm { height: 36px; padding: 0 14px; font-size: 14px; border-radius: 10px; }
+.btn-lg { height: 56px; padding: 0 28px; font-size: 17px; border-radius: 14px; }
 .btn-block { width: 100%; }
 .btn .btn-icon { width: 18px; height: 18px; flex: none; }
 
@@ -151,17 +168,17 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 }
 .pill-reportable { background: var(--t-coral); color: var(--t-ink); }
 .pill-needs-info { background: var(--t-amber); color: var(--t-ink); }
-.pill-not-reportable { background: transparent; color: var(--t-fg); border-color: var(--t-fg); }
-.pill-approved { background: var(--t-fg); color: var(--t-bg); }
+.pill-not-reportable { background: transparent; color: var(--t-fg); border-color: var(--t-steel); }
+.pill-approved { background: var(--t-ink); color: #FFFFFF; }
 .pill-five-day { background: var(--t-ink); color: var(--t-coral); }
-.pill-neutral { background: var(--t-panel); color: var(--t-fg-2); }
+.pill-neutral { background: var(--t-steel); color: #FFFFFF; }
 .pill-lg { height: 36px; padding: 0 16px; font-size: 14px; }
 
 /* "0 bytes to cloud AI" badge */
 .badge-local {
   display: inline-flex; align-items: center; gap: 10px;
   height: 36px; padding: 0 14px; border-radius: var(--t-radius);
-  background: var(--t-ink); color: var(--t-paper);
+  background: var(--t-ink); color: #FFFFFF;
   font-weight: 700; font-size: 14px;
 }
 .badge-local::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--t-coral); }
@@ -172,11 +189,13 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 .input, .select, .textarea {
   width: 100%; box-sizing: border-box;
   height: 44px; padding: 0 14px;
-  background: var(--t-card); color: var(--t-fg);
+  background: rgba(255, 255, 255, 0.92); color: var(--t-fg);
   border: 2px solid var(--t-line); border-radius: var(--t-radius);
   font-family: var(--t-font-ui); font-size: 15px; font-weight: 500;
   transition: border-color .15s ease;
 }
+[data-theme="dark"] .input, [data-theme="dark"] .select, [data-theme="dark"] .textarea,
+.t-dark .input, .t-dark .select, .t-dark .textarea { background: rgba(20, 26, 35, 0.75); }
 .textarea { height: auto; min-height: 120px; padding: 12px 14px; line-height: 1.5; resize: vertical; }
 .input::placeholder, .textarea::placeholder { color: var(--t-fg-2); }
 .input:hover, .select:hover, .textarea:hover { border-color: var(--t-fg-2); }
@@ -185,12 +204,15 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 .help { font-size: 13px; color: var(--t-fg-2); }
 .help.is-error { color: var(--t-coral-text); font-weight: 700; }
 
-/* ---------- cards + panels ---------- */
+/* ---------- cards + panels (frosted glass) ---------- */
 .card {
-  background: var(--t-card);
-  border: 1px solid var(--t-line);
+  background: var(--t-glass-bg);
+  -webkit-backdrop-filter: var(--t-glass-blur);
+  backdrop-filter: var(--t-glass-blur);
+  border: 1px solid var(--t-glass-border);
   border-radius: var(--t-radius-lg);
-  padding: 24px;
+  box-shadow: var(--t-glass-shadow);
+  padding: 30px;
 }
 .card-accent { border-top: 4px solid var(--t-coral); }
 .stat { display: flex; flex-direction: column; gap: 6px; padding-top: 20px; border-top: 4px solid var(--t-fg); }

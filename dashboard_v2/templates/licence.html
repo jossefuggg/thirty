@@ -23,10 +23,13 @@
   .hint { font-size: 14px; color: var(--muted); max-width: 70ch; }
   .st-licensed, .st-expiring { background: var(--text); color: var(--bg); } .st-grace, .st-expired, .st-invalid { background: transparent; color: var(--text); border-color: var(--t-amber); } .st-evaluation { background: transparent; color: var(--muted); border-color: var(--border); }
   .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; max-width: 560px; }
+  /* public demo: licence/updates/workspace are read-only */
+  .pg.ro .field, .pg.ro .row, .pg.ro .tgl, .pg.ro #ws { pointer-events: none; opacity: .6; }
 </style>
 {% endblock %}
 {% block body %}
-<div class="pg">
+<div class="pg {{ 'ro' if PUBLIC_DEMO }}">
+  {% if PUBLIC_DEMO %}<div class="hint" style="display:flex;gap:8px;align-items:center">{{ icon('shield') }}<span>Locked in the public demo: licence, updates and workspace cannot be changed.</span></div>{% endif %}
   <section class="card sec">
     <div class="card-h"><h2>{{ icon('key') }}Licence</h2><span class="aside" id="lic-pill"></span></div>
     <div class="lic" id="lic"><div class="empty loading"><span class="spin"></span><b>Loading…</b></div></div>

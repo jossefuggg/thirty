@@ -7,6 +7,9 @@ sys.path.insert(0, ROOT)
 os.environ.setdefault("THIRTY_AGENT", "sample")      # tests never need a model
 os.environ.setdefault("THIRTY_SAMPLE_DELAY", "0")    # no fake latency in tests
 os.environ.setdefault("THIRTY_DEMO_DELAY", "0")
+# The console now initialises its background threads/sample data at import (so gunicorn works for the
+# public demo). Tests drive the app directly and seed their own data, so keep import side-effect free.
+os.environ.setdefault("THIRTY_SKIP_RUNTIME_INIT", "1")
 # Point VIGIL_DIR at a fresh temp folder before anything resolves config.data_dir(),
 # so tests never read runtime files (plugins.json, setup.json, …) left in the repo root.
 os.environ["VIGIL_DIR"] = tempfile.mkdtemp(prefix="thirty-session-")

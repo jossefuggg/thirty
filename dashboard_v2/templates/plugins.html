@@ -30,11 +30,14 @@
   .tgl input::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); transition: transform var(--t-fast); box-shadow: 0 1px 2px rgba(21,24,29,.3); }
   .tgl input:checked { background: var(--text); } .tgl input:checked::after { transform: translateX(14px); } .tgl input:focus-visible { box-shadow: var(--t-focus); }
   .install { padding: var(--s3); display: grid; gap: 8px; color: var(--muted); font-size: var(--fs-14); } .install code { font-family: var(--mono); color: var(--text); font-size: 13px; }
+  /* public demo: everything is read-only */
+  .pg.ro .choices, .pg.ro .plist form, .pg.ro .plist .tgl { pointer-events: none; opacity: .6; }
 </style>
 {% endblock %}
 {% block body %}
-<div class="pg">
+<div class="pg {{ 'ro' if PUBLIC_DEMO }}">
   <p class="lede">Plugins add an agent to Thirty: something that classifies each complaint and drafts the Form 3500A. One agent is active at a time. With no agent, every complaint waits for a human decision.</p>
+  {% if PUBLIC_DEMO %}<div class="forced">{{ icon('shield') }}<span>Locked in the public demo: the sample agent is fixed and settings cannot be changed.</span></div>{% endif %}
   <section class="card active-card">
     <div class="card-h" style="padding:0;height:auto;border:0"><h2>{{ icon('cpu') }}Active agent</h2><span class="aside" id="active-label"></span></div>
     <div class="choices" id="choices"><div class="empty loading"><span class="spin"></span><b>Loading…</b></div></div>
