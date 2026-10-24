@@ -8,7 +8,7 @@ Setup, before spec 1:
 4. For each spec below: Kiro panel > Specs > new spec, paste the prompt, review requirements,
    design and tasks, then run the tasks. Commit after each spec (keep the `.kiro/specs/` files).
 
-Time boxes: spec 1 by 11:30, spec 2 by 15:00, spec 3 by 17:00, spec 4 only if ahead.
+Time boxes (started 12:15): spec 1 by 13:00, spec 2 by 16:00, spec 3 by 17:30, spec 4 only if ahead.
 Record the video by 18:30 whatever state you are in.
 
 ---
