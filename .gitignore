@@ -32,3 +32,11 @@ desktop/build/check-data/
 licence-secret.key
 *.key
 !dashboard_v2/static/**
+
+# runtime data written by the console
+.sample-seed
+actions.csv
+intake-settings.json
+plugins.json
+setup.json
+.venv/
