@@ -1,0 +1,88 @@
+{
+ "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code:\"DQA\"+AND+date_received:[20231024+TO+20261024]&count=product_problems.exact",
+ "fetched": "2026-10-24",
+ "data": {
+  "device_problems": [
+   {
+    "term": "Incorrect Measurement",
+    "count": 427
+   },
+   {
+    "term": "Low Readings",
+    "count": 244
+   },
+   {
+    "term": "Unexpected Shutdown",
+    "count": 211
+   },
+   {
+    "term": "Device Alarm System",
+    "count": 178
+   },
+   {
+    "term": "High Readings",
+    "count": 164
+   },
+   {
+    "term": "Image Display Error/Artifact",
+    "count": 123
+   },
+   {
+    "term": "Failure to Analyze Signal",
+    "count": 116
+   },
+   {
+    "term": "Incorrect, Inadequate or Imprecise Result or Readings",
+    "count": 106
+   }
+  ],
+  "patient_problems": [
+   {
+    "term": "",
+    "count": 1763
+   },
+   {
+    "term": "Other",
+    "count": 46
+   },
+   {
+    "term": "Death",
+    "count": 33
+   },
+   {
+    "term": "Life Threatening",
+    "count": 13
+   },
+   {
+    "term": "Required Intervention",
+    "count": 13
+   },
+   {
+    "term": " O",
+    "count": 8
+   },
+   {
+    "term": " L",
+    "count": 7
+   },
+   {
+    "term": " R",
+    "count": 4
+   }
+  ],
+  "reports_per_year": [
+   {
+    "year": 2024,
+    "count": 545
+   },
+   {
+    "year": 2025,
+    "count": 407
+   },
+   {
+    "year": 2026,
+    "count": 875
+   }
+  ]
+ }
+}

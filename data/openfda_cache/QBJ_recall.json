@@ -1,0 +1,68 @@
+{
+ "url": "https://api.fda.gov/device/recall.json?search=product_code:\"QBJ\"&limit=10&sort=event_date_posted:desc",
+ "fetched": "2026-10-24",
+ "data": {
+  "recalls": [
+   {
+    "reason": "Certain lots of Dexcom G7 sensors originally designated as scrap and intended for destruction were stolen during the destruction process.  The sensors were later sold to pharmacies and distributors by Pharmsource, LLC.  Lot 1725204004 were designated for destruction because the G7 sensors were not properly sterilized and have an increased risk of skin infection if used.  Lot 1725069002 were designated for destruction due to an increased risk of having no sensor readings available or experiencing sensor inaccuracy that includes the potential for missed detection of a hyperglycemic event or incorrect treatment decisions that can result in patient injury, including medical intervention to prevent permanent injury or impairment. Additionally, due to the unknown storage and handling and storage conditions these sensors may have undergone during the distribution, these sensors may present additional risk.",
+    "date": "2026-06-24",
+    "cfres_id": "220303",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=220303"
+   },
+   {
+    "reason": "A software defect in which a low-priority file I/O check blocks the higher-priority thread responsible for processing estimated glucose values (EGVs) and trend arrows. When the app is running in the background, EGV notifications may queue up and then \"replay\" sequentially when the user brings the app to the foreground, causing the Glucose Compass to flicker through previous EGVs. In more severe instances, the app may perceive signal loss and deploy signal loss mitigations. This delay in EGV and alert processing creates a risk that users may miss detection of a hypoglycemic or hyperglycemic event, or make treatment decisions based on outdated glucose information.",
+    "date": "2026-05-11",
+    "cfres_id": "219288",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=219288"
+   },
+   {
+    "reason": "A software defect in which a low-priority file I/O check blocks the higher-priority thread responsible for processing estimated glucose values (EGVs) and trend arrows. When the app is running in the background, EGV notifications may queue up and then \"replay\" sequentially when the user brings the app to the foreground, causing the Glucose Compass to flicker through previous EGVs. In more severe instances, the app may perceive signal loss and deploy signal loss mitigations. This delay in EGV and alert processing creates a risk that users may miss detection of a hypoglycemic or hyperglycemic event, or make treatment decisions based on outdated glucose information.",
+    "date": "2026-05-11",
+    "cfres_id": "219289",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=219289"
+   },
+   {
+    "reason": "A software defect in which a low-priority file I/O check blocks the higher-priority thread responsible for processing estimated glucose values (EGVs) and trend arrows. When the app is running in the background, EGV notifications may queue up and then \"replay\" sequentially when the user brings the app to the foreground, causing the Glucose Compass to flicker through previous EGVs. In more severe instances, the app may perceive signal loss and deploy signal loss mitigations. This delay in EGV and alert processing creates a risk that users may miss detection of a hypoglycemic or hyperglycemic event, or make treatment decisions based on outdated glucose information.",
+    "date": "2026-05-11",
+    "cfres_id": "219290",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=219290"
+   },
+   {
+    "reason": "Distribution without premarket approval/clearance.",
+    "date": "2025-12-01",
+    "cfres_id": "217042",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=217042"
+   },
+   {
+    "reason": "A software defect in version v1.15.0 of the G6 Android app can cause the app to terminate unexpectedly, which may result in the user not receiving estimated glucose values, alarms, alerts or notifications. This could result in the missed detection of a hyperglycemic or hypoglycemic event, protentional resulting in severe hyperglycemia, diabetic ketoacidosis (DKA), or hyperosmolar hyperglycemic state (HHS).",
+    "date": "2025-10-30",
+    "cfres_id": "216085",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=216085"
+   },
+   {
+    "reason": "The affected devices are the Dexcom G7 Continuous Glucose Monitoring System (CGM System) using iOS, watchOS and Android App software (versions 2.8.0 or earlier) and Dexcom ONE+ CGM System using iOS and Android App software (versions 1.4.0 or earlier), henceforth referred to as the App. The affected App does not provide an expected \"Sensor Failed\" alert when the transmitter sends a \"transmitterFailed\" error message to the App when the CGM experiences a hardware or firmware failure. Instead, the App ends the CGM sensor session, stops reporting glucose values and displays the Start Sensor screen or No active sensor message without alerting the user, which can lead to missed detection of a hyperglycemic or hypoglycemic event and a delay in treatment.",
+    "date": "2025-09-04",
+    "cfres_id": "215005",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=215005"
+   },
+   {
+    "reason": "The affected devices are the Dexcom G7 Continuous Glucose Monitoring System (CGM System) using iOS, watchOS and Android App software (versions 2.8.0 or earlier) and Dexcom ONE+ CGM System using iOS and Android App software (versions 1.4.0 or earlier), henceforth referred to as the App. The affected App does not provide an expected \"Sensor Failed\" alert when the transmitter sends a \"transmitterFailed\" error message to the App when the CGM experiences a hardware or firmware failure. Instead, the App ends the CGM sensor session, stops reporting glucose values and displays the Start Sensor screen or No active sensor message without alerting the user, which can lead to missed detection of a hyperglycemic or hypoglycemic event and a delay in treatment.",
+    "date": "2025-09-04",
+    "cfres_id": "215006",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=215006"
+   },
+   {
+    "reason": "The affected devices are the Dexcom G7 Continuous Glucose Monitoring System (CGM System) using iOS, watchOS and Android App software (versions 2.8.0 or earlier) and Dexcom ONE+ CGM System using iOS and Android App software (versions 1.4.0 or earlier), henceforth referred to as the App. The affected App does not provide an expected \"Sensor Failed\" alert when the transmitter sends a \"transmitterFailed\" error message to the App when the CGM experiences a hardware or firmware failure. Instead, the App ends the CGM sensor session, stops reporting glucose values and displays the Start Sensor screen or No active sensor message without alerting the user, which can lead to missed detection of a hyperglycemic or hypoglycemic event and a delay in treatment.",
+    "date": "2025-09-04",
+    "cfres_id": "215007",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=215007"
+   },
+   {
+    "reason": "The affected devices are the Dexcom G7 Continuous Glucose Monitoring System (CGM System) using iOS, watchOS and Android App software (versions 2.8.0 or earlier) and Dexcom ONE+ CGM System using iOS and Android App software (versions 1.4.0 or earlier), henceforth referred to as the App. The affected App does not provide an expected \"Sensor Failed\" alert when the transmitter sends a \"transmitterFailed\" error message to the App when the CGM experiences a hardware or firmware failure. Instead, the App ends the CGM sensor session, stops reporting glucose values and displays the Start Sensor screen or No active sensor message without alerting the user, which can lead to missed detection of a hyperglycemic or hypoglycemic event and a delay in treatment.",
+    "date": "2025-09-04",
+    "cfres_id": "215008",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=215008"
+   }
+  ]
+ }
+}

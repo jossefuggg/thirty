@@ -10,7 +10,7 @@ import os, re, time
 
 import requests
 
-from .base import Agent, UNREADABLE
+from .base import Agent, UNREADABLE, COMPLETE
 from . import local_model as lm
 
 API_URL = "https://api.anthropic.com/v1/messages"
@@ -81,6 +81,36 @@ class ClaudeAgent(Agent):
             return qs, str(j.get("message") or "").strip()
         except Exception:
             return [], ""
+
+    def next_question(self, answers_so_far):
+        """One adaptive interview question, or COMPLETE. Any failure -> COMPLETE (safe termination)."""
+        language = (answers_so_far or {}).get("language") or "en"
+        try:
+            prompt = lm.NEXT_Q.format(
+                reporter_type=(answers_so_far or {}).get("reporter_type") or "",
+                language=language,
+                device=(answers_so_far or {}).get("device") or "UNKNOWN",
+                answers=(answers_so_far or {}).get("answers") or {},
+                asked=(answers_so_far or {}).get("asked") or [],
+            )
+            return lm.interpret_next_question(_extract_json(self._messages(prompt, 400, temperature=0.2)), language)
+        except Exception:
+            return COMPLETE
+
+    def translate_to_english(self, text, source_language):
+        """English translation of text, or None. Never fabricates: None on any failure/CANNOT_TRANSLATE."""
+        if not text or not str(text).strip():
+            return None
+        if source_language == "en":
+            return text
+        try:
+            prompt = lm.TRANSLATE.format(source_language=source_language, text=text)
+            out = (self._messages(prompt, 1000) or "").strip()
+            if not out or out == "CANNOT_TRANSLATE":
+                return None
+            return out
+        except Exception:
+            return None
 
     def health(self):
         try:

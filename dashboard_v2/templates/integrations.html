@@ -2,7 +2,12 @@
 {% block actions %}<a class="btn btn-secondary" href="/intake">{{ icon('download') }}Intake inbox</a>{% endblock %}
 {% block head %}
 <style>
-  .ig { display: grid; gap: 24px; }
+  .ig { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  @media (max-width: 640px) {
+    .top, .fgrid, .conns { grid-template-columns: 1fr; }
+    .kv { grid-template-columns: 1fr; gap: 4px; } .kv > span { margin-top: 6px; }
+    .stats { flex-wrap: wrap; gap: 12px 20px; }
+  }
   .sec-h { font-size: var(--fs-12); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 6px 0 -4px; }
   .top { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 24px; align-items: start; }
   .stack { display: grid; gap: 24px; min-width: 0; }

@@ -1,0 +1,68 @@
+{
+ "url": "https://api.fda.gov/device/recall.json?search=product_code:\"DQA\"&limit=10&sort=event_date_posted:desc",
+ "fetched": "2026-10-24",
+ "data": {
+  "recalls": [
+   {
+    "reason": "Retroactively reported; Labeling  contains incorrect sizing guide for Cap, a component of the heart rate monitor.",
+    "date": "2026-02-12",
+    "cfres_id": "218181",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=218181"
+   },
+   {
+    "reason": "Retroactively reported; Labeling  contains incorrect sizing guide for Cap, a component of the heart rate monitor.",
+    "date": "2026-02-12",
+    "cfres_id": "218182",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=218182"
+   },
+   {
+    "reason": "Retroactively reported; Labeling  contains incorrect sizing guide for Cap, a component of the heart rate monitor.",
+    "date": "2026-02-12",
+    "cfres_id": "218183",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=218183"
+   },
+   {
+    "reason": "Retroactively reported; Labeling  contains incorrect sizing guide for Cap, a component of the heart rate monitor.",
+    "date": "2026-02-12",
+    "cfres_id": "218184",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=218184"
+   },
+   {
+    "reason": "Retroactively reported; Labeling  contains incorrect sizing guide for Cap, a component of the heart rate monitor.",
+    "date": "2026-02-12",
+    "cfres_id": "218185",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=218185"
+   },
+   {
+    "reason": "As a result of receiving an FDA It Has Come to Our Attention Letter (IHCTOA Letter) regarding potential cybersecurity issues with various of the firm device.",
+    "date": "2026-01-22",
+    "cfres_id": "217956",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=217956"
+   },
+   {
+    "reason": "As a result of receiving an FDA It Has Come to Our Attention Letter (IHCTOA Letter) regarding potential cybersecurity issues with various of the firm device.",
+    "date": "2026-01-22",
+    "cfres_id": "217957",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=217957"
+   },
+   {
+    "reason": "As a result of receiving an FDA It Has Come to Our Attention Letter (IHCTOA Letter) regarding potential cybersecurity issues with various of the firm device.",
+    "date": "2026-01-22",
+    "cfres_id": "217966",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=217966"
+   },
+   {
+    "reason": "As a result of receiving an FDA It Has Come to Our Attention Letter (IHCTOA Letter) regarding potential cybersecurity issues with various of the firm device.",
+    "date": "2026-01-22",
+    "cfres_id": "217967",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=217967"
+   },
+   {
+    "reason": "Bedside SpO2 Patient Monitoring System alarms not heard/recognized, resulting in: treatment delay, lack of low oxygen saturation response, respiratory failure, arrhythmia. Highlighting operator's manual: 1)For patient Safety don't silence/decrease alarm volume, 2)Sensor off alarm (no perfusion detected) is low priority alarm, 3)Set monitors to Homecare Mode outside of hospital/professional setting",
+    "date": "2025-07-21",
+    "cfres_id": "213817",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=213817"
+   }
+  ]
+ }
+}

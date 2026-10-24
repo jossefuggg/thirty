@@ -5,9 +5,9 @@
 {% endblock %}
 {% block head %}
 <style>
-  .ib-wrap { display: flex; flex-direction: column; min-height: 0; height: calc(100vh - var(--topbar-h) - var(--s3) * 2 - 68px); }
-  .ib-wrap .card { display: flex; flex-direction: column; min-height: 0; flex: 1; }
-  .ib-scroll { overflow: auto; flex: 1; min-height: 0; }
+  .ib-wrap { display: flex; flex-direction: column; min-height: 0; }
+  .ib-wrap .card { display: flex; flex-direction: column; min-height: 0; }
+  .ib-scroll { overflow-x: auto; }
   /* intake item states: ink = done, outline = waiting, amber outline = needs attention */
   .st-processed { background: var(--text); color: var(--bg); } .st-queued { background: var(--hover); color: var(--muted); } .st-processing { background: transparent; color: var(--text); border-color: var(--text); }
   .st-duplicate { background: transparent; color: var(--muted); border-color: var(--border); } .st-error, .st-rejected { background: transparent; color: var(--text); border-color: var(--t-amber); }

@@ -1,0 +1,88 @@
+{
+ "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code:\"FRN\"+AND+date_received:[20231024+TO+20261024]&count=product_problems.exact",
+ "fetched": "2026-10-24",
+ "data": {
+  "device_problems": [
+   {
+    "term": "Device Sensing Problem",
+    "count": 21610
+   },
+   {
+    "term": "Break",
+    "count": 20567
+   },
+   {
+    "term": "Corroded",
+    "count": 20108
+   },
+   {
+    "term": "Device Alarm System",
+    "count": 15445
+   },
+   {
+    "term": "Failure to Sense",
+    "count": 10753
+   },
+   {
+    "term": "Crack",
+    "count": 9774
+   },
+   {
+    "term": "No Apparent Adverse Event",
+    "count": 9704
+   },
+   {
+    "term": "Contamination",
+    "count": 8572
+   }
+  ],
+  "patient_problems": [
+   {
+    "term": "",
+    "count": 162577
+   },
+   {
+    "term": "Other",
+    "count": 1594
+   },
+   {
+    "term": "Required Intervention",
+    "count": 947
+   },
+   {
+    "term": "Death",
+    "count": 274
+   },
+   {
+    "term": "Hospitalization",
+    "count": 265
+   },
+   {
+    "term": "Life Threatening",
+    "count": 242
+   },
+   {
+    "term": " R",
+    "count": 128
+   },
+   {
+    "term": " L",
+    "count": 87
+   }
+  ],
+  "reports_per_year": [
+   {
+    "year": 2024,
+    "count": 57731
+   },
+   {
+    "year": 2025,
+    "count": 53486
+   },
+   {
+    "year": 2026,
+    "count": 39925
+   }
+  ]
+ }
+}

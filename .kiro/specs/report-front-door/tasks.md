@@ -62,7 +62,7 @@ Unit/integration test sub-tasks and property-based test sub-tasks are marked opt
     - Add these to `tests/test_front_door.py`
     - _Requirements: 7.4, 7.5_
 
-- [ ] 4. Extend the Agent interface with `next_question` and `translate_to_english`
+- [x] 4. Extend the Agent interface with `next_question` and `translate_to_english`
   - [x] 4.1 Add the two methods to the base in `thirty/agents/base.py`
     - Define `COMPLETE = "complete"` and document `next_question(answers_so_far)` (returns a question object or `COMPLETE`) and `translate_to_english(text, source_language)` in the module/class docstring
     - Base `Agent.next_question` raises `NotImplementedError`; base `Agent.translate_to_english` returns `None` (safe defer)
@@ -77,21 +77,21 @@ Unit/integration test sub-tasks and property-based test sub-tasks are marked opt
     - _Requirements: 8.2, 8.3, 8.4, 8.8, 8.9, 8.10_
     - _Design: Components and Interfaces §3 (SampleAgent)_
 
-  - [-] 4.3 Implement the model-backed agent methods in `thirty/agents/local_model.py` and `thirty/agents/claude_model.py`
+  - [x] 4.3 Implement the model-backed agent methods in `thirty/agents/local_model.py` and `thirty/agents/claude_model.py`
     - Add a `NEXT_Q` prompt (in `local_model.py`, reused by `ClaudeAgent`) fed `answers_so_far`; parse with existing `_json`/`_extract_json` to one question object or `{"complete": true}`; on parse failure/empty/invalid → return `COMPLETE`
     - Add a `TRANSLATE` prompt; `translate_to_english` returns the stripped output or `None` on empty/`CANNOT_TRANSLATE`/exception — never fabricates
     - _Requirements: 8.5, 8.6, 8.8, 8.9, 8.11_
     - _Design: Components and Interfaces §3 (LocalModelAgent / ClaudeAgent)_
 
-  - [ ] 4.4 Add agent tests to `tests/test_agents.py`
+  - [x] 4.4 Add agent tests to `tests/test_agents.py`
     - Assert every agent exposes `next_question` and `translate_to_english`; SampleAgent returns questions in all 4 languages and falls back for an unknown language; SampleAgent/NoAgent `translate_to_english` return `None`; SampleAgent makes zero network calls (patched `requests` that raises if used)
     - _Requirements: 8.2, 8.3, 8.4, 8.10_
 
-- [ ] 5. Checkpoint - pure logic and agents
+- [x] 5. Checkpoint - pure logic and agents
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Write the property-based tests in `tests/test_front_door_properties.py` (PBT)
-  - [ ] 6.1 **[PBT]** Property 1 — Question-loop termination
+- [x] 6. Write the property-based tests in `tests/test_front_door_properties.py` (PBT)
+  - [x] 6.1 **[PBT]** Property 1 — Question-loop termination
     - **Property 1: Question-loop termination**
     - **Validates: Requirements 4.3, 4.5, 11.1**
     - Strategies: `reporter_type` sampled from the three types; `language` sampled from `["en","es","pt","ht","zz"]` (unsupported `zz` exercises fallback); `answer_sequence = lists(one_of(text(), just("I don't know")), max_size=40)` (longer than the cap)
@@ -100,7 +100,7 @@ Unit/integration test sub-tasks and property-based test sub-tasks are marked opt
     - Tag: `# Feature: report-front-door, Property 1`; ≥ 100 iterations
     - _Design: Testing Strategy (P1); Correctness Properties §Property 1_
 
-  - [ ] 6.2 **[PBT]** Property 2 — UNKNOWN preservation
+  - [x] 6.2 **[PBT]** Property 2 — UNKNOWN preservation
     - **Property 2: UNKNOWN preservation**
     - **Validates: Requirements 4.7, 4.10, 11.2**
     - Strategy: generate an answer map over the Requirement-4 fields where each field is a random non-empty value or the "I don't know" marker; record which fields were "I don't know"
@@ -108,7 +108,7 @@ Unit/integration test sub-tasks and property-based test sub-tasks are marked opt
     - Tag: `# Feature: report-front-door, Property 2`; ≥ 100 iterations
     - _Design: Testing Strategy (P2); Correctness Properties §Property 2_
 
-  - [ ] 6.3 **[PBT]** Property 3 — Single complaint on submit
+  - [x] 6.3 **[PBT]** Property 3 — Single complaint on submit
     - **Property 3: Single complaint on submit**
     - **Validates: Requirements 6.1, 6.7, 6.8, 11.3**
     - Strategy: generate confirmed `(reporter_type, language, collected_answers)`; build the payload via `to_intake_payload`
@@ -118,7 +118,7 @@ Unit/integration test sub-tasks and property-based test sub-tasks are marked opt
     - _Design: Testing Strategy (P3); Correctness Properties §Property 3_
 
 - [ ] 7. Implement the Front_Door blueprint and routes in `thirty/reporter/front_door.py`
-  - [ ] 7.1 Create the blueprint, session store, and landing/start routes
+  - [x] 7.1 Create the blueprint, session store, and landing/start routes
     - Define the Flask `Blueprint` and `init_app(app)`; implement opaque `session_id` cookie + per-session JSON state under `VIGIL_DIR/reporter_sessions/<session_id>.json`
     - `GET /report` and `GET /report/<device_slug>` (case-insensitive catalogue match from `DEVICES`; unknown slug → no pre-fill, prompt selection); wrap each `GET` render in try/except returning a no-auth retry error page; `GET` does no model call
     - `POST /report/start` records language + reporter-type (+ device), rejects if reporter-type missing; detect `agent.id == "none"` to route to the single-screen checklist
@@ -126,21 +126,21 @@ Unit/integration test sub-tasks and property-based test sub-tasks are marked opt
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9, 2.1, 2.2, 3.1, 3.2, 3.4, 8.7_
     - _Design: Components and Interfaces §1 (routes, session/state, render failure, performance)_
 
-  - [ ] 7.2 Implement the interview and review routes
+  - [x] 7.2 Implement the interview and review routes
     - `GET /report/interview` (render current single question with "I don't know" affordance, or redirect to review); `POST /report/answer` (append answer or UNKNOWN, enforce 8-cap, call `safe_next_question`, advance or end)
     - `GET /report/review` (plain-words summary, UNKNOWN shown as "not known", editable) and `POST /report/review/edit` (revise an answer, return to review)
     - Accept free-text up to 5,000 characters in the selected language
     - _Requirements: 2.3, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.9, 5.1, 5.2, 5.3, 5.5_
     - _Design: Components and Interfaces §1 (interview/review routes); §2 (loop driver)_
 
-  - [ ] 7.3 Implement confirm, done, and receipt routes with bilingual text and intake submission
+  - [x] 7.3 Implement confirm, done, and receipt routes with bilingual text and intake submission
     - `POST /report/confirm`: reject empty free-text ("a description is required", keep answers); fill missing→UNKNOWN; compose bilingual `text` (en → identical; non-en model agent → `translate_to_english` or `Translation_Pending_Marker`; non-en Sample/NoAgent → marker; never fabricate); build payload with `source="reporter"`, `reporter_type`, deterministic `external_id` from the confirmed session; call `intake.submit(payload, kind="reporter", default_source="reporter")`
     - Handle 202 queued → `/report/done/<ref>`; 200 duplicate → existing `REP-...` + "already received"; 400 rejected → plain-language error from `res["error"]`, retain answers, require re-confirm
     - `GET /report/done/<ref>` shows the Reference_Number + receipt link; `GET /report/receipt/<ref>.pdf` builds via `build_receipt`, writes to `VIGIL_DIR/reports/receipts/REP-...pdf`, serves via `send_from_directory`
     - _Requirements: 2.4, 2.5, 2.6, 2.7, 2.8, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 7.1, 7.2, 7.3_
     - _Design: Components and Interfaces §1; Data Models (bilingual text storage, intake payload); Error Handling_
 
-  - [ ] 7.4 Write route unit/integration tests in `tests/test_front_door.py`
+  - [-] 7.4 Write route unit/integration tests in `tests/test_front_door.py`
     - Using the Flask `client` fixture: `GET /report` and `/report/<slug>` return 200 within budget; known slug pre-fills, unknown slug prompts selection; language picker has exactly 4 options; reporter-type gate; empty description rejected with answers retained; review shows "not known"; confirm (sample agent) → `REP-xxxxxxxx` + downloadable PDF; duplicate and rejected paths; NoAgent → single-screen checklist
     - _Requirements: 1.3, 1.4, 2.1, 2.7, 3.4, 5.2, 6.4, 6.5, 6.6, 7.1, 7.2, 7.3, 8.7_
 

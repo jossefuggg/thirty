@@ -1,0 +1,68 @@
+{
+ "url": "https://api.fda.gov/device/recall.json?search=product_code:\"BZD\"&limit=10&sort=event_date_posted:desc",
+ "fetched": "2026-10-24",
+ "data": {
+  "recalls": [
+   {
+    "reason": "Potential to exhibit a loose connection between the flexible tubing and the nasal cannula, during assembly or while in use, which may result in loss of CPAP pressure, possibly reducing the effectiveness of treatment and lead to decreased oxygenation until connection is restored.",
+    "date": "2026-09-18",
+    "cfres_id": "222061",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=222061"
+   },
+   {
+    "reason": "Potential to exhibit a loose connection between the flexible tubing and the nasal cannula, during assembly or while in use, which may result in loss of CPAP pressure, possibly reducing the effectiveness of treatment and lead to decreased oxygenation until connection is restored.",
+    "date": "2026-09-18",
+    "cfres_id": "222063",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=222063"
+   },
+   {
+    "reason": "Packaging and labeling discrepancy involving product size identification and associated Unique Device Identifier (UDI/GTIN).",
+    "date": "2026-07-15",
+    "cfres_id": "221137",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221137"
+   },
+   {
+    "reason": "Devices may possess a programming error resulting in an incorrect device configuration.",
+    "date": "2025-08-08",
+    "cfres_id": "214847",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=214847"
+   },
+   {
+    "reason": "Devices may possess a programming error resulting in an incorrect device configuration.",
+    "date": "2025-08-08",
+    "cfres_id": "214848",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=214848"
+   },
+   {
+    "reason": "Devices may possess a programming error resulting in an incorrect device configuration.",
+    "date": "2025-08-08",
+    "cfres_id": "214849",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=214849"
+   },
+   {
+    "reason": "Update to contraindications and warning language due to CPAP masks containing magnets.",
+    "date": "2024-04-01",
+    "cfres_id": "206505",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=206505"
+   },
+   {
+    "reason": "Update to contraindications and warning language due to CPAP masks containing magnets.",
+    "date": "2024-04-01",
+    "cfres_id": "206506",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=206506"
+   },
+   {
+    "reason": "Update to contraindications and warning language due to CPAP masks containing magnets.",
+    "date": "2024-04-01",
+    "cfres_id": "206507",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=206507"
+   },
+   {
+    "reason": "Update to contraindications and warning language due to CPAP masks containing magnets.",
+    "date": "2024-04-01",
+    "cfres_id": "206508",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=206508"
+   }
+  ]
+ }
+}

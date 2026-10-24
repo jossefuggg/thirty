@@ -8,48 +8,50 @@
   .crumb a { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-weight: 700; } .crumb a:hover { color: var(--text); }
   .crumb .i { width: 16px; height: 16px; }
   .head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-  .head h2 { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-36); letter-spacing: -.015em; line-height: 1.1; }
+  .head h2 { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-36); letter-spacing: -.03em; line-height: 1.1; }
   .head .id { font: 700 var(--fs-20)/1 var(--mono); color: var(--muted); }
   .meta { display: flex; gap: 8px 24px; flex-wrap: wrap; color: var(--muted); font-size: var(--fs-14); margin-bottom: var(--s3); }
   .meta b { color: var(--text); font-weight: 700; }
 
   /* ---------- layout: single readable column ---------- */
-  .dt { display: grid; gap: var(--s3); align-items: start; max-width: 920px; }
+  .dt { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); align-items: start; max-width: 920px; }
   .cb { padding: var(--s3); }
   .k { font-size: var(--fs-13); font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); }
 
-  /* ---------- hero decision card (no tinted panels: the pill carries the colour) ---------- */
-  .hero { overflow: hidden; }
-  .hero-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s3); padding: var(--s3); align-items: center; border-bottom: 1px solid var(--border); }
-  .hero-cat { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
-  .hero-cat .c { font-size: var(--fs-20); font-weight: 800; color: var(--text); }
-  .legal { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: var(--r-pill); border: 2px solid var(--border); color: var(--text); font-size: 13px; font-weight: 700; }
+  /* ---------- verdict hero: big decision word, rule, deadline ring, actions ---------- */
+  .verdict { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s4); padding: var(--s4); align-items: center; }
+  @media (max-width: 760px) { .verdict { grid-template-columns: 1fr; gap: var(--s3); padding: var(--s3); } .verdict-side { order: -1; } }
+  .verdict-main { min-width: 0; }
+  .verdict-eyebrow { font-size: var(--fs-13); font-weight: 700; color: var(--muted); margin: 0 0 6px; }
+  .verdict-word { font-family: var(--font-display); font-weight: 800; font-size: 52px; letter-spacing: -.035em; line-height: 1; margin: 0; display: flex; align-items: center; gap: 12px; }
+  .verdict-word .i { width: 40px; height: 40px; flex: none; }
+  .verdict.REPORTABLE .verdict-word { color: var(--t-coral); }
+  .verdict-rule { margin: 14px 0 0; }
+  .legal { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: var(--r-pill); background: var(--t-steel-tint); color: var(--text); font-size: 13px; font-weight: 700; }
   .legal .i { width: 15px; height: 15px; color: var(--muted); }
-  /* countdown: serif number; coral under 7 days, on a 5-day report, or overdue */
-  .cd { text-align: right; }
-  .cd .n { font-family: var(--font-display); font-weight: 400; font-size: 56px; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--cd); }
-  .cd .n small { font-family: var(--font); font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-  .cd .d { margin-top: 8px; font-size: var(--fs-14); color: var(--muted); font-weight: 700; }
+  .verdict-reason { font-size: 17px; line-height: 1.6; color: var(--text); max-width: 60ch; margin: 16px 0 0; }
+  .verdict-acts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: var(--s3); }
+  .verdict-acts > #f-review { display: contents; }
+  #f-review .rv-acts { display: inline-flex; gap: 12px; justify-content: start; flex-wrap: wrap; }
+  #f-review .rv-acts .btn { width: auto; }
+  #f-review .rv-b { padding: 0; }
+  #f-review .card-h { display: none; }
+  .verdict-pdf { display: inline-flex; align-items: center; gap: 8px; }
+  .model-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 16px 0 0; }
+  .model-line .i { width: 16px; height: 16px; color: var(--muted); }
+
+  /* deadline ring on the side of the verdict */
+  .verdict-side { display: grid; justify-items: center; gap: 8px; }
+  .cd-ring { width: 150px; height: 150px; position: relative; filter: drop-shadow(0 8px 20px rgba(20,30,45,.12)); }
+  .cd-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .cd { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; text-align: center; }
+  .cd .n { font-family: var(--font-display); font-weight: 800; font-size: 44px; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--cd); }
+  .cd .n small { font-family: var(--font); font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); display: block; margin-top: 2px; }
+  .cd .d { font-size: var(--fs-13); color: var(--muted); font-weight: 700; max-width: 150px; }
   .cd.green, .cd.orange { --cd: var(--text); } .cd.red, .cd.over, .cd.five { --cd: var(--t-coral); } .cd.na { --cd: var(--muted); }
-  .cd.over .n small { color: var(--coral-text); }
-  .hero-b { padding: var(--s3); display: grid; gap: var(--s3); }
-  .why p { font-size: 17px; line-height: 1.65; color: var(--text); margin-top: 8px; max-width: 72ch; }
-  .conf-row { display: grid; grid-template-columns: 120px minmax(0, 1fr) 56px; gap: 16px; align-items: center; }
   .track { height: 10px; border-radius: var(--r-pill); background: var(--track); overflow: hidden; }
   .track i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--text); }
   .track.low i { background: var(--muted); }
-  .conf-row b { font-size: var(--fs-20); font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
-  .model-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 0; }
-  .model-line .i { width: 16px; height: 16px; color: var(--muted); }
-  .verdict-reason { font-size: 17px; line-height: 1.6; color: var(--text); max-width: 72ch; margin: 0; }
-  /* the verdict card owns the one primary action: drop the two-up grid, let it breathe */
-  .verdict-acts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .verdict-acts > #f-review { display: contents; }
-  .hero-b #f-review .rv-acts { display: inline-flex; gap: 12px; justify-content: start; }
-  .hero-b #f-review .rv-acts .btn { width: auto; min-width: 200px; }
-  .hero-b #f-review .rv-b { padding: 0; }
-  .hero-b #f-review .card-h { display: none; }
-  .verdict-pdf { display: inline-flex; align-items: center; gap: 8px; }
   .verdict-pdf.btn-lg { min-width: 200px; }
   .verdict-noform { color: var(--muted); font-size: var(--fs-14); font-weight: 700; }
   .verdict-noform .i { width: 18px; height: 18px; color: var(--muted); }
@@ -122,7 +124,7 @@
 
   /* ---------- priority breakdown ---------- */
   .pb-top { display: flex; align-items: center; gap: 16px; }
-  .pb-top .score { font-family: var(--font-display); font-weight: 400; font-size: 48px; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .pb-top .score { font-family: var(--font-display); font-weight: 800; font-size: 48px; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
   .pb-top .rule { margin-left: auto; font-size: 13px; color: var(--muted); }
   .sbar { display: flex; height: 14px; border-radius: var(--r-pill); overflow: hidden; gap: 3px; margin: var(--s2) 0; background: var(--track); }
   .sbar i { display: block; height: 100%; }
@@ -178,7 +180,7 @@
 
   .mem-b { padding: var(--s2) var(--s3) var(--s3); display: grid; gap: 12px; }
   .mem-top { display: flex; align-items: center; gap: 14px; }
-  .mem-top .mem-n { width: 48px; height: 48px; border-radius: 12px; background: var(--text); color: var(--bg); display: grid; place-items: center; font-family: var(--font-display); font-size: var(--fs-24); font-variant-numeric: tabular-nums; flex: none; }
+  .mem-top .mem-n { width: 48px; height: 48px; border-radius: 12px; background: var(--text); color: var(--bg); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; font-size: var(--fs-24); font-variant-numeric: tabular-nums; flex: none; }
   .mem-top .mem-n.zero { background: var(--hover); color: var(--muted); } .mem-n .i { width: 22px; height: 22px; }
   .mem-top b { display: block; font-size: var(--fs-14); font-weight: 800; } .mem-top span { font-size: 13px; color: var(--muted); }
   .issues { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -220,19 +222,24 @@
      390px screen with no horizontal scroll. Stack the countdown under the decision and make actions full width. */
   @media (max-width: 640px) {
     .dt { max-width: none; gap: var(--s2); }
-    .head h2 { font-size: var(--fs-28); }
+    .head { flex-wrap: wrap; gap: 6px 10px; } .head h2 { font-size: var(--fs-28); width: 100%; }
     .meta { gap: 6px 16px; }
-    .hero-top { grid-template-columns: 1fr; gap: var(--s2); }
-    .cd { text-align: left; } .cd .n { font-size: 44px; }
-    .hero-b, .hero-top, .cb, .cbpad, .tabpanel { padding: var(--s2); }
-    .facts, .parts { grid-template-columns: 1fr; }
+    .verdict-word { font-size: 38px; } .verdict-word .i { width: 30px; height: 30px; }
+    .cd-ring { width: 120px; height: 120px; }
+    .cb, .tabpanel, .dec, .tl, .mem-b, .rv-b, .pdf-b, .clocks { padding: var(--s2); }
+    .facts, .parts, .dec-grid, .two { grid-template-columns: 1fr; }
     .verdict-reason, .why p { font-size: var(--fs-16); }
     .verdict-acts { flex-direction: column; align-items: stretch; }
     .verdict-acts .btn, .verdict-pdf.btn-lg { width: 100%; min-width: 0; }
-    .hero-b #f-review .rv-acts { display: flex; flex-direction: column; gap: 12px; }
-    .hero-b #f-review .rv-acts .btn { width: 100%; min-width: 0; }
-    .tabstrip { overflow-x: auto; flex-wrap: nowrap; }
-    .two { grid-template-columns: 1fr; }
+    #f-review .rv-acts { display: flex; flex-direction: column; gap: 12px; }
+    #f-review .rv-acts .btn { width: 100%; min-width: 0; }
+    .rv-acts { grid-template-columns: 1fr; }
+    .q { grid-template-columns: 1fr; gap: 10px; }
+    .dec-out { grid-template-columns: 1fr; }
+    /* the reporting-clocks table can be wide: let it scroll inside its card */
+    .clocks { overflow-x: auto; } .ctbl { min-width: 480px; }
+    .tabstrip { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+    .tab { white-space: nowrap; }
   }
   @media print {
     .dt { max-width: none; }
@@ -287,27 +294,21 @@
     </div>
   </section>
 
-  <!-- 2. verdict card: decision, one-sentence reason, deadline, one primary action -->
-  <section class="card hero {{ r.decision }}">
-    <div class="hero-top">
-      <div>
-        <span class="pill pill-lg d-{{ r.decision }}">{% if r.decision == 'REPORTABLE' %}{{ icon('alert') }}{% elif r.decision == 'NEEDS_INFO' %}{{ icon('help') }}{% else %}{{ icon('check') }}{% endif %}{{ (r.decision or '')|replace('_', ' ') }}</span>
-        <div class="hero-cat">
-          {% if r.category and r.category != 'NONE' %}<span class="c">{{ r.category|replace('_', ' ')|title }}</span>{% endif %}
-          <span class="legal">{{ icon('scale') }}{{ r.legal }}</span>
-        </div>
-      </div>
-      <div id="f-cd">{% include "_detail_cd.html" %}</div>
-    </div>
-    <div class="hero-b">
+  <!-- 2. verdict hero: big decision word, rule, deadline ring, 3500A + Approve -->
+  <section class="card verdict {{ r.decision }}">
+    <div class="verdict-main">
+      <p class="verdict-eyebrow">{% if r.category and r.category != 'NONE' %}{{ r.category|replace('_', ' ')|title }}{% else %}Agent verdict{% endif %}</p>
+      <h2 class="verdict-word">{% if r.decision == 'REPORTABLE' %}{{ icon('alert') }}{% elif r.decision == 'NEEDS_INFO' %}{{ icon('help') }}{% else %}{{ icon('check') }}{% endif %}{{ (r.decision or '')|replace('_', ' ')|capitalize }}</h2>
+      <p class="verdict-rule"><span class="legal">{{ icon('scale') }}{{ r.legal }}</span></p>
       <p class="verdict-reason">{{ r.reason }}</p>
       <div class="verdict-acts">
         <div id="f-review">{% include "_detail_review.html" %}</div>
         {% if r.pdf %}<a class="btn btn-secondary btn-lg verdict-pdf" href="/reports/{{ r.id }}.pdf" target="_blank">{{ icon('file') }}Open Form 3500A draft (PDF)</a>
         {% elif not r.reportable %}<span class="verdict-pdf verdict-noform">{{ icon('file') }}No FDA form needed</span>{% endif %}
       </div>
-      <p class="model-line">{{ icon('cpu') }}Classified by {{ AGENT.name }} on this machine · {{ r.conf }}% confidence · 0 bytes sent to cloud AI</p>
+      <p class="model-line">{{ icon('cpu') }}Classified by {{ AGENT.name }} on this machine · {{ r.conf }}% confidence · {{ "Cloud model (demo, sample data)" if CLOUD_AGENT else "0 bytes sent to cloud AI" }}</p>
     </div>
+    <div class="verdict-side" id="f-cd">{% include "_detail_cd.html" %}</div>
   </section>
 
   <!-- 3. decision record: collapsed to one line, expands -->

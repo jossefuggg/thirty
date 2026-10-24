@@ -1,0 +1,125 @@
+{
+  "_comment": "Device readiness rules. DATA, not code: the category engine, day-one checklist, product-code list and all citations are read from here. Cite ONLY the keys in `citations` below; never invent regulations, guidance names, dates or URLs. See .kiro/specs/device-readiness.",
+  "disclaimer": "Decision support only, not regulatory advice. Confirm with a regulatory professional or ask FDA (513(g) request or Q-Submission).",
+  "incomplete_data_notice": "Patterns from public FDA reports for similar devices. Reports are incomplete and have no usage denominator, so counts are not failure rates. Use this to decide where to look first, not to predict your device's faults.",
+  "categories": {
+    "general_wellness": {
+      "label": "Likely general wellness (not a device)",
+      "headline": "This is likely general wellness, not a medical device."
+    },
+    "borderline": {
+      "label": "Borderline",
+      "headline": "This is likely borderline: it may be general wellness or a device depending on how it is presented and used."
+    },
+    "class_i": {
+      "label": "Likely device: Class I",
+      "headline": "This is likely a medical device, most likely Class I."
+    },
+    "class_ii": {
+      "label": "Likely device: Class II, 510(k) if a predicate exists, otherwise De Novo",
+      "headline": "This is likely a Class II medical device: 510(k) if a cleared predicate exists, otherwise De Novo."
+    },
+    "class_iii": {
+      "label": "Likely device: Class III, PMA",
+      "headline": "This is likely a Class III medical device requiring premarket approval (PMA)."
+    }
+  },
+  "driver_text": {
+    "claim.wellness": "Supports general fitness or wellness",
+    "claim.measure": "Estimates a body measurement",
+    "claim.flag": "Flags a possible disease or condition",
+    "claim.diagnose": "Claims to diagnose a disease",
+    "claim.treat": "Guides treatment, dosing or therapy",
+    "claim.replace": "Replaces a clinician's judgement",
+    "invasive": "Invasive, implanted, or delivers energy or a substance into the body",
+    "disease_claim": "Marketing or app names a specific disease or condition",
+    "worst.none": "Worst realistic outcome is no harm",
+    "worst.minor": "Worst realistic outcome is minor",
+    "worst.serious": "Worst realistic outcome is serious injury",
+    "worst.death": "Worst realistic outcome is death",
+    "users.consumers": "Used by consumers",
+    "users.clinicians": "Used by clinicians",
+    "users.both": "Used by both consumers and clinicians",
+    "predicate.yes": "An already-cleared device does the same thing",
+    "predicate.no": "No already-cleared device does the same thing",
+    "predicate.unsure": "It is unclear whether a cleared device does the same thing"
+  },
+  "paths": {
+    "510k": {"name": "510(k)", "when": "a cleared predicate device exists"},
+    "denovo": {"name": "De Novo", "when": "no cleared predicate device exists"},
+    "class_i_note": {"name": "Check the classification regulation", "when": "many Class I devices are exempt from 510(k)"},
+    "borderline_wellness": {"name": "May be general wellness", "when": "presented as wellness information with no disease claim and no diagnostic use (January 2026 General Wellness guidance)"},
+    "borderline_device": {"name": "Otherwise a device", "when": "presented or used to address a specific disease or to diagnose"}
+  },
+  "citations": {
+    "gw_guidance": {"label": "FDA guidance \"General Wellness: Policy for Low Risk Devices\" (updated January 2026)", "date": "January 2026", "url": null},
+    "cds_guidance": {"label": "FDA guidance \"Clinical Decision Support Software\" (updated January 2026)", "date": "January 2026", "url": null},
+    "reg_807": {"label": "21 CFR Part 807 (establishment registration and device listing)", "date": null, "url": null},
+    "reg_820_qmsr": {"label": "21 CFR Part 820, the Quality Management System Regulation (QMSR), aligned with ISO 13485", "date": "in effect since 2 February 2026", "url": null},
+    "reg_803": {"label": "21 CFR Part 803 (Medical Device Reporting)", "date": null, "url": null},
+    "reg_806": {"label": "21 CFR Part 806 (reports of corrections and removals)", "date": null, "url": null},
+    "reg_830": {"label": "21 CFR Part 830 (Unique Device Identification)", "date": null, "url": null},
+    "reg_801": {"label": "21 CFR Part 801 (device labeling)", "date": null, "url": null},
+    "fdc_524b": {"label": "FD&C Act section 524B (cybersecurity for cyber devices)", "date": null, "url": null},
+    "path_513g": {"label": "513(g) Request for Information", "date": null, "url": null},
+    "path_qsub": {"label": "Q-Submission", "date": null, "url": null},
+    "openfda_event": {"label": "openFDA device adverse-event API", "date": null, "url": "https://api.fda.gov/device/event.json"},
+    "openfda_recall": {"label": "openFDA device recall API", "date": null, "url": "https://api.fda.gov/device/recall.json"}
+  },
+  "category_citations": {
+    "general_wellness": ["gw_guidance"],
+    "borderline": ["gw_guidance", "cds_guidance"],
+    "class_i": ["path_513g"],
+    "class_ii": ["path_513g", "path_qsub"],
+    "class_iii": ["path_513g", "path_qsub"]
+  },
+  "day_one_checklist": [
+    {"id": "registration", "text": "Establishment registration and device listing", "citations": ["reg_807"], "thirty": null},
+    {"id": "qmsr", "text": "Quality management system: QMSR aligned with ISO 13485, in effect since 2 February 2026", "citations": ["reg_820_qmsr"], "thirty": null},
+    {"id": "complaints", "text": "Complaint handling and complaint files", "citations": ["reg_820_qmsr"], "thirty": "handles"},
+    {"id": "mdr", "text": "Medical Device Reporting: deaths, serious injuries and malfunctions within 30 calendar days, 5 work days when remedial action is needed", "citations": ["reg_803"], "thirty": "handles"},
+    {"id": "corrections", "text": "Reports of corrections and removals within 10 working days", "citations": ["reg_806"], "thirty": "flags"},
+    {"id": "udi", "text": "Unique Device Identification and labeling", "citations": ["reg_830", "reg_801"], "thirty": null},
+    {"id": "cyber", "text": "Cybersecurity requirements for connected cyber devices", "citations": ["fdc_524b"], "thirty": null},
+    {"id": "audit", "text": "Audit trail of who decided what and when", "citations": [], "thirty": "handles"}
+  ],
+  "thirty_tags": {
+    "handles": "Thirty handles this",
+    "flags": "Thirty flags these"
+  },
+  "product_codes": [
+    {"code": "BZD", "label": "CPAP (sample device)"},
+    {"code": "FRN", "label": "Infusion pump (sample device)"},
+    {"code": "QBJ", "label": "Continuous glucose monitor (sample device)"},
+    {"code": "DWJ", "label": "Patient warming system (sample device)"},
+    {"code": "MWI", "label": "Patient monitor (sample device)"},
+    {"code": "NOU", "label": "Home ventilator (sample device)"},
+    {"code": "DQA", "label": "Pulse oximeter (sample device)"},
+    {"code": "FLE", "label": "Steam sterilizer (sample device)"}
+  ],
+  "signal_terms": {
+    "accuracy_terms": ["accuracy", "inaccurate", "incorrect", "false", "erroneous", "reading", "measurement", "calibration", "overestimat", "underestimat", "high reading", "low reading", "out of range", "signal"],
+    "connectivity_terms": ["software", "firmware", "app", "application", "connect", "bluetooth", "wireless", "sync", "network", "data", "communication", "computer", "update", "pairing"]
+  },
+  "example_preset": {
+    "name": "Stride Band",
+    "note": "invented wellness wearable with a blood-pressure trend feature",
+    "suggested_product_code": "MWI",
+    "answers": {
+      "claims": ["wellness", "measure"],
+      "invasive": false,
+      "disease_claim": false,
+      "worst": "minor",
+      "users": "consumers",
+      "predicate": "unsure"
+    }
+  },
+  "suggested_codes_by_claim": {
+    "measure": "MWI",
+    "wellness": "MWI",
+    "flag": "MWI",
+    "diagnose": "QBJ",
+    "treat": "FRN",
+    "replace": "MWI"
+  }
+}

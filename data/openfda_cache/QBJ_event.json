@@ -1,0 +1,88 @@
+{
+ "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code:\"QBJ\"+AND+date_received:[20231024+TO+20261024]&count=product_problems.exact",
+ "fetched": "2026-10-24",
+ "data": {
+  "device_problems": [
+   {
+    "term": "Wireless Communication Problem",
+    "count": 356998
+   },
+   {
+    "term": "Incorrect, Inadequate or Imprecise Result or Readings",
+    "count": 270116
+   },
+   {
+    "term": "Low Readings",
+    "count": 165283
+   },
+   {
+    "term": "Detachment of Device or Device Component",
+    "count": 124183
+   },
+   {
+    "term": "No Device Output",
+    "count": 74751
+   },
+   {
+    "term": "Protective Measures Problem",
+    "count": 58879
+   },
+   {
+    "term": "Unintended Application Program Shut Down",
+    "count": 55185
+   },
+   {
+    "term": "Premature End-of-Life Indicator",
+    "count": 52082
+   }
+  ],
+  "patient_problems": [
+   {
+    "term": "",
+    "count": 1292262
+   },
+   {
+    "term": "Other",
+    "count": 18833
+   },
+   {
+    "term": "Required Intervention",
+    "count": 11217
+   },
+   {
+    "term": "Hospitalization",
+    "count": 3102
+   },
+   {
+    "term": " H",
+    "count": 3041
+   },
+   {
+    "term": " O",
+    "count": 2901
+   },
+   {
+    "term": " R",
+    "count": 693
+   },
+   {
+    "term": "Life Threatening",
+    "count": 602
+   }
+  ],
+  "reports_per_year": [
+   {
+    "year": 2024,
+    "count": 347116
+   },
+   {
+    "year": 2025,
+    "count": 379891
+   },
+   {
+    "year": 2026,
+    "count": 545883
+   }
+  ]
+ }
+}

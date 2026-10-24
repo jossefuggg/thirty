@@ -1,0 +1,88 @@
+{
+ "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code:\"DWJ\"+AND+date_received:[20231024+TO+20261024]&count=product_problems.exact",
+ "fetched": "2026-10-24",
+ "data": {
+  "device_problems": [
+   {
+    "term": "Failure to Pump",
+    "count": 1252
+   },
+   {
+    "term": "Insufficient Cooling",
+    "count": 1130
+   },
+   {
+    "term": "Inaccurate Flow Rate",
+    "count": 972
+   },
+   {
+    "term": "Device Sensing Problem",
+    "count": 957
+   },
+   {
+    "term": "Defective Component",
+    "count": 749
+   },
+   {
+    "term": "Insufficient Heating",
+    "count": 593
+   },
+   {
+    "term": "Restricted Flow rate",
+    "count": 580
+   },
+   {
+    "term": "Gas/Air Leak",
+    "count": 522
+   }
+  ],
+  "patient_problems": [
+   {
+    "term": "Other",
+    "count": 7318
+   },
+   {
+    "term": "",
+    "count": 362
+   },
+   {
+    "term": "Required Intervention",
+    "count": 37
+   },
+   {
+    "term": " R",
+    "count": 10
+   },
+   {
+    "term": " O",
+    "count": 9
+   },
+   {
+    "term": " H",
+    "count": 6
+   },
+   {
+    "term": " L",
+    "count": 6
+   },
+   {
+    "term": "Hospitalization",
+    "count": 6
+   }
+  ],
+  "reports_per_year": [
+   {
+    "year": 2024,
+    "count": 3329
+   },
+   {
+    "year": 2025,
+    "count": 2431
+   },
+   {
+    "year": 2026,
+    "count": 1287
+   }
+  ]
+ }
+}

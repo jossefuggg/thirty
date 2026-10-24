@@ -1,0 +1,68 @@
+{
+ "url": "https://api.fda.gov/device/recall.json?search=product_code:\"FLE\"&limit=10&sort=event_date_posted:desc",
+ "fetched": "2026-10-24",
+ "data": {
+  "recalls": [
+   {
+    "reason": "The Automated Field Steam Sterilizer's water recovery system 120V Amphenol connector may experience an intermittent loss of ground continuity, which could result in an unreliable fault current return path.",
+    "date": "2026-08-18",
+    "cfres_id": "221436",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221436"
+   },
+   {
+    "reason": "The STATCLAVE G4 is a dynamic air removal (prevacuum) tabletop steam sterilizer intended for use by a health care provider to sterilize medical products by means of pressurized steam. It is suitable for the sterilization of dental and medical instruments that are validated to be sterilized by steam. The STATCLAVE G4 has not been designed to sterilize liquid loads, bio medical waste or materials not compatible with steam sterilization. The processing of such loads may result in incomplete sterilization and / or damage to the autoclave.",
+    "date": "2023-08-03",
+    "cfres_id": "202159",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=202159"
+   },
+   {
+    "reason": "The STATCLAVE G4 is a dynamic air removal (prevacuum) tabletop steam sterilizer intended for use by a health care provider to sterilize medical products by means of pressurized steam. It is suitable for the sterilization of dental and medical instruments that are validated to be sterilized by steam. The STATCLAVE G4 has not been designed to sterilize liquid loads, bio medical waste or materials not compatible with steam sterilization. The processing of such loads may result in incomplete sterilization and / or damage to the autoclave.",
+    "date": "2023-08-03",
+    "cfres_id": "202160",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=202160"
+   },
+   {
+    "reason": "In AMSCO Small Steam Sterilizers equipped with the CS-iQ feature, the sterilizer software inadvertently prevents the capability to operate the foot pedal, which allows the Operator to open and close the sterilizer door.",
+    "date": "2015-11-04",
+    "cfres_id": "140236",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=140236"
+   },
+   {
+    "reason": "STERIS has identified that the control board software in select AMSCO 400 and AMSCO C units will interrupt and cancel a processing cycle should the selected sterilizer shutdown time coincide with a processing cycle.  This may result in a procedure delay.",
+    "date": "2015-04-30",
+    "cfres_id": "135639",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=135639"
+   },
+   {
+    "reason": "The firm discovered that unlatching can occur when overloaded transfer carriages are pulled or maneuvered incorrectly or with excessive force.",
+    "date": "2013-12-11",
+    "cfres_id": "123916",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=123916"
+   },
+   {
+    "reason": "The control boards alarm set points and temperature tolerances allowed for erroneous activation of the AD (analog/digital) alarm as temperature fluctuated during operation. When this alarm occurs, the sterilizer locks up and cannot be used until serviced, causing Customer nuisance.",
+    "date": "2013-03-06",
+    "cfres_id": "116145",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=116145"
+   },
+   {
+    "reason": "Through Customer feedback and field service experience, STERIS learned that operators may experience difficulty when inserting or removing equipment from the Evolution sterilizer using the transfer carriage due to the following issues with the transfer carriage. \n1) Deformation of the latch pin or cracked ball bearings preventing the roller from turning.\n2) The rollers on the ends of the pivot a",
+    "date": "2012-05-11",
+    "cfres_id": "109080",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=109080"
+   },
+   {
+    "reason": "During and FDA inspection on 8/23/2011, it was discovered that the firm received numerous reports of the steam sterilizer malfunctioning.",
+    "date": "2012-01-11",
+    "cfres_id": "105922",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=105922"
+   },
+   {
+    "reason": "The firm discovered that some Eagle 3000 units may have a door post pin missing which could cause incomplete or no engagement of the radial arms into the lock rails of the door.  The sterilizer is designed with switches that prevent cycle initiation if the door is not locked.  However, in the event the door switches are not properly adjusted they may falsely indicate that the door is locked even t",
+    "date": "2008-09-17",
+    "cfres_id": "72493",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=72493"
+   }
+  ]
+ }
+}

@@ -5,7 +5,7 @@
   .sm { padding: 20px; position: relative; overflow: hidden; border-top: 4px solid var(--text); }
   .sm.urgent { border-top-color: var(--t-coral); }
   .sm span { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-  .sm b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 48px; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+  .sm b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 48px; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
   .sm.urgent b.hot { color: var(--t-coral); }
   .sm small { font-size: 13px; color: var(--muted); }
   .ck { display: grid; grid-template-columns: 250px minmax(0, 1fr) 170px 150px; gap: 20px; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--border); color: inherit; transition: background var(--t-fast); }
@@ -24,6 +24,14 @@
   .ck .oth em.hot { border-color: var(--t-coral); color: var(--coral-text); }
   .scale { display: grid; grid-template-columns: 250px minmax(0, 1fr) 170px 150px; gap: 20px; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--hover); font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
   .scale .ax { display: flex; justify-content: space-between; text-transform: none; letter-spacing: 0; font-weight: 700; }
+  /* phone: stack the summary tiles and each clock row; hide the desktop column scale */
+  @media (max-width: 640px) {
+    .sum { grid-template-columns: 1fr 1fr; gap: var(--s2); }
+    .scale { display: none; }
+    .ck { grid-template-columns: 1fr auto; gap: 8px 12px; padding: 14px var(--s2); }
+    .ck .track { grid-column: 1 / 3; } .ck .due { grid-column: 1 / 3; }
+    .ck .left { font-size: var(--fs-16); }
+  }
 </style>
 {% endblock %}
 {% block body %}

@@ -111,3 +111,131 @@ def test_pipeline_uses_the_registry(tmp_path, monkeypatch):
     assert row["decision"] == "REPORTABLE" and row["deadline_days"] == 5 and row["due_date"]
     assert os.path.exists(tmp_path / "r" / f"MDR_{c['id']}.pdf") or v.FPDF is None
     assert [r["id"] for r in v.read_log()] == [c["id"]]
+
+
+# ---------------------------------------------------------------- reporter front door: next_question / translate_to_english
+from thirty.agents.base import COMPLETE  # noqa: E402
+from thirty.agents.local_model import LocalModelAgent  # noqa: E402
+from thirty.agents.claude_model import ClaudeAgent  # noqa: E402
+
+_LANGS = ("en", "es", "pt", "ht")
+
+
+def _all_agents():
+    """One instance of every agent (no network touched by construction)."""
+    return [SampleAgent(delay=0), NoAgent(), make_agent("local"), LocalModelAgent(), ClaudeAgent()]
+
+
+def _answers_view(language, asked):
+    """The read-only Answers_So_Far view next_question reads (interview.answers_view shape)."""
+    return {"reporter_type": "patient_family", "language": language, "device": None, "answers": {}, "asked": list(asked)}
+
+
+def _is_question(q):
+    """A well-formed next_question object: non-empty field/prompt/type and the allow_idk affordance."""
+    return (isinstance(q, dict) and isinstance(q.get("field"), str) and q["field"]
+            and isinstance(q.get("prompt"), str) and q["prompt"]
+            and isinstance(q.get("type"), str) and q["type"] and q.get("allow_idk") is True)
+
+
+def test_every_agent_exposes_the_front_door_methods():
+    """Requirement 8.1/8.2/8.5/8.6: next_question and translate_to_english are callable on every agent."""
+    for a in _all_agents():
+        assert callable(getattr(a, "next_question", None)), f"{a.id} missing next_question"
+        assert callable(getattr(a, "translate_to_english", None)), f"{a.id} missing translate_to_english"
+
+
+def test_sample_agent_scripts_every_language_to_completion(monkeypatch):
+    """Requirement 8.2/8.8/8.9: scripted loop yields one valid question per field in each language, then COMPLETE."""
+    monkeypatch.setenv("THIRTY_SAMPLE_DELAY", "0")
+    a = SampleAgent()
+    prompts_by_lang = {}
+    for lang in _LANGS:
+        asked, fields = [], []
+        for _ in range(len(a._NQ_ORDER)):
+            q = a.next_question(_answers_view(lang, asked))
+            assert _is_question(q), f"{lang}: expected a question, got {q!r}"
+            assert q["language"] == lang, f"{lang}: prompt language echoed as {q['language']!r}"
+            assert q["prompt"].strip(), f"{lang}: empty prompt for {q['field']}"
+            assert q["field"] not in asked, f"{lang}: repeated field {q['field']}"
+            fields.append(q["field"]); asked.append(q["field"])
+        assert fields == a._NQ_ORDER, f"{lang}: field order {fields} != {a._NQ_ORDER}"
+        # After the whole field set has been asked, the base COMPLETE sentinel.
+        assert a.next_question(_answers_view(lang, asked)) == COMPLETE, f"{lang}: expected COMPLETE after full set"
+        # The first question (no fields asked yet) is the brand-name prompt; keep it to compare across languages.
+        prompts_by_lang[lang] = a.next_question(_answers_view(lang, []))["prompt"]
+    # Real localization, not a stub: the brand-name prompt differs across at least two languages.
+    brand_prompts = set(prompts_by_lang.values())
+    assert len(brand_prompts) >= 2, "brand-name prompt is identical in every language (stub, not localized)"
+
+
+def test_sample_agent_choice_fields_carry_localized_options(monkeypatch):
+    """Requirement 8.2: choice fields expose localized option labels in the requested language."""
+    monkeypatch.setenv("THIRTY_SAMPLE_DELAY", "0")
+    a = SampleAgent()
+    # patient_outcome is the first choice field; drive up to it and read its options in two languages.
+    up_to = a._NQ_ORDER[:a._NQ_ORDER.index("patient_outcome")]
+    en = a.next_question(_answers_view("en", up_to)); es = a.next_question(_answers_view("es", up_to))
+    assert en["field"] == es["field"] == "patient_outcome" and en["type"] == es["type"] == "choice"
+    en_labels = [o["label"] for o in en["options"]]; es_labels = [o["label"] for o in es["options"]]
+    assert en_labels and es_labels and en_labels != es_labels, "choice labels are not localized"
+
+
+def test_sample_agent_unknown_language_falls_back_to_english(monkeypatch):
+    """Requirement 8.3: an unsupported language still yields a valid question, in the default (en) strings."""
+    monkeypatch.setenv("THIRTY_SAMPLE_DELAY", "0")
+    a = SampleAgent()
+    q = a.next_question(_answers_view("zz", []))
+    assert _is_question(q) and q["language"] == "en"
+    assert q["prompt"] == a.next_question(_answers_view("en", []))["prompt"]
+
+
+def test_sample_agent_next_question_returns_one_question_or_complete(monkeypatch):
+    """Requirement 8.8/8.9: every step returns exactly one question dict OR the COMPLETE sentinel — never list/None."""
+    monkeypatch.setenv("THIRTY_SAMPLE_DELAY", "0")
+    a = SampleAgent()
+    asked = []
+    for _ in range(len(a._NQ_ORDER) + 3):  # run past the end to hit COMPLETE and keep returning it
+        q = a.next_question(_answers_view("en", asked))
+        assert q is not None and not isinstance(q, (list, tuple))
+        assert q == COMPLETE or _is_question(q), f"unexpected return {q!r}"
+        if q == COMPLETE:
+            break
+        asked.append(q["field"])
+    assert a.next_question(_answers_view("en", a._NQ_ORDER)) == COMPLETE
+
+
+def test_sample_and_no_agent_defer_translation():
+    """Requirement 8.10: SampleAgent and NoAgent never translate — translate_to_english returns None."""
+    for a in (SampleAgent(delay=0), NoAgent()):
+        assert a.translate_to_english("hola, el aparato falló", "es") is None
+        assert a.translate_to_english("texte en français", "fr") is None
+
+
+def test_no_agent_next_question_is_complete_immediately():
+    """Requirement 8.7: NoAgent has no adaptive loop — next_question returns COMPLETE on the first call."""
+    assert NoAgent().next_question(_answers_view("en", [])) == COMPLETE
+
+
+def test_sample_agent_next_question_makes_zero_network_calls(monkeypatch):
+    """Requirement 8.4: the sample agent drives the interview fully offline — any socket use would raise."""
+    monkeypatch.setenv("THIRTY_SAMPLE_DELAY", "0")
+    import socket
+
+    def _no_network(*args, **kwargs):
+        raise AssertionError("SampleAgent.next_question attempted a network call")
+
+    monkeypatch.setattr(socket, "socket", _no_network)
+    # Belt and braces: if sample.py ever imported requests, a call would blow up too.
+    from thirty.agents import sample as sample_mod
+    if hasattr(sample_mod, "requests"):
+        monkeypatch.setattr(sample_mod.requests, "get", _no_network, raising=False)
+        monkeypatch.setattr(sample_mod.requests, "post", _no_network, raising=False)
+
+    a = SampleAgent()
+    asked = []
+    for _ in range(len(a._NQ_ORDER)):
+        q = a.next_question(_answers_view("en", asked))
+        assert _is_question(q)
+        asked.append(q["field"])
+    assert a.next_question(_answers_view("en", asked)) == COMPLETE

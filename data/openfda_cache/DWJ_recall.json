@@ -1,0 +1,68 @@
+{
+ "url": "https://api.fda.gov/device/recall.json?search=product_code:\"DWJ\"&limit=10&sort=event_date_posted:desc",
+ "fetched": "2026-10-24",
+ "data": {
+  "recalls": [
+   {
+    "reason": "Overheating occurring on 115V CPU boards for the Blanketrol III Model 233, Innercool CoolBlue Model STx, and Blanketrol II Model 222S products may cause the device to shut down.",
+    "date": "2026-08-14",
+    "cfres_id": "221634",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221634"
+   },
+   {
+    "reason": "Overheating occurring on 115V CPU boards for the Blanketrol III Model 233, Innercool CoolBlue Model STx, and Blanketrol II Model 222S products may cause the device to shut down.",
+    "date": "2026-08-14",
+    "cfres_id": "221635",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221635"
+   },
+   {
+    "reason": "Overheating occurring on 115V CPU boards for the Blanketrol III Model 233, Innercool CoolBlue Model STx, and Blanketrol II Model 222S products may cause the device to shut down,",
+    "date": "2026-08-14",
+    "cfres_id": "221636",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221636"
+   },
+   {
+    "reason": "An investigation into a report of the patient wrap (ThermoWrap), used with the Allon device, exceeding the set temperature determined that if:\n1. The Human Sensor Board is disconnected from the Controller Board in the Allon device AND the temperature alarms are disabled, or\n2. The Water In and Water Out and Thermostat sensors are disconnected from the Human Sensor Board AND the temperature alarms are disabled, the device will proceed to heat the water above the hardware fault limit without notifying the user of the faulty condition.",
+    "date": "2025-06-12",
+    "cfres_id": "213802",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=213802"
+   },
+   {
+    "reason": "There is over-molding that stabilizes the connection between the cable and cable-entry on the mattress. It\nturns out that after about a year of use, the connector cable on the mattress can experience the same type of deflection that caused the intermittent connection with the cables connecting to the ESU.",
+    "date": "2025-02-20",
+    "cfres_id": "212147",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=212147"
+   },
+   {
+    "reason": "There is over-molding that stabilizes the connection between the cable and cable-entry on the mattress. It\nturns out that after about a year of use, the connector cable on the mattress can experience the same type of deflection that caused the intermittent connection with the cables connecting to the ESU.",
+    "date": "2025-02-20",
+    "cfres_id": "212148",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=212148"
+   },
+   {
+    "reason": "There is over-molding that stabilizes the connection between the cable and cable-entry on the mattress. It\nturns out that after about a year of use, the connector cable on the mattress can experience the same type of deflection that caused the intermittent connection with the cables connecting to the ESU.",
+    "date": "2025-02-20",
+    "cfres_id": "212149",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=212149"
+   },
+   {
+    "reason": "Users were experiencing the following error message (M-0B-125) stated  Check Neutral Electrode Contact .",
+    "date": "2025-02-14",
+    "cfres_id": "211526",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=211526"
+   },
+   {
+    "reason": "Users were experiencing the following error message (M-0B-125) stated  Check Neutral Electrode Contact .",
+    "date": "2025-02-14",
+    "cfres_id": "211600",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=211600"
+   },
+   {
+    "reason": "HotDog Temperature Management Controllers Models WC71, WC77, and Temperature Management Controller MP Model 2083516 may experience a Power-on self-test error code \"EA POST\".",
+    "date": "2025-01-10",
+    "cfres_id": "211522",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=211522"
+   }
+  ]
+ }
+}

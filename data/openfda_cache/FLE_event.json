@@ -1,0 +1,68 @@
+{
+ "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code:\"FLE\"+AND+date_received:[20231024+TO+20261024]&count=product_problems.exact",
+ "fetched": "2026-10-24",
+ "data": {
+  "device_problems": [
+   {
+    "term": "Leak/Splash",
+    "count": 84
+   },
+   {
+    "term": "Detachment of Device or Device Component",
+    "count": 18
+   },
+   {
+    "term": "Device Fell",
+    "count": 14
+   },
+   {
+    "term": "Use of Device Problem",
+    "count": 14
+   },
+   {
+    "term": "Mechanical Problem",
+    "count": 11
+   },
+   {
+    "term": "Unintended Movement",
+    "count": 9
+   },
+   {
+    "term": "Device Tipped Over",
+    "count": 7
+   },
+   {
+    "term": "Failure to Align",
+    "count": 7
+   }
+  ],
+  "patient_problems": [
+   {
+    "term": "",
+    "count": 200
+   },
+   {
+    "term": "Other",
+    "count": 8
+   },
+   {
+    "term": "Required Intervention",
+    "count": 5
+   }
+  ],
+  "reports_per_year": [
+   {
+    "year": 2024,
+    "count": 64
+   },
+   {
+    "year": 2025,
+    "count": 71
+   },
+   {
+    "year": 2026,
+    "count": 60
+   }
+  ]
+ }
+}

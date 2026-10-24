@@ -21,6 +21,7 @@ else:
 if CODE_DIR not in sys.path:
     sys.path.insert(0, CODE_DIR)
 from thirty import audit as taudit, config as tconfig, decisions as tdecisions, jurisdictions as tjur, licensing, plugins, sample_data, setup as tsetup  # noqa: E402
+from thirty import readiness as treadiness  # noqa: E402  (Device readiness: pure engine + openFDA cache + PDF)
 from thirty.agents import get_agent  # noqa: E402
 from thirty.filelock import lock as _flock, unlock as _funlock, LockBusy  # noqa: E402
 
@@ -692,6 +693,7 @@ ICONS = {k: _svg(v) for k, v in {
     "sync": '<path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/>',
     "shield": '<path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
     "x": '<path d="M6 6l12 12M18 6L6 18"/>',
+    "menu": '<path d="M4 6h16M4 12h16M4 18h16"/>',
     "external": '<path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
     "download": '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
     "arrow-left": '<path d="M19 12H5M11 18l-6-6 6-6"/>',
@@ -737,7 +739,7 @@ def _globals():
             "icon": lambda name: Markup(ICONS.get(name, ""))}
 
 
-SETUP_FREE = ("/setup", "/api/setup", "/api/plugins", "/api/health", "/static/")
+SETUP_FREE = ("/setup", "/api/setup", "/api/plugins", "/api/health", "/static/", "/readiness", "/api/readiness")
 
 
 # Write endpoints that configure the console or drive the demo. All refuse in the public demo so a
@@ -746,6 +748,7 @@ LOCKED_ENDPOINTS = {
     "api_setup", "api_settings_imap", "api_settings_connector", "api_settings_mapping", "api_rotate_key",
     "api_licence_install", "api_licence_remove", "api_desktop", "api_workspace",
     "api_plugins_active", "api_plugins_update", "api_plugins_test", "api_demo_action",
+    "api_readiness_refresh",  # Device readiness: no live openFDA refresh in the locked public demo
 }
 
 
@@ -1189,6 +1192,84 @@ RECALL = ("2021-06", "Philips recall · 14 Jun 2021")
 @app.route("/trends")
 def trends():
     return render_template("trends.html", page="trends", title="Trends")
+
+
+# ---------------------------------------------------------------- Device readiness (/readiness)
+# Decision support for wellness/wearable companies: likely category (deterministic,
+# rule-based - no AI decides it), public openFDA patterns for similar devices, and
+# the day-one device-manufacturer obligations. See thirty/readiness + the spec.
+# No-auth, works in the public demo; the engine runs server-side only.
+@app.route("/readiness")
+def readiness_page():
+    rules = treadiness.load_rules()
+    return render_template(
+        "readiness.html", page="readiness", title="Device readiness",
+        product_codes=rules.get("product_codes", []),
+        example_preset=rules.get("example_preset", {}),
+        checklist=treadiness.day_one_checklist(),
+        disclaimer=rules.get("disclaimer", ""),
+        incomplete_notice=rules.get("incomplete_data_notice", ""),
+        thirty_tags=rules.get("thirty_tags", {}),
+        pdf_available=treadiness.available(),
+    )
+
+
+@app.post("/api/readiness/category")
+def api_readiness_category():
+    """Deterministic category from the Step 1 answers. No AI, no model."""
+    answers = treadiness.normalize(request.get_json(silent=True) or {})
+    result = treadiness.categorize(answers)
+    return jsonify(result=result, checklist=treadiness.day_one_checklist())
+
+
+@app.route("/api/readiness/signals")
+def api_readiness_signals():
+    """Cached openFDA patterns for a product code + the where-to-look-first mapping."""
+    code = (request.args.get("code") or "").strip().upper()
+    answers = treadiness.normalize({
+        "claims": request.args.getlist("claim"),
+        "users": request.args.get("users"),
+    })
+    signals = treadiness.load_signals(code)
+    return jsonify(signals=signals,
+                   where_to_look_first=treadiness.where_to_look_first(signals, answers),
+                   notice=treadiness.load_rules().get("incomplete_data_notice", ""))
+
+
+@app.post("/api/readiness/refresh")
+def api_readiness_refresh():
+    """Refresh one product code's openFDA cache from the live API (online only).
+
+    Locked in the public demo via LOCKED_ENDPOINTS. On any failure the existing
+    cache is kept unchanged and a plain-language message is returned.
+    """
+    code = ((request.get_json(silent=True) or {}).get("code") or "").strip().upper()
+    if not code:
+        return jsonify(error="no product code"), 400
+    try:
+        signals = treadiness.fetch_and_cache(code)
+    except treadiness.RefreshError as e:
+        return jsonify(ok=False, error=f"Refresh did not complete: {e}",
+                       signals=treadiness.load_signals(code)), 200
+    return jsonify(ok=True, signals=signals)
+
+
+@app.post("/api/readiness/pdf")
+def api_readiness_pdf():
+    """Build the readiness result as a PDF (same disclaimer, citations and sources)."""
+    if not treadiness.available():
+        abort(404)
+    body = request.get_json(silent=True) or {}
+    answers = treadiness.normalize(body.get("answers") or {})
+    code = (body.get("code") or "").strip().upper()
+    result = treadiness.categorize(answers)
+    signals = treadiness.load_signals(code) if code else treadiness.load_signals("")
+    pdf_bytes = treadiness.build_pdf(result, signals, treadiness.day_one_checklist(), product_code=code or None)
+    if not pdf_bytes:
+        abort(404)
+    from flask import Response
+    return Response(pdf_bytes, mimetype="application/pdf",
+                    headers={"Content-Disposition": 'attachment; filename="device-readiness.pdf"'})
 
 
 @app.route("/api/trends")

@@ -1,0 +1,88 @@
+{
+ "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code:\"MWI\"+AND+date_received:[20231024+TO+20261024]&count=product_problems.exact",
+ "fetched": "2026-10-24",
+ "data": {
+  "device_problems": [
+   {
+    "term": "Unexpected Shutdown",
+    "count": 236
+   },
+   {
+    "term": "Incorrect Measurement",
+    "count": 94
+   },
+   {
+    "term": "Break",
+    "count": 71
+   },
+   {
+    "term": "Device Alarm System",
+    "count": 66
+   },
+   {
+    "term": "Sensing Intermittently",
+    "count": 56
+   },
+   {
+    "term": "No Audible Alarm",
+    "count": 52
+   },
+   {
+    "term": "Display or Visual Feedback Problem",
+    "count": 41
+   },
+   {
+    "term": "Failure to Power Up",
+    "count": 37
+   }
+  ],
+  "patient_problems": [
+   {
+    "term": "",
+    "count": 802
+   },
+   {
+    "term": "Other",
+    "count": 30
+   },
+   {
+    "term": "Required Intervention",
+    "count": 9
+   },
+   {
+    "term": "Death",
+    "count": 5
+   },
+   {
+    "term": "Life Threatening",
+    "count": 4
+   },
+   {
+    "term": " H",
+    "count": 1
+   },
+   {
+    "term": " O",
+    "count": 1
+   },
+   {
+    "term": " R",
+    "count": 1
+   }
+  ],
+  "reports_per_year": [
+   {
+    "year": 2024,
+    "count": 120
+   },
+   {
+    "year": 2025,
+    "count": 184
+   },
+   {
+    "year": 2026,
+    "count": 546
+   }
+  ]
+ }
+}

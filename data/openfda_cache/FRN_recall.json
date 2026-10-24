@@ -1,0 +1,68 @@
+{
+ "url": "https://api.fda.gov/device/recall.json?search=product_code:\"FRN\"&limit=10&sort=event_date_posted:desc",
+ "fetched": "2026-10-24",
+ "data": {
+  "recalls": [
+   {
+    "reason": "Intravascular administration tubing set drip chambers may have black specks potentially due to the plastic molding process leaving discolored polyvinyl chloride (PVC) material within the drip chamber wall. The presence of discoloration and particulate matter in the fluid path has not been ruled out.",
+    "date": "2026-09-11",
+    "cfres_id": "221887",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221887"
+   },
+   {
+    "reason": "A software issue that may occur during a Volume/Time (VOT) multi-syringe infusion when a syringe reaches empty and is replaced while a Volume To Be Infused (VTBI) remains.",
+    "date": "2026-08-31",
+    "cfres_id": "221856",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221856"
+   },
+   {
+    "reason": "A software issue that may occur during a Volume/Time (VOT) multi-syringe infusion when a syringe reaches empty and is replaced while a Volume To Be Infused (VTBI) remains.",
+    "date": "2026-08-31",
+    "cfres_id": "221857",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221857"
+   },
+   {
+    "reason": "In a specific scenario, the pump will not decrement the Volume to be Infused (VTBI) displayed on the Delivery screen and may deliver up to twice the VTBI at the programmed rate.",
+    "date": "2026-07-10",
+    "cfres_id": "221022",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221022"
+   },
+   {
+    "reason": "In a specific scenario, the pump will not decrement the Volume to be Infused (VTBI) displayed on the Delivery screen and may deliver up to twice the VTBI at the programmed rate.",
+    "date": "2026-07-10",
+    "cfres_id": "221024",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221024"
+   },
+   {
+    "reason": "Under certain conditions, the pump may not display a soft limit alert, and will not notify the clinician of a soft limit violation before confirming and starting delivery. This may potentially lead to under- or over-delivery.",
+    "date": "2026-06-05",
+    "cfres_id": "220055",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=220055"
+   },
+   {
+    "reason": "Under certain conditions, the pump may not display a soft limit alert, and will not notify the clinician of a soft limit violation before confirming and starting delivery. This may potentially lead to under- or over-delivery.",
+    "date": "2026-06-05",
+    "cfres_id": "220057",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=220057"
+   },
+   {
+    "reason": "Under certain conditions, the pump may not display a soft limit alert, and will not notify the clinician of a soft limit violation before confirming and starting delivery. This may potentially lead to under- or over-delivery.",
+    "date": "2026-06-05",
+    "cfres_id": "220058",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=220058"
+   },
+   {
+    "reason": "Potential software anomaly that can cause the pump to report a false battery-health value (typically 69%) and trigger a battery-depletion alarm that will shut down the pump unless it is reconnected to AC mains power.",
+    "date": "2026-06-03",
+    "cfres_id": "220229",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=220229"
+   },
+   {
+    "reason": "Fresenius Kabi has been made aware via customer complaints that dropping or severe jarring of the Ivenix LVP may cause damage to internal components that may not be apparent or readily visible and the devices therefore remained in service. More specifically, drops or jarring on a hard surface can cause the touchscreen input cable to loosen, resulting in unintended touchscreen behavior on the LVP, including random screen touches and/or lack of screen responsiveness to user input. Under the reported failure condition, unintended touch inputs may register at arbitrary screen locations without user interaction. These inputs occur intermittently and without a predictable pattern.",
+    "date": "2026-05-29",
+    "cfres_id": "220255",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=220255"
+   }
+  ]
+ }
+}

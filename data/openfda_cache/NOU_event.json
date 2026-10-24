@@ -1,0 +1,88 @@
+{
+ "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code:\"NOU\"+AND+date_received:[20231024+TO+20261024]&count=product_problems.exact",
+ "fetched": "2026-10-24",
+ "data": {
+  "device_problems": [
+   {
+    "term": "Protective Measures Problem",
+    "count": 1657
+   },
+   {
+    "term": "Inadequate User Interface",
+    "count": 285
+   },
+   {
+    "term": "Battery Problem",
+    "count": 206
+   },
+   {
+    "term": "Power Problem",
+    "count": 157
+   },
+   {
+    "term": "Failure to Power Up",
+    "count": 126
+   },
+   {
+    "term": "Complete Loss of Power",
+    "count": 121
+   },
+   {
+    "term": "Failure to Charge",
+    "count": 89
+   },
+   {
+    "term": "Charging Problem",
+    "count": 82
+   }
+  ],
+  "patient_problems": [
+   {
+    "term": "",
+    "count": 2526
+   },
+   {
+    "term": "Required Intervention",
+    "count": 57
+   },
+   {
+    "term": "Death",
+    "count": 48
+   },
+   {
+    "term": "Hospitalization",
+    "count": 24
+   },
+   {
+    "term": "Life Threatening",
+    "count": 20
+   },
+   {
+    "term": " H",
+    "count": 12
+   },
+   {
+    "term": "Other",
+    "count": 12
+   },
+   {
+    "term": " R",
+    "count": 5
+   }
+  ],
+  "reports_per_year": [
+   {
+    "year": 2024,
+    "count": 817
+   },
+   {
+    "year": 2025,
+    "count": 935
+   },
+   {
+    "year": 2026,
+    "count": 729
+   }
+  ]
+ }
+}

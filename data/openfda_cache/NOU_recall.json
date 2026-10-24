@@ -1,0 +1,68 @@
+{
+ "url": "https://api.fda.gov/device/recall.json?search=product_code:\"NOU\"&limit=10&sort=event_date_posted:desc",
+ "fetched": "2026-10-24",
+ "data": {
+  "recalls": [
+   {
+    "reason": "Respiratory system intended to provide continuous/intermittent ventilator support, may not have been evaluated under all intended high-pressure conditions during production testing, so an oxygen leak condition could occur that may lead to reduced below intended levels of fraction of inspired oxygen delivery prior to and during ventilation and this oxygen-enriched environment may increase fire risk",
+    "date": "2026-05-01",
+    "cfres_id": "219077",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=219077"
+   },
+   {
+    "reason": "Firm has released a mandatory software update Version 1.05.10.00 and a User Manual addendum for affected ventilators. These updates resolve safety issues identified in earlier recalls.",
+    "date": "2024-09-05",
+    "cfres_id": "209416",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=209416"
+   },
+   {
+    "reason": "Firm has released a mandatory software update Version 1.05.10.00 and a User Manual addendum for affected ventilators. These updates resolve safety issues identified in earlier recalls.",
+    "date": "2024-09-05",
+    "cfres_id": "209424",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=209424"
+   },
+   {
+    "reason": "There is a potential for short term (<7 days) elevated levels of formaldehyde emitted from the device into the patient breathing airpath in specific conditions.",
+    "date": "2024-09-03",
+    "cfres_id": "209193",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=209193"
+   },
+   {
+    "reason": "Produced with unintended open slits on the side of the mouthpiece body, may result in insufficient ventilation in spontaneous breathing patients using MPV-VCV and MPV-PCV modes of ventilation",
+    "date": "2023-11-27",
+    "cfres_id": "204016",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=204016"
+   },
+   {
+    "reason": "Unintended treatment termination could result from a keypad malfunction in some situations. The device erroneously interprets this as a Stop Treatment Instruction. An alarm will not sound, or be registered. Accessories and monitoring equipment connected to the Vivo 50 will stop functioning as the device enters stand-by mode.",
+    "date": "2015-07-16",
+    "cfres_id": "131484",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=131484"
+   },
+   {
+    "reason": "Reports have been received indicating that the Universal Cable Adaptor, intended to correct an earlier Class I recall of LTV Series Ventilators due to their inability to continue operating when external power source is switched to internal battery, is not functioning  as intended and/or the cable is not securely attaching to the connection on the ventilator.",
+    "date": "2004-12-08",
+    "cfres_id": "36027",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=36027"
+   },
+   {
+    "reason": "Reports have been received indicating that the Universal Cable Adaptor, intended to correct an earlier Class I recall of LTV Series Ventilators due to their inability to continue operating when external power source is switched to internal battery, is not functioning  as intended and/or the cable is not securely attaching to the connection on the ventilator.",
+    "date": "2004-12-08",
+    "cfres_id": "36028",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=36028"
+   },
+   {
+    "reason": "Reports have been received indicating that the Universal Cable Adaptor, intended to correct an earlier Class I recall of LTV Series Ventilators due to their inability to continue operating when external power source is switched to internal battery, is not functioning  as intended and/or the cable is not securely attaching to the connection on the ventilator.",
+    "date": "2004-12-08",
+    "cfres_id": "36029",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=36029"
+   },
+   {
+    "reason": "Reports have been received indicating that the Universal Cable Adaptor, intended to correct an earlier Class I recall of LTV Series Ventilators due to their inability to continue operating when external power source is switched to internal battery, is not functioning  as intended and/or the cable is not securely attaching to the connection on the ventilator.",
+    "date": "2004-12-08",
+    "cfres_id": "36030",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=36030"
+   }
+  ]
+ }
+}

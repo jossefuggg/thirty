@@ -1,0 +1,487 @@
+{% extends "base.html" %}
+{% block content_class %}rd-page{% endblock %}
+{% block head %}
+<style>
+  /* Device readiness - self-contained styling built on the stable --t-* tokens
+     so it survives the concurrent base.html / thirty.css rewrite. Mood board:
+     big Manrope 800 headline, frosted glass cards, pill buttons, 390px-ready. */
+  .rd-page {
+    --rd-gap: 20px;
+    --rd-card-pad: 24px;
+    --rd-glass-bg: var(--t-glass-bg, rgba(255,255,255,0.70));
+    --rd-glass-border: var(--t-glass-border, rgba(255,255,255,0.60));
+    --rd-glass-blur: var(--t-glass-blur, blur(18px));
+    --rd-glass-shadow: var(--t-glass-shadow, 0 20px 40px rgba(20,30,45,0.08));
+    --rd-ink: var(--t-ink, #14181F);
+    --rd-fg: var(--t-fg, var(--t-ink, #14181F));
+    --rd-fg-2: var(--t-fg-2, #5B6573);
+    --rd-coral: var(--t-coral, #FF5A3C);
+    --rd-coral-ink: var(--t-ink, #14181F);
+    --rd-amber-tint: var(--t-amber-tint, rgba(242,177,52,0.18));
+    --rd-line: var(--t-line, #D5DAE1);
+    --rd-radius: var(--t-radius-lg, 16px);
+    --rd-pill: var(--t-radius-pill, 999px);
+    --rd-font: var(--t-font-display, "Manrope", -apple-system, "Segoe UI", Arial, sans-serif);
+  }
+
+  .rd { display: grid; gap: var(--rd-gap); max-width: 880px; }
+  .rd-hero { display: grid; gap: 10px; }
+  .rd-eyebrow { font-family: var(--rd-font); font-weight: 800; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--rd-fg-2); }
+  .rd-hero h1 { font-family: var(--rd-font); font-weight: 800; font-size: clamp(34px, 7vw, 64px); line-height: 0.98; letter-spacing: -0.035em; margin: 0; color: var(--rd-fg); }
+  .rd-hero p { font-size: 16px; line-height: 1.6; color: var(--rd-fg-2); max-width: 60ch; margin: 0; }
+
+  /* Disclaimer band - shown at top and bottom of the result. */
+  .rd-disclaimer { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: var(--t-radius, 12px);
+    background: var(--rd-amber-tint); color: var(--rd-fg); font-size: 13px; font-weight: 700; line-height: 1.5; }
+  .rd-disclaimer svg { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 1px; }
+
+  /* Frosted glass card. */
+  .glass { background: var(--rd-glass-bg); -webkit-backdrop-filter: var(--rd-glass-blur); backdrop-filter: var(--rd-glass-blur);
+    border: 1px solid var(--rd-glass-border); border-radius: var(--rd-radius); box-shadow: var(--rd-glass-shadow); padding: var(--rd-card-pad); }
+  .glass > h2 { font-family: var(--rd-font); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; margin: 0 0 4px; }
+  .glass > .sub { color: var(--rd-fg-2); font-size: 14px; margin: 0 0 18px; }
+  .step-n { font-family: var(--rd-font); font-weight: 800; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--rd-fg-2); display: block; margin-bottom: 6px; }
+
+  /* Questions. */
+  .q { padding: 16px 0; border-top: 1px solid var(--rd-line); }
+  .q:first-of-type { border-top: 0; }
+  .q > .ql { font-weight: 800; font-size: 16px; line-height: 1.4; margin: 0 0 10px; display: block; }
+  .q > .qh { color: var(--rd-fg-2); font-size: 13px; margin: -6px 0 10px; }
+  .opts { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  /* Pill buttons / option chips - big tap targets (>=44px). */
+  .pill { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 20px; border-radius: var(--rd-pill);
+    border: 2px solid var(--rd-line); background: transparent; color: var(--rd-fg); font-family: var(--rd-font); font-weight: 700; font-size: 15px;
+    cursor: pointer; transition: border-color .15s, background .15s, color .15s; user-select: none; }
+  .pill:hover { border-color: var(--rd-fg); }
+  .pill[aria-pressed="true"], .pill.on { background: var(--rd-ink); color: #fff; border-color: var(--rd-ink); }
+  .pill:focus-visible { outline: none; box-shadow: var(--t-focus, 0 0 0 3px #fff, 0 0 0 6px var(--rd-coral)); }
+
+  .btn-pill { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 28px; border-radius: var(--rd-pill);
+    border: 2px solid transparent; font-family: var(--rd-font); font-weight: 800; font-size: 16px; cursor: pointer; text-decoration: none; transition: background .15s, color .15s, border-color .15s; }
+  .btn-ink { background: var(--rd-ink); color: #fff; }
+  .btn-ink:hover { background: #262D38; color: #fff; }
+  .btn-accent { background: var(--rd-coral); color: var(--rd-coral-ink); }   /* ONE key action per screen */
+  .btn-accent:hover { background: #E84E31; color: var(--rd-coral-ink); }
+  .btn-ghost { background: transparent; color: var(--rd-fg); border-color: var(--rd-line); }
+  .btn-ghost:hover { border-color: var(--rd-fg); }
+  .btn-pill[disabled], .btn-pill.is-disabled { background: transparent; color: var(--rd-fg-2); border-color: var(--rd-line); cursor: not-allowed; }
+
+  .rd-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  /* Result. */
+  .verdict { font-family: var(--rd-font); font-weight: 800; font-size: clamp(24px, 5vw, 36px); line-height: 1.1; letter-spacing: -0.025em; margin: 6px 0 8px; }
+  .verdict.is-device { color: var(--rd-coral); }
+  .headline { font-size: 16px; line-height: 1.6; color: var(--rd-fg); margin: 0 0 16px; }
+  .drivers { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; }
+  .drivers li { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+  .drivers li::before { content: ""; flex: 0 0 auto; width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: var(--rd-coral); }
+  .paths { display: grid; gap: 8px; margin: 0 0 8px; }
+  .path { padding: 12px 14px; border-radius: var(--t-radius, 12px); border: 1px dashed var(--rd-line); font-size: 14px; }
+  .path b { font-weight: 800; }
+  .cites { font-size: 13px; color: var(--rd-fg-2); line-height: 1.6; margin-top: 10px; }
+  .cites a { color: var(--rd-fg); }
+
+  /* Signals. */
+  .signal-notice { font-size: 12px; color: var(--rd-fg-2); line-height: 1.5; margin: 0 0 16px; padding: 10px 14px; border-radius: var(--t-radius, 12px); background: rgba(138,150,166,0.12); }
+  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--rd-gap); }
+  .sig-block h3 { font-family: var(--rd-font); font-weight: 800; font-size: 14px; letter-spacing: .02em; margin: 0 0 10px; text-transform: uppercase; color: var(--rd-fg-2); }
+  .bars { display: grid; gap: 8px; }
+  .bar { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; font-size: 14px; }
+  .bar .bt { overflow: hidden; text-overflow: ellipsis; }
+  .bar .bn { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .bar .track { grid-column: 1 / -1; height: 8px; border-radius: 999px; background: rgba(138,150,166,0.2); overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--rd-ink); border-radius: 999px; }
+  .wlf { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .wlf li { padding: 12px 14px; border-radius: var(--t-radius, 12px); background: rgba(255,90,60,0.08); display: grid; gap: 2px; }
+  .wlf .wl-l { font-weight: 700; font-size: 14px; }
+  .wlf .wl-m { font-size: 12px; color: var(--rd-fg-2); }
+  .recalls { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .recalls li { padding: 12px 14px; border-radius: var(--t-radius, 12px); border: 1px solid var(--rd-line); font-size: 14px; }
+  .recalls .rd-date { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .recalls a { font-size: 13px; }
+  .years { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+  .years b { font-family: var(--rd-font); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .empty-note { color: var(--rd-fg-2); font-size: 14px; padding: 10px 0; }
+
+  /* Code picker. */
+  .code-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .code-row input[type="search"] { min-height: 48px; padding: 0 16px; border-radius: var(--rd-pill); border: 2px solid var(--rd-line); background: transparent; color: var(--rd-fg); font-size: 15px; min-width: 220px; flex: 1; }
+  .code-row select { min-height: 48px; padding: 0 14px; border-radius: var(--rd-pill); border: 2px solid var(--rd-line); background: transparent; color: var(--rd-fg); font-size: 15px; font-family: var(--rd-font); }
+
+  /* Checklist. */
+  .checklist { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+  .ci { display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 14px 16px; border-radius: var(--t-radius, 12px); border: 1px solid var(--rd-line); }
+  .ci .dot { width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--rd-fg-2); }
+  .ci .ct { font-size: 15px; font-weight: 700; line-height: 1.4; }
+  .ci .cc { font-size: 12px; color: var(--rd-fg-2); margin-top: 4px; line-height: 1.5; }
+  .ci .tag { display: inline-block; margin-top: 8px; padding: 4px 12px; border-radius: var(--rd-pill); font-size: 12px; font-weight: 800; }
+  .ci .tag.handles { background: rgba(255,90,60,0.12); color: var(--t-coral-text, #C2381A); }
+  .ci .tag.flags { background: var(--rd-amber-tint); color: var(--t-amber-text, #8A6400); }
+
+  .hidden { display: none !important; }
+
+  /* 390px / small phone. */
+  @media (max-width: 560px) {
+    .rd { gap: 16px; }
+    .glass { padding: 18px; }
+    .sig-grid { grid-template-columns: 1fr; }
+    .rd-actions .btn-pill { width: 100%; }
+    .code-row input[type="search"] { min-width: 0; width: 100%; }
+    .rd-hero h1 { font-size: clamp(30px, 10vw, 44px); }
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="rd" id="rd"
+     data-disclaimer="{{ disclaimer }}"
+     data-notice="{{ incomplete_notice }}"
+     data-pdf="{{ '1' if pdf_available else '0' }}"
+     data-public-demo="{{ '1' if PUBLIC_DEMO else '0' }}">
+
+  <header class="rd-hero">
+    <span class="rd-eyebrow">Plan · decision support</span>
+    <h1>Is your health feature<br>a medical device?</h1>
+    <p>Answer six plain-language questions. You get a likely category, what has already gone wrong with similar devices in public FDA data, and exactly what starts on day one if it is a device - and which of those Thirty handles.</p>
+  </header>
+
+  <div class="rd-disclaimer" role="note">
+    {{ icon('help') }}<span>{{ disclaimer }}</span>
+  </div>
+
+  <!-- STEP 1 - the feature -->
+  <section class="glass" id="step1">
+    <span class="step-n">Step 1</span>
+    <h2>Describe the feature</h2>
+    <p class="sub">Plain language. No FDA terminology needed.</p>
+
+    <div class="q" data-q="claims">
+      <span class="ql">1. What does the feature claim to do? <em style="font-weight:600;color:var(--rd-fg-2)">(choose all that apply)</em></span>
+      <div class="opts" role="group" aria-label="Claims">
+        <button type="button" class="pill" data-claim="wellness" aria-pressed="false">Support general fitness or wellness</button>
+        <button type="button" class="pill" data-claim="measure" aria-pressed="false">Estimate a body measurement</button>
+        <button type="button" class="pill" data-claim="flag" aria-pressed="false">Flag a possible disease or condition</button>
+        <button type="button" class="pill" data-claim="diagnose" aria-pressed="false">Diagnose a disease</button>
+        <button type="button" class="pill" data-claim="treat" aria-pressed="false">Guide treatment, dosing or therapy</button>
+        <button type="button" class="pill" data-claim="replace" aria-pressed="false">Replace a clinician's judgement</button>
+      </div>
+      <p class="qh" id="claims-err" style="color:var(--rd-coral);display:none">Choose at least one claim.</p>
+    </div>
+
+    <div class="q" data-q="invasive">
+      <span class="ql">2. Is the feature invasive, implanted, or does it deliver energy or a substance into the body?</span>
+      <div class="opts" role="group" aria-label="Invasive"><button type="button" class="pill" data-field="invasive" data-value="true" aria-pressed="false">Yes</button><button type="button" class="pill" data-field="invasive" data-value="false" aria-pressed="false">No</button></div>
+    </div>
+
+    <div class="q" data-q="disease_claim">
+      <span class="ql">3. Does the marketing or app mention a specific disease or condition?</span>
+      <p class="qh">For example hypertension, atrial fibrillation, sleep apnoea, diabetes.</p>
+      <div class="opts" role="group" aria-label="Disease claim"><button type="button" class="pill" data-field="disease_claim" data-value="true" aria-pressed="false">Yes</button><button type="button" class="pill" data-field="disease_claim" data-value="false" aria-pressed="false">No</button></div>
+    </div>
+
+    <div class="q" data-q="worst">
+      <span class="ql">4. If the output were wrong, what is the worst realistic outcome?</span>
+      <div class="opts" role="group" aria-label="Worst outcome"><button type="button" class="pill" data-field="worst" data-value="none" aria-pressed="false">No harm</button><button type="button" class="pill" data-field="worst" data-value="minor" aria-pressed="false">Minor</button><button type="button" class="pill" data-field="worst" data-value="serious" aria-pressed="false">Serious injury</button><button type="button" class="pill" data-field="worst" data-value="death" aria-pressed="false">Death</button></div>
+    </div>
+
+    <div class="q" data-q="users">
+      <span class="ql">5. Who uses it?</span>
+      <div class="opts" role="group" aria-label="Users"><button type="button" class="pill" data-field="users" data-value="consumers" aria-pressed="false">Consumers</button><button type="button" class="pill" data-field="users" data-value="clinicians" aria-pressed="false">Clinicians</button><button type="button" class="pill" data-field="users" data-value="both" aria-pressed="false">Both</button></div>
+    </div>
+
+    <div class="q" data-q="predicate">
+      <span class="ql">6. Has the FDA already authorized a device that does the same thing?</span>
+      <div class="opts" role="group" aria-label="Predicate"><button type="button" class="pill" data-field="predicate" data-value="yes" aria-pressed="false">Yes</button><button type="button" class="pill" data-field="predicate" data-value="no" aria-pressed="false">No</button><button type="button" class="pill" data-field="predicate" data-value="unsure" aria-pressed="false">Unsure</button></div>
+    </div>
+
+    <div class="rd-actions" style="margin-top:18px">
+      <button type="button" class="btn-pill btn-ink" id="rd-check">See the likely category</button>
+      <button type="button" class="btn-pill btn-ghost" id="rd-example">Try an example: {{ example_preset.name }} <em style="font-weight:600;color:var(--rd-fg-2)">({{ example_preset.note }})</em></button>
+    </div>
+  </section>
+
+  <!-- STEP 2 - likely category -->
+  <section class="glass hidden" id="step2">
+    <span class="step-n">Step 2 · likely category</span>
+    <div class="verdict" id="rd-verdict"></div>
+    <p class="headline" id="rd-headline"></p>
+    <ul class="drivers" id="rd-drivers"></ul>
+    <div class="paths" id="rd-paths"></div>
+    <div class="cites" id="rd-cites"></div>
+  </section>
+
+  <!-- STEP 3 - what goes wrong -->
+  <section class="glass hidden" id="step3">
+    <span class="step-n">Step 3 · what goes wrong with devices like this</span>
+    <h2>Patterns from public FDA reports</h2>
+    <p class="signal-notice" id="rd-notice">{{ incomplete_notice }}</p>
+
+    <div class="code-row" style="margin-bottom:18px">
+      <input type="search" id="rd-code-search" placeholder="Search FDA product codes" aria-label="Search product codes" autocomplete="off">
+      <select id="rd-code" aria-label="FDA product code">
+        {% for pc in product_codes %}
+        <option value="{{ pc.code }}">{{ pc.code }} - {{ pc.label }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn-pill btn-ghost" id="rd-refresh" {% if PUBLIC_DEMO %}disabled title="Disabled in the public demo"{% endif %}>Refresh from openFDA</button>
+    </div>
+
+    <div id="rd-wlf-wrap" style="margin-bottom:18px">
+      <div class="sig-block"><h3>Where to look first</h3><ul class="wlf" id="rd-wlf"></ul></div>
+    </div>
+
+    <div class="sig-grid">
+      <div class="sig-block"><h3>Top device problems</h3><div class="bars" id="rd-devprob"></div></div>
+      <div class="sig-block"><h3>Top patient problems</h3><div class="bars" id="rd-patprob"></div></div>
+    </div>
+
+    <div class="sig-block" style="margin-top:18px"><h3>Reports per year</h3><div class="years" id="rd-years"></div></div>
+    <div class="sig-block" style="margin-top:18px"><h3>Recent recalls</h3><ul class="recalls" id="rd-recalls"></ul></div>
+  </section>
+
+  <!-- STEP 4 - day one -->
+  <section class="glass hidden" id="step4">
+    <span class="step-n">Step 4 · what starts on day one as a device manufacturer</span>
+    <h2>Day-one obligations</h2>
+    <p class="sub">Each with its citation. Tags show what Thirty handles.</p>
+    <ul class="checklist">
+      {% for item in checklist %}
+      <li class="ci">
+        <span class="dot"></span>
+        <div>
+          <div class="ct">{{ item.text }}</div>
+          {% if item.citations %}<div class="cc">{% for c in item.citations %}{{ c.label }}{% if c.date %} ({{ c.date }}){% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
+          {% if item.thirty_label %}<span class="tag {{ item.thirty }}">{{ item.thirty_label }}</span>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <div class="rd-actions" style="margin-top:22px">
+      <a class="btn-pill btn-accent" id="rd-setup" href="{{ '/' if PUBLIC_DEMO else '/setup' }}">Start a 30-day trial setup</a>
+      <button type="button" class="btn-pill btn-ghost {{ 'hidden' if not pdf_available }}" id="rd-pdf">Download as PDF</button>
+    </div>
+
+    <div class="rd-disclaimer" role="note" style="margin-top:22px">
+      {{ icon('help') }}<span>{{ disclaimer }}</span>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var root = document.getElementById("rd");
+  var PUBLIC_DEMO = root.dataset.publicDemo === "1";
+  var PDF_OK = root.dataset.pdf === "1";
+
+  // --- Step 1 answer state -------------------------------------------------
+  var state = { claims: [], invasive: null, disease_claim: null, worst: null, users: null, predicate: null };
+
+  function setSingle(field, value, btn) {
+    state[field] = value;
+    var group = btn.closest(".opts");
+    group.querySelectorAll(".pill").forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+    btn.setAttribute("aria-pressed", "true");
+  }
+  function toggleClaim(claim, btn) {
+    var i = state.claims.indexOf(claim);
+    if (i >= 0) { state.claims.splice(i, 1); btn.setAttribute("aria-pressed", "false"); }
+    else { state.claims.push(claim); btn.setAttribute("aria-pressed", "true"); }
+  }
+
+  document.querySelectorAll('.pill[data-claim]').forEach(function (b) {
+    b.addEventListener("click", function () { toggleClaim(b.dataset.claim, b); });
+  });
+  document.querySelectorAll('.pill[data-field]').forEach(function (b) {
+    b.addEventListener("click", function () {
+      var v = b.dataset.value;
+      if (v === "true") v = true; else if (v === "false") v = false;
+      setSingle(b.dataset.field, v, b);
+    });
+  });
+
+  function payload() {
+    return {
+      claims: state.claims.slice(),
+      invasive: state.invasive === true,
+      disease_claim: state.disease_claim === true,
+      worst: state.worst || "none",
+      users: state.users || "consumers",
+      predicate: state.predicate || "unsure"
+    };
+  }
+
+  // --- Step 2 render -------------------------------------------------------
+  var DEVICE_CATS = { class_i: 1, class_ii: 1, class_iii: 1 };
+  function renderResult(result, checklist) {
+    var v = document.getElementById("rd-verdict");
+    v.textContent = result.label;
+    v.classList.toggle("is-device", !!DEVICE_CATS[result.category]);
+    document.getElementById("rd-headline").textContent = result.headline;
+
+    var dl = document.getElementById("rd-drivers");
+    dl.innerHTML = "";
+    (result.drivers || []).forEach(function (d) { var li = document.createElement("li"); li.textContent = d; dl.appendChild(li); });
+
+    var pw = document.getElementById("rd-paths");
+    pw.innerHTML = "";
+    (result.paths || []).forEach(function (p) {
+      var el = document.createElement("div"); el.className = "path";
+      el.innerHTML = "<b>" + esc(p.name) + "</b> - " + esc(p.when);
+      pw.appendChild(el);
+    });
+
+    var cw = document.getElementById("rd-cites");
+    var parts = (result.citations || []).map(function (c) {
+      var t = esc(c.label) + (c.date ? " (" + esc(c.date) + ")" : "");
+      return c.url ? '<a href="' + esc(c.url) + '" target="_blank" rel="noopener">' + t + "</a>" : t;
+    });
+    cw.innerHTML = parts.length ? ("Sources: " + parts.join(" · ")) : "";
+
+    document.getElementById("step2").classList.remove("hidden");
+    document.getElementById("step3").classList.remove("hidden");
+    document.getElementById("step4").classList.remove("hidden");
+
+    // Suggest the closest product code for Step 3.
+    if (result.suggested_product_code) {
+      var sel = document.getElementById("rd-code");
+      if ([].some.call(sel.options, function (o) { return o.value === result.suggested_product_code; })) {
+        sel.value = result.suggested_product_code;
+      }
+    }
+    loadSignals();
+  }
+
+  function check() {
+    var err = document.getElementById("claims-err");
+    if (state.claims.length === 0) { err.style.display = "block"; document.getElementById("step1").scrollIntoView({ behavior: "smooth" }); return; }
+    err.style.display = "none";
+    fetch("/api/readiness/category", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload())
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      renderResult(d.result, d.checklist);
+      document.getElementById("step2").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+  document.getElementById("rd-check").addEventListener("click", check);
+
+  // --- Step 3 signals ------------------------------------------------------
+  function bars(el, items) {
+    el.innerHTML = "";
+    if (!items || !items.length) { el.innerHTML = '<p class="empty-note">No data available for this product code.</p>'; return; }
+    var max = items.reduce(function (m, i) { return Math.max(m, i.count || 0); }, 0) || 1;
+    items.slice(0, 6).forEach(function (i) {
+      var row = document.createElement("div"); row.className = "bar";
+      row.innerHTML = '<span class="bt">' + esc(i.term) + '</span><span class="bn">' + (i.count || 0).toLocaleString() + '</span>' +
+        '<span class="track"><span class="fill" style="width:' + Math.max(3, Math.round(100 * (i.count || 0) / max)) + '%"></span></span>';
+      el.appendChild(row);
+    });
+  }
+
+  function renderSignals(d) {
+    var s = d.signals || {};
+    document.getElementById("rd-notice").textContent = d.notice || root.dataset.notice;
+
+    var wlf = document.getElementById("rd-wlf");
+    wlf.innerHTML = "";
+    if ((d.where_to_look_first || []).length) {
+      d.where_to_look_first.forEach(function (w) {
+        var li = document.createElement("li");
+        li.innerHTML = '<span class="wl-l">' + esc(w.label) + '</span><span class="wl-m">' + (w.count || 0).toLocaleString() + ' reports · ' + esc(w.source) + '</span>';
+        wlf.appendChild(li);
+      });
+      document.getElementById("rd-wlf-wrap").classList.remove("hidden");
+    } else {
+      document.getElementById("rd-wlf-wrap").classList.add("hidden");
+    }
+
+    bars(document.getElementById("rd-devprob"), s.device_problems);
+    bars(document.getElementById("rd-patprob"), s.patient_problems);
+
+    var yrs = document.getElementById("rd-years");
+    yrs.innerHTML = "";
+    if ((s.reports_per_year || []).length) {
+      s.reports_per_year.forEach(function (y) { var e = document.createElement("span"); e.innerHTML = y.year + ": <b>" + (y.count || 0).toLocaleString() + "</b>"; yrs.appendChild(e); });
+    } else { yrs.innerHTML = '<span class="empty-note">No data available for this product code.</span>'; }
+
+    var rc = document.getElementById("rd-recalls");
+    rc.innerHTML = "";
+    if ((s.recalls || []).length) {
+      s.recalls.slice(0, 6).forEach(function (r) {
+        var li = document.createElement("li");
+        li.innerHTML = '<span class="rd-date">' + esc(r.date || "") + '</span> - ' + esc(r.reason || "Reason not stated") +
+          (r.url ? ' <a href="' + esc(r.url) + '" target="_blank" rel="noopener">FDA record</a>' : "");
+        rc.appendChild(li);
+      });
+    } else { rc.innerHTML = '<li class="empty-note">No recent recalls on record for this product code.</li>'; }
+  }
+
+  function loadSignals() {
+    var code = document.getElementById("rd-code").value;
+    var qs = "code=" + encodeURIComponent(code) + "&users=" + encodeURIComponent(state.users || "consumers");
+    state.claims.forEach(function (c) { qs += "&claim=" + encodeURIComponent(c); });
+    fetch("/api/readiness/signals?" + qs).then(function (r) { return r.json(); }).then(renderSignals);
+  }
+  document.getElementById("rd-code").addEventListener("change", loadSignals);
+
+  // searchable code list (filter the <select> options)
+  var codeSearch = document.getElementById("rd-code-search");
+  var sel = document.getElementById("rd-code");
+  var allOpts = [].map.call(sel.options, function (o) { return { value: o.value, text: o.text }; });
+  codeSearch.addEventListener("input", function () {
+    var q = codeSearch.value.trim().toLowerCase();
+    var matches = allOpts.filter(function (o) { return o.text.toLowerCase().indexOf(q) >= 0; });
+    sel.innerHTML = "";
+    (matches.length ? matches : allOpts).forEach(function (o) { var opt = document.createElement("option"); opt.value = o.value; opt.textContent = o.text; sel.appendChild(opt); });
+    if (matches.length) loadSignals();
+  });
+
+  // refresh (disabled in public demo)
+  var refreshBtn = document.getElementById("rd-refresh");
+  if (refreshBtn && !PUBLIC_DEMO) {
+    refreshBtn.addEventListener("click", function () {
+      var code = document.getElementById("rd-code").value;
+      refreshBtn.disabled = true; var old = refreshBtn.textContent; refreshBtn.textContent = "Refreshing…";
+      fetch("/api/readiness/refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: code }) })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d.signals) renderSignals({ signals: d.signals, where_to_look_first: [], notice: root.dataset.notice }); if (d.error) alert(d.error); loadSignals(); })
+        .catch(function () { alert("Refresh did not complete."); })
+        .finally(function () { refreshBtn.disabled = false; refreshBtn.textContent = old; });
+    });
+  }
+
+  // --- PDF -----------------------------------------------------------------
+  var pdfBtn = document.getElementById("rd-pdf");
+  if (pdfBtn && PDF_OK) {
+    pdfBtn.addEventListener("click", function () {
+      var body = { answers: payload(), code: document.getElementById("rd-code").value };
+      fetch("/api/readiness/pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        .then(function (r) { if (!r.ok) throw new Error(); return r.blob(); })
+        .then(function (blob) {
+          var url = URL.createObjectURL(blob); var a = document.createElement("a");
+          a.href = url; a.download = "device-readiness.pdf"; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+        }).catch(function () { alert("Could not generate the PDF."); });
+    });
+  }
+
+  // --- Example preset ------------------------------------------------------
+  var PRESET = {{ example_preset.answers | tojson }};
+  document.getElementById("rd-example").addEventListener("click", function () {
+    // reset
+    state = { claims: [], invasive: null, disease_claim: null, worst: null, users: null, predicate: null };
+    document.querySelectorAll(".pill").forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+    (PRESET.claims || []).forEach(function (c) {
+      var btn = document.querySelector('.pill[data-claim="' + c + '"]'); if (btn) toggleClaim(c, btn);
+    });
+    [["invasive", PRESET.invasive], ["disease_claim", PRESET.disease_claim], ["worst", PRESET.worst], ["users", PRESET.users], ["predicate", PRESET.predicate]].forEach(function (pair) {
+      var f = pair[0], val = pair[1]; var sval = (val === true) ? "true" : (val === false) ? "false" : String(val);
+      var btn = document.querySelector('.pill[data-field="' + f + '"][data-value="' + sval + '"]');
+      if (btn) setSingle(f, val, btn);
+    });
+    check();
+  });
+})();
+</script>
+{% endblock %}

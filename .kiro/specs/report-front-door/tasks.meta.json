@@ -1,5 +1,18 @@
 {
-  "pbtResults": {},
+  "pbtResults": {
+    "6.1 **[PBT]** Property 1 — Question-loop termination": {
+      "status": "passed",
+      "lastRunTimestamp": 1792871846180
+    },
+    "6.2 **[PBT]** Property 2 — UNKNOWN preservation": {
+      "status": "passed",
+      "lastRunTimestamp": 1792872040328
+    },
+    "6.3 **[PBT]** Property 3 — Single complaint on submit": {
+      "status": "passed",
+      "lastRunTimestamp": 1792872582730
+    }
+  },
   "executionHistory": {
     "1.1 Scaffold the `thirty/reporter/` package": [
       {
@@ -106,6 +119,11 @@
         "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792870975264
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792871427624
       }
     ],
     "5. Checkpoint - pure logic and agents": [
@@ -113,6 +131,11 @@
         "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792867889799
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792871674049
       }
     ],
     "7.1 Create the blueprint, session store, and landing/start routes": [
@@ -120,6 +143,16 @@
         "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792867889824
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792872604163
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792872965586
       }
     ],
     "7.2 Implement the interview and review routes": [
@@ -127,6 +160,26 @@
         "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792867889853
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792872968841
+      },
+      {
+        "executionId": "1d4b913e-d6ed-494d-bf99-5d4cf710aa44",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792873609707
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792873638537
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792873819268
       }
     ],
     "7.3 Implement confirm, done, and receipt routes with bilingual text and intake submission": [
@@ -134,6 +187,16 @@
         "executionId": "314d597e-d0e4-4d7f-8756-948dda6bff52",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792867889876
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792873822793
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792875056994
       }
     ],
     "9.1 Create the Front_Door template partials and mobile stylesheet": [
@@ -200,6 +263,16 @@
         "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
         "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
         "timestamp": 1792867989020
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792871432638
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792871670089
       }
     ],
     "6.1 **[PBT]** Property 1 — Question-loop termination": [
@@ -207,6 +280,16 @@
         "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
         "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
         "timestamp": 1792867989052
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792871676307
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792871907715
       }
     ],
     "6.2 **[PBT]** Property 2 — UNKNOWN preservation": [
@@ -214,6 +297,16 @@
         "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
         "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
         "timestamp": 1792867989083
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792871910483
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792872056470
       }
     ],
     "6.3 **[PBT]** Property 3 — Single complaint on submit": [
@@ -221,6 +314,16 @@
         "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
         "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
         "timestamp": 1792867989118
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792872060265
+      },
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792872599245
       }
     ],
     "7.4 Write route unit/integration tests in `tests/test_front_door.py`": [
@@ -228,6 +331,11 @@
         "executionId": "3ad9f273-cadf-4ac3-833e-d6859b2f396e",
         "chatSessionId": "sess_720d9f9d-e4f1-4835-b1de-1dceee38019e",
         "timestamp": 1792867989151
+      },
+      {
+        "executionId": "c4cc9849-b49a-4743-952b-17f17651054b",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792875061451
       }
     ],
     "8.1 Add console tests to `tests/test_console.py`": [
@@ -283,6 +391,20 @@
         "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
         "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
         "timestamp": 1792870786292
+      }
+    ],
+    "4. Extend the Agent interface with `next_question` and `translate_to_english`": [
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792871670204
+      }
+    ],
+    "6. Write the property-based tests in `tests/test_front_door_properties.py` (PBT)": [
+      {
+        "executionId": "22d51cc1-1ebe-4d53-9995-ba193c7c5fd7",
+        "chatSessionId": "sess_3595973f-fd2b-41c9-ac16-4a3a14624080",
+        "timestamp": 1792872599353
       }
     ]
   }

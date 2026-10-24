@@ -1,0 +1,68 @@
+{
+ "url": "https://api.fda.gov/device/recall.json?search=product_code:\"MWI\"&limit=10&sort=event_date_posted:desc",
+ "fetched": "2026-10-24",
+ "data": {
+  "recalls": [
+   {
+    "reason": "A performance issue may result in inaccurate blood pressure readings when the Linear Deflation Method is used.",
+    "date": "2026-09-18",
+    "cfres_id": "222051",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=222051"
+   },
+   {
+    "reason": "A performance issue may result in inaccurate blood pressure readings when the Linear Deflation Method is used.",
+    "date": "2026-09-18",
+    "cfres_id": "222178",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=222178"
+   },
+   {
+    "reason": "A performance issue may result in inaccurate blood pressure readings when the Linear Deflation Method is used.",
+    "date": "2026-09-18",
+    "cfres_id": "222180",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=222180"
+   },
+   {
+    "reason": "A performance issue may result in inaccurate blood pressure readings when the Linear Deflation Method is used.",
+    "date": "2026-09-18",
+    "cfres_id": "222181",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=222181"
+   },
+   {
+    "reason": "Software issue may result in a loss of patient monitoring at the Hub and Central Viewer. In addition, all alarm settings could be reset to factory defaults following the update and will not follow the alarm settings previously configured for each patient or care area.",
+    "date": "2026-08-27",
+    "cfres_id": "221789",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221789"
+   },
+   {
+    "reason": "Software issue may result in a loss of patient monitoring at the Hub and Central Viewer. In addition, all alarm settings could be reset to factory defaults following the update and will not follow the alarm settings previously configured for each patient or care area.",
+    "date": "2026-08-27",
+    "cfres_id": "221790",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221790"
+   },
+   {
+    "reason": "Software issue may result in a loss of patient monitoring at the Hub and Central Viewer. In addition, all alarm settings could be reset to factory defaults following the update and will not follow the alarm settings previously configured for each patient or care area.",
+    "date": "2026-08-27",
+    "cfres_id": "221791",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221791"
+   },
+   {
+    "reason": "Software issue may result in a loss of patient monitoring at the Hub and Central Viewer. In addition, all alarm settings could be reset to factory defaults following the update and will not follow the alarm settings previously configured for each patient or care area.",
+    "date": "2026-08-27",
+    "cfres_id": "222182",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=222182"
+   },
+   {
+    "reason": "Portrait Core Services Software version V1.2.0 Security Vulnerability",
+    "date": "2026-08-04",
+    "cfres_id": "221631",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=221631"
+   },
+   {
+    "reason": "Due to complaints and investigations stating that alarms from the primary patient bedside monitor was not alarming/being transmitted and received on the remote patient monitoring system.",
+    "date": "2026-03-11",
+    "cfres_id": "218630",
+    "url": "https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRES/res.cfm?id=218630"
+   }
+  ]
+ }
+}

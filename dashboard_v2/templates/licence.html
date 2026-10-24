@@ -5,7 +5,7 @@
   .sec { padding: var(--s3); display: grid; gap: 16px; }
   .sec .card-h { padding: 0; height: auto; border: 0; }
   .lic { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
-  .lic .n { font-family: var(--font-display); font-size: 56px; line-height: 1; letter-spacing: -.03em; min-width: 96px; text-align: center; }
+  .lic .n { font-family: var(--font-display); font-weight: 800; font-size: 56px; line-height: 1; letter-spacing: -.04em; min-width: 96px; text-align: center; }
   .lic .n.hot { color: var(--t-coral); }
   .lic b { display: block; font-size: var(--fs-16); font-weight: 800; } .lic span { color: var(--muted); font-size: 14px; }
   .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; font-size: 14px; } .kv span { color: var(--muted); }
@@ -23,6 +23,7 @@
   .hint { font-size: 14px; color: var(--muted); max-width: 70ch; }
   .st-licensed, .st-expiring { background: var(--text); color: var(--bg); } .st-grace, .st-expired, .st-invalid { background: transparent; color: var(--text); border-color: var(--t-amber); } .st-evaluation { background: transparent; color: var(--muted); border-color: var(--border); }
   .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; max-width: 560px; }
+  @media (max-width: 640px) { .kv, .fgrid, .jurs { grid-template-columns: 1fr; } .lic b, .lic span { overflow-wrap: anywhere; } }
   /* public demo: licence/updates/workspace are read-only */
   .pg.ro .field, .pg.ro .row, .pg.ro .tgl, .pg.ro #ws { pointer-events: none; opacity: .6; }
 </style>

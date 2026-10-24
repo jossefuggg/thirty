@@ -8,7 +8,7 @@ import json, os, re, time
 
 import requests
 
-from .base import Agent, UNREADABLE
+from .base import Agent, UNREADABLE, COMPLETE
 
 LLM_BASE = os.environ.get("VIGIL_LLM_BASE", "http://localhost:8000/v1")  # local vLLM (OpenAI-compatible)
 LLM_MODEL = os.environ.get("VIGIL_LLM_MODEL", "")  # auto-detected if empty
@@ -83,6 +83,48 @@ looking into their report and need a few details; do not admit fault and do not 
 Answer ONLY with JSON: {{"questions": ["..."], "message": "..."}}"""
 
 
+NEXT_Q = """You are Vigil, helping a person report a medical device problem for an FDA Form 3500A (21 CFR 803).
+You ask ONE short question at a time, in plain language suited to the reporter, in their own language.
+STRICT RULE: never invent facts. Ask only for information the reporter can provide; do not guess answers.
+
+Reporter type: {reporter_type}
+Reporter language (write the question in THIS language): {language}
+Device: {device}
+Answers collected so far (field: value): {answers}
+Fields already asked (do not ask these again): {asked}
+
+The full data set to collect (Requirement 4) is exactly these fields:
+- device_brand_name: the brand name printed on the device
+- device_model: the device model
+- lot_or_serial: the lot number or serial number
+- event_description: a free-text description of what happened
+- patient_outcome: exactly one of death, hospitalisation, injury, or none
+- device_malfunctioned: one of yes, no, or UNKNOWN
+- event_date: the date the event happened
+- date_noticed: the date the problem was noticed
+- follow_up_contact: a contact for follow-up
+
+Pick the single most useful field that is NOT already in the answers or the asked list and ask for it.
+Write the "prompt" text in the reporter's language and in plain words appropriate to the reporter type.
+
+Answer ONLY with JSON, exactly one of these two shapes:
+- a single question object:
+  {{"field": "<one of the field keys above>", "prompt": "<the question in {language}>",
+   "language": "{language}", "type": "text" or "choice",
+   "options": [{{"value": "<value>", "label": "<label in {language}>"}}],
+   "allow_idk": true}}
+  (omit "options" for type "text")
+- OR, when the whole data set above has already been requested:
+  {{"complete": true}}"""
+
+TRANSLATE = """Translate the following text from {source_language} to English.
+Return ONLY the translation text, nothing else. Do not add notes, quotes, or explanations.
+If you cannot translate it, return exactly the token CANNOT_TRANSLATE.
+
+Text:
+{text}"""
+
+
 def deadline_text(days):
     return "5 work days (urgent remedial action needed)" if str(days) == "5" else "30 calendar days"
 
@@ -122,6 +164,35 @@ def _json(raw):
     return json.loads(m.group(0))
 
 
+def interpret_next_question(obj, language):
+    """Turn a parsed next_question JSON object into a question dict or COMPLETE.
+
+    Shared by LocalModelAgent and ClaudeAgent so both agents treat model output
+    identically. Returns the sentinel COMPLETE when the object signals completion
+    or is not a usable question; otherwise a normalized question dict (allow_idk
+    forced True, language defaulted to the reporter's language). Never raises.
+    """
+    if not isinstance(obj, dict):
+        return COMPLETE
+    if obj.get("complete") is True:
+        return COMPLETE
+    field = obj.get("field")
+    prompt = obj.get("prompt")
+    qtype = obj.get("type") or "text"
+    if not (isinstance(field, str) and field and isinstance(prompt, str) and prompt and isinstance(qtype, str) and qtype):
+        return COMPLETE
+    question = {
+        "field": field,
+        "prompt": prompt,
+        "language": obj.get("language") or language or "en",
+        "type": qtype,
+        "allow_idk": True,
+    }
+    if qtype == "choice" and isinstance(obj.get("options"), list):
+        question["options"] = obj["options"]
+    return question
+
+
 class LocalModelAgent(Agent):
     id = "local"
     name = "Local model agent"
@@ -157,6 +228,35 @@ class LocalModelAgent(Agent):
         j = _json(raw)
         qs = [str(q).strip() for q in j.get("questions") or [] if str(q).strip()][:5]
         return qs, str(j.get("message") or "").strip()
+
+    def next_question(self, answers_so_far):
+        """One adaptive interview question, or COMPLETE. Any failure -> COMPLETE (safe termination)."""
+        language = (answers_so_far or {}).get("language") or "en"
+        try:
+            raw = self._llm(NEXT_Q.format(
+                reporter_type=(answers_so_far or {}).get("reporter_type") or "",
+                language=language,
+                device=(answers_so_far or {}).get("device") or "UNKNOWN",
+                answers=(answers_so_far or {}).get("answers") or {},
+                asked=(answers_so_far or {}).get("asked") or [],
+            ), 400, temperature=0.2)
+            return interpret_next_question(_json(raw), language)
+        except Exception:
+            return COMPLETE
+
+    def translate_to_english(self, text, source_language):
+        """English translation of text, or None. Never fabricates: None on any failure/CANNOT_TRANSLATE."""
+        if not text or not str(text).strip():
+            return None
+        if source_language == "en":
+            return text
+        try:
+            out = (self._llm(TRANSLATE.format(source_language=source_language, text=text), 1000) or "").strip()
+            if not out or out == "CANNOT_TRANSLATE":
+                return None
+            return out
+        except Exception:
+            return None
 
     def health(self):
         try:

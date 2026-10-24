@@ -53,9 +53,21 @@
   /* shape + rhythm */
   --t-radius: 12px;      /* buttons, inputs */
   --t-radius-lg: 16px;   /* cards, panels, images */
+  --t-radius-frame: 28px;/* the one big outer container */
   --t-radius-pill: 999px;
   --t-space: 8px;        /* everything is a multiple of 8 */
   --t-focus: 0 0 0 3px var(--t-bg-2), 0 0 0 6px var(--t-coral);
+
+  /* the outer frame: a large rounded white-glass container floating on the grey */
+  --t-frame-bg: rgba(255, 255, 255, 0.72);
+  --t-frame-shadow: 0 32px 80px rgba(20, 30, 45, 0.12);
+  --t-frame-margin: 24px;
+
+  /* soft tinted pill grounds (sentence case, small). Text stays AA on each tint. */
+  --t-coral-tint: rgba(255, 90, 60, 0.12);
+  --t-amber-tint: rgba(242, 177, 52, 0.18);
+  --t-steel-tint: rgba(138, 150, 166, 0.14);
+  --t-amber-text: #8A6400;   /* amber is too light for text; this reads AA on the amber tint and on glass */
 }
 [data-theme="dark"], .t-dark {
   --t-paper: #0F141B;
@@ -73,6 +85,12 @@
   --t-card: var(--t-glass-bg);
   --t-coral-text: var(--t-coral);
   --t-focus: 0 0 0 3px var(--t-bg-1), 0 0 0 6px var(--t-coral);
+  --t-frame-bg: rgba(22, 28, 38, 0.55);
+  --t-frame-shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
+  --t-coral-tint: rgba(255, 90, 60, 0.20);
+  --t-amber-tint: rgba(242, 177, 52, 0.22);
+  --t-steel-tint: rgba(138, 150, 166, 0.20);
+  --t-amber-text: var(--t-amber);
 }
 
 /* ---------- base ---------- */
@@ -114,8 +132,8 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 /* ---------- buttons ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-  height: 44px; padding: 0 20px;
-  border-radius: var(--t-radius);
+  height: 44px; padding: 0 22px;
+  border-radius: var(--t-radius-pill);   /* buttons are pills */
   border: 2px solid transparent;
   font-family: var(--t-font-ui); font-weight: 700; font-size: 15px; line-height: 1;
   letter-spacing: 0; text-decoration: none; white-space: nowrap;
@@ -153,26 +171,29 @@ hr { border: 0; border-top: 1px solid var(--t-line); margin: 32px 0; }
 .btn-danger:hover { background: var(--t-coral); color: var(--t-ink); }
 
 /* sizes */
-.btn-sm { height: 36px; padding: 0 14px; font-size: 14px; border-radius: 10px; }
-.btn-lg { height: 56px; padding: 0 28px; font-size: 17px; border-radius: 14px; }
+.btn-sm { height: 36px; padding: 0 16px; font-size: 14px; border-radius: var(--t-radius-pill); }
+.btn-lg { height: 56px; padding: 0 30px; font-size: 17px; border-radius: var(--t-radius-pill); }
 .btn-block { width: 100%; }
 .btn .btn-icon { width: 18px; height: 18px; flex: none; }
 
-/* ---------- status pills (from the console) ---------- */
+/* ---------- status pills (sentence case, small, soft tinted grounds) ----------
+   Solid coral is reserved for OVERDUE and the one key action per screen. Everything
+   else is a soft tint with dark text that passes AA. */
 .pill {
-  display: inline-flex; align-items: center; gap: 8px;
-  height: 28px; padding: 0 12px;
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 10px;
   border-radius: var(--t-radius-pill);
-  font-family: var(--t-font-ui); font-weight: 800; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; line-height: 1;
-  border: 2px solid transparent; white-space: nowrap;
+  font-family: var(--t-font-ui); font-weight: 700; font-size: 12px; letter-spacing: 0; text-transform: none; line-height: 1;
+  border: 1px solid transparent; white-space: nowrap;
 }
-.pill-reportable { background: var(--t-coral); color: var(--t-ink); }
-.pill-needs-info { background: var(--t-amber); color: var(--t-ink); }
-.pill-not-reportable { background: transparent; color: var(--t-fg); border-color: var(--t-steel); }
-.pill-approved { background: var(--t-ink); color: #FFFFFF; }
-.pill-five-day { background: var(--t-ink); color: var(--t-coral); }
-.pill-neutral { background: var(--t-steel); color: #FFFFFF; }
-.pill-lg { height: 36px; padding: 0 16px; font-size: 14px; }
+.pill-reportable { background: var(--t-coral-tint); color: var(--t-coral-text); }
+.pill-needs-info { background: var(--t-amber-tint); color: var(--t-amber-text); }
+.pill-not-reportable { background: var(--t-steel-tint); color: var(--t-fg); }
+.pill-approved { background: var(--t-steel-tint); color: var(--t-fg); }
+.pill-five-day { background: var(--t-coral); color: var(--t-ink); }   /* a 5-day clock is as urgent as overdue: solid coral */
+.pill-neutral { background: var(--t-steel-tint); color: var(--t-fg); }
+.pill-overdue { background: var(--t-coral); color: var(--t-ink); }    /* the only other solid coral */
+.pill-lg { height: 32px; padding: 0 14px; font-size: 13px; }
 
 /* "0 bytes to cloud AI" badge */
 .badge-local {

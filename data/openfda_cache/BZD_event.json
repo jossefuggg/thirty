@@ -1,0 +1,88 @@
+{
+ "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code:\"BZD\"+AND+date_received:[20231024+TO+20261024]&count=product_problems.exact",
+ "fetched": "2026-10-24",
+ "data": {
+  "device_problems": [
+   {
+    "term": "Degraded",
+    "count": 176727
+   },
+   {
+    "term": "Contamination",
+    "count": 7947
+   },
+   {
+    "term": "Adverse Event Without Identified Device or Use Problem",
+    "count": 2895
+   },
+   {
+    "term": "Corroded",
+    "count": 2283
+   },
+   {
+    "term": "Overheating of Device",
+    "count": 1934
+   },
+   {
+    "term": "No Apparent Adverse Event",
+    "count": 647
+   },
+   {
+    "term": "Thermal Decomposition of Device",
+    "count": 545
+   },
+   {
+    "term": "Insufficient Device Problem Information",
+    "count": 409
+   }
+  ],
+  "patient_problems": [
+   {
+    "term": "",
+    "count": 137849
+   },
+   {
+    "term": "Other",
+    "count": 41818
+   },
+   {
+    "term": "Death",
+    "count": 3760
+   },
+   {
+    "term": "Life Threatening",
+    "count": 1279
+   },
+   {
+    "term": "Required Intervention",
+    "count": 875
+   },
+   {
+    "term": " O",
+    "count": 241
+   },
+   {
+    "term": "Disability",
+    "count": 149
+   },
+   {
+    "term": "Hospitalization",
+    "count": 125
+   }
+  ],
+  "reports_per_year": [
+   {
+    "year": 2024,
+    "count": 68264
+   },
+   {
+    "year": 2025,
+    "count": 60716
+   },
+   {
+    "year": 2026,
+    "count": 48413
+   }
+  ]
+ }
+}
