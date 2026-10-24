@@ -40,3 +40,4 @@ intake-settings.json
 plugins.json
 setup.json
 .venv/
+audit.jsonl

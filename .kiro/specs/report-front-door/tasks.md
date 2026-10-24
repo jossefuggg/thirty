@@ -70,14 +70,14 @@ Unit/integration test sub-tasks and property-based test sub-tasks are marked opt
     - _Requirements: 8.1, 8.7, 8.11_
     - _Design: Components and Interfaces §3 (Agent interface additions; NoAgent)_
 
-  - [-] 4.2 Implement the SampleAgent methods in `thirty/agents/sample.py`
+  - [x] 4.2 Implement the SampleAgent methods in `thirty/agents/sample.py`
     - Scripted ordered list over the Requirement-4 fields; `next_question` returns the first not-yet-`asked` field's question object with a 4-language string table (`en`, `es`, `pt`, `ht`), returning `COMPLETE` when all scripted fields have been asked
     - Unsupported language → fall back to `en` strings; honor `THIRTY_SAMPLE_DELAY` via existing `_wait()`; zero network calls
     - `translate_to_english` → `None` (defers; marker stored by Front_Door)
     - _Requirements: 8.2, 8.3, 8.4, 8.8, 8.9, 8.10_
     - _Design: Components and Interfaces §3 (SampleAgent)_
 
-  - [ ] 4.3 Implement the model-backed agent methods in `thirty/agents/local_model.py` and `thirty/agents/claude_model.py`
+  - [-] 4.3 Implement the model-backed agent methods in `thirty/agents/local_model.py` and `thirty/agents/claude_model.py`
     - Add a `NEXT_Q` prompt (in `local_model.py`, reused by `ClaudeAgent`) fed `answers_so_far`; parse with existing `_json`/`_extract_json` to one question object or `{"complete": true}`; on parse failure/empty/invalid → return `COMPLETE`
     - Add a `TRANSLATE` prompt; `translate_to_english` returns the stripped output or `None` on empty/`CANNOT_TRANSLATE`/exception — never fabricates
     - _Requirements: 8.5, 8.6, 8.8, 8.9, 8.11_

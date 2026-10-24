@@ -63,3 +63,157 @@ class SampleAgent(Agent):
 
     def health(self):
         return {"ok": True, "name": self.name, "ms": 0, "label": "sample data · no model"}
+
+    # ------------------------------------------------------------------ reporter front door
+    # The scripted Requirement-4 field set, in the order the interview collects it. Kept in
+    # lockstep with interview.FIELD_ORDER; hard-coded here so the agent stays import-light and
+    # makes zero outbound calls (Requirement 8.4). next_question walks this list and returns the
+    # first field not yet in answers_so_far["asked"]; once every field has been asked it returns
+    # the base COMPLETE sentinel (Requirements 8.8, 8.9).
+    _NQ_ORDER = [
+        "device_brand_name",
+        "device_model",
+        "lot_or_serial",
+        "event_description",
+        "patient_outcome",
+        "device_malfunctioned",
+        "event_date",
+        "date_noticed",
+        "follow_up_contact",
+    ]
+
+    # The two choice fields and their option values. Labels come from _NQ_STRINGS below.
+    _NQ_CHOICE = {
+        "patient_outcome": ["death", "hospitalisation", "injury", "none"],
+        "device_malfunctioned": ["yes", "no"],
+    }
+
+    # Scripted prompts and choice-option labels for all four supported languages (Requirement 8.2).
+    # Keyed [language][field] for prompts and [language]["options"][value] for option labels.
+    # An unsupported language falls back to "en" (Requirement 8.3). All sample wording is generic
+    # and carries no invented company/device/person names, so it stays fictional and reusable.
+    _NQ_STRINGS = {
+        "en": {
+            "device_brand_name": "What is the brand name printed on the device?",
+            "device_model": "What is the device model?",
+            "lot_or_serial": "What is the lot number or serial number on the device?",
+            "event_description": "In your own words, what happened?",
+            "patient_outcome": "What happened to the patient?",
+            "device_malfunctioned": "Did the device malfunction or stop working as expected?",
+            "event_date": "On what date did the event happen?",
+            "date_noticed": "On what date did you first notice the problem?",
+            "follow_up_contact": "What is a phone number or email we can use to follow up?",
+            "options": {
+                "death": "Death",
+                "hospitalisation": "Hospitalisation",
+                "injury": "Injury",
+                "none": "No harm to the patient",
+                "yes": "Yes",
+                "no": "No",
+            },
+        },
+        "es": {
+            "device_brand_name": "¿Cuál es la marca impresa en el dispositivo?",
+            "device_model": "¿Cuál es el modelo del dispositivo?",
+            "lot_or_serial": "¿Cuál es el número de lote o de serie del dispositivo?",
+            "event_description": "Con sus propias palabras, ¿qué ocurrió?",
+            "patient_outcome": "¿Qué le ocurrió al paciente?",
+            "device_malfunctioned": "¿El dispositivo falló o dejó de funcionar como se esperaba?",
+            "event_date": "¿En qué fecha ocurrió el evento?",
+            "date_noticed": "¿En qué fecha notó el problema por primera vez?",
+            "follow_up_contact": "¿Qué teléfono o correo podemos usar para dar seguimiento?",
+            "options": {
+                "death": "Muerte",
+                "hospitalisation": "Hospitalización",
+                "injury": "Lesión",
+                "none": "Sin daño al paciente",
+                "yes": "Sí",
+                "no": "No",
+            },
+        },
+        "pt": {
+            "device_brand_name": "Qual é a marca impressa no dispositivo?",
+            "device_model": "Qual é o modelo do dispositivo?",
+            "lot_or_serial": "Qual é o número de lote ou de série do dispositivo?",
+            "event_description": "Com suas próprias palavras, o que aconteceu?",
+            "patient_outcome": "O que aconteceu com o paciente?",
+            "device_malfunctioned": "O dispositivo falhou ou parou de funcionar como esperado?",
+            "event_date": "Em que data o evento aconteceu?",
+            "date_noticed": "Em que data você notou o problema pela primeira vez?",
+            "follow_up_contact": "Qual telefone ou e-mail podemos usar para dar retorno?",
+            "options": {
+                "death": "Morte",
+                "hospitalisation": "Hospitalização",
+                "injury": "Lesão",
+                "none": "Sem dano ao paciente",
+                "yes": "Sim",
+                "no": "Não",
+            },
+        },
+        "ht": {
+            "device_brand_name": "Ki mak ki ekri sou aparèy la?",
+            "device_model": "Ki modèl aparèy la?",
+            "lot_or_serial": "Ki nimewo lo oswa nimewo seri ki sou aparèy la?",
+            "event_description": "Nan pwòp mo pa ou, kisa ki te pase?",
+            "patient_outcome": "Kisa ki te rive pasyan an?",
+            "device_malfunctioned": "Èske aparèy la te an pàn oswa li te sispann mache jan sa te dwe fèt?",
+            "event_date": "Ki dat evènman an te pase?",
+            "date_noticed": "Ki dat ou te premye remake pwoblèm nan?",
+            "follow_up_contact": "Ki nimewo telefòn oswa imèl nou ka itilize pou kontakte ou?",
+            "options": {
+                "death": "Lanmò",
+                "hospitalisation": "Entènman lopital",
+                "injury": "Blesi",
+                "none": "Pa gen domaj pou pasyan an",
+                "yes": "Wi",
+                "no": "Non",
+            },
+        },
+    }
+
+    def next_question(self, answers_so_far):
+        """Scripted, offline next question for the reporter Front_Door.
+
+        Walks the Requirement-4 field set in order and returns a question object for the first
+        field not yet in ``answers_so_far["asked"]``; once every field has been asked, returns the
+        base ``COMPLETE`` sentinel (Requirements 8.8, 8.9). The prompt and option labels are taken
+        from the four-language string table in the reporter's language, falling back to English for
+        any unsupported language code (Requirements 8.2, 8.3). Fully offline: zero network calls
+        (Requirement 8.4); honours the shared fake delay via ``_wait()`` so the console's loading
+        states stay visible, consistent with the other SampleAgent methods.
+        """
+        self._wait(0.5)
+
+        language = (answers_so_far or {}).get("language")
+        strings = self._NQ_STRINGS.get(language)
+        if strings is None:
+            language = "en"
+            strings = self._NQ_STRINGS["en"]
+
+        asked = set((answers_so_far or {}).get("asked") or [])
+        for field in self._NQ_ORDER:
+            if field in asked:
+                continue
+            question = {
+                "field": field,
+                "prompt": strings[field],
+                "language": language,
+                "allow_idk": True,
+            }
+            choices = self._NQ_CHOICE.get(field)
+            if choices:
+                question["type"] = "choice"
+                question["options"] = [
+                    {"value": value, "label": strings["options"][value]} for value in choices
+                ]
+            else:
+                question["type"] = "text"
+            return question
+
+        # Every scripted field has been requested.
+        return COMPLETE
+
+    def translate_to_english(self, text, source_language):
+        # The sample agent does not translate; the Front_Door stores the
+        # Translation_Pending_Marker instead (Requirement 8.10).
+        return None
