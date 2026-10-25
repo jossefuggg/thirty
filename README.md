@@ -1,5 +1,7 @@
 # Thirty
 
+Video youtube link changed: https://youtu.be/iPEV1JejsDc
+
 **Medical device complaint reporting, on the clock. Thirty drafts; a human files.**
 
 Manufacturers must report deaths, serious injuries and dangerous malfunctions to the FDA within 30 days
