@@ -1,6 +1,6 @@
 # Thirty
 
-Video youtube link changed: https://youtu.be/iPEV1JejsDc
+Important Change approved by Staff: Video youtube link changed: https://youtu.be/iPEV1JejsDc
 
 **Medical device complaint reporting, on the clock. Thirty drafts; a human files.**
 
